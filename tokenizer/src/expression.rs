@@ -4,7 +4,7 @@ use crate::ast::*;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{alphanumeric1, satisfy},
+    character::complete::{alphanumeric1, multispace0, satisfy, space0},
     combinator::{map, recognize},
     error::{self, Error, ErrorKind},
     multi::many0,
@@ -15,17 +15,72 @@ use nom::{
 pub fn bop(input: &str) -> IResult<&str, Bop> {
     alt((
         map(tag("+"), |_| Bop::Plus),
-        map(tag("-"), |_| Bop::Plus),
-        map(tag("*"), |_| Bop::Plus),
-        map(tag("/"), |_| Bop::Plus),
-        map(tag("<-"), |_| Bop::Plus),
-        map(tag("="), |_| Bop::Plus),
-        map(tag("=="), |_| Bop::Plus),
-        map(tag(">="), |_| Bop::Plus),
-        map(tag("<="), |_| Bop::Plus),
-        map(tag(">"), |_| Bop::Plus),
-        map(tag("<"), |_| Bop::Plus),
+        map(tag("-"), |_| Bop::Minus),
+        map(tag("*"), |_| Bop::Multiply),
+        map(tag("/"), |_| Bop::Divide),
+        map(tag("%%"), |_| Bop::Modulo),
+        map(tag("^"), |_| Bop::Power),
+        map(tag(">"), |_| Bop::Greater),
+        map(tag(">="), |_| Bop::Ge),
+        map(tag("<"), |_| Bop::Lower),
+        map(tag("<="), |_| Bop::Le),
+        map(tag("=="), |_| Bop::Equal),
+        map(tag("!="), |_| Bop::NotEqual),
+        map(tag("&"), |_| Bop::And),
+        map(tag("|"), |_| Bop::Or),
+        map(tag("~"), |_| Bop::ModelFormulae),
+        // map(tag("<-"), |_| Bop::Assignment),
+        // map(tag("->"), |_| Bop::RightAssignment),
+        // map(tag("="), |_| Bop::OldAssignment),
+        map(tag("$"), |_| Bop::Dollar),
+        map(tag(":"), |_| Bop::Colon),
     ))(input)
+}
+
+pub fn uop(input: &str) -> IResult<&str, Uop> {
+    alt((
+        map(tag("+"), |_| Uop::Plus),
+        map(tag("-"), |_| Uop::Minus),
+        map(tag("!"), |_| Uop::Not),
+    ))(input)
+}
+
+pub fn true_literal(input: &str) -> IResult<&str, Literal> {
+    map(tag("TRUE"), |_| Literal::True)(input)
+}
+
+pub fn false_literal(input: &str) -> IResult<&str, Literal> {
+    map(tag("FALSE"), |_| Literal::False)(input)
+}
+
+pub fn null_literal(input: &str) -> IResult<&str, Literal> {
+    map(tag("NULL"), |_| Literal::Null)(input)
+}
+
+pub fn na_literal(input: &str) -> IResult<&str, Literal> {
+    map(tag("NA"), |_| Literal::Na)(input)
+}
+
+pub fn nan_literal(input: &str) -> IResult<&str, Literal> {
+    map(tag("NaN"), |_| Literal::NaN)(input)
+}
+
+pub fn inf_literal(input: &str) -> IResult<&str, Literal> {
+    map(tag("Inf"), |_| Literal::Inf)(input)
+}
+
+pub fn literal(input: &str) -> IResult<&str, Expression> {
+    map(
+        alt((
+            true_literal,
+            false_literal,
+            null_literal,
+            na_literal,
+            nan_literal,
+            inf_literal,
+        )),
+        |literal| Expression::Literal(literal),
+    )(input)
 }
 
 /// Parses an identifier of a variable
@@ -44,6 +99,12 @@ pub fn identifier(input: &str) -> IResult<&str, Expression> {
             !item.is_alphanumeric() && item != '.' && item != '_'
         })
     }
+    // TODO: disallow reserved keywords
+    // The following identifiers have a special meaning and cannot be used for object names
+    // if else repeat while function for in next break
+    // TRUE FALSE NULL Inf NaN
+    // NA NA_integer_ NA_real_ NA_complex_ NA_character_
+    // ... ..1 ..2 etc.
     map(
         recognize(alt((
             map(
@@ -66,23 +127,30 @@ pub fn identifier(input: &str) -> IResult<&str, Expression> {
     )(input)
 }
 
-pub fn true_literal(input: &str) -> IResult<&str, Expression> {
-    map(tag("TRUE"), |_| Expression::True)(input)
+pub fn call(input: &str) -> IResult<&str, Expression> {
+    todo!()
 }
 
-pub fn false_literal(input: &str) -> IResult<&str, Expression> {
-    map(tag("FALSE"), |_| Expression::False)(input)
+pub fn bop_expr(input: &str) -> IResult<&str, Expression> {
+    map(
+        tuple((expression, space0, bop, multispace0, expression)),
+        |res| Expression::Bop(res.2, Box::new(res.0), Box::new(res.4)),
+    )(input)
 }
 
-pub fn null_literal(input: &str) -> IResult<&str, Expression> {
-    map(tag("NULL"), |_| Expression::Null)(input)
+pub fn expression(input: &str) -> IResult<&str, Expression> {
+    alt((literal, identifier, call, bop_expr))(input)
 }
 
 #[cfg(test)]
 mod tests {
     use nom::IResult;
 
-    use crate::{ast::Expression, expression::identifier, helpers::assert_parse_eq};
+    use crate::{
+        ast::Expression,
+        expression::{bop_expr, identifier},
+        helpers::assert_parse_eq,
+    };
 
     #[test]
     fn test_identifier() {
@@ -92,6 +160,31 @@ mod tests {
                 identifier(example),
                 IResult::Ok(("", Expression::Identifier(example.to_owned()))),
             )
+        }
+        let invalid_examples = [".3", "_something", "123"];
+        for example in invalid_examples {
+            assert!(identifier(example).is_err())
+        }
+    }
+
+    #[test]
+    fn test_bop_expr() {
+        let valid_examples = ["TRUE & TRUE", "TRUE & FALSE"];
+        for input in valid_examples {
+            assert!(bop_expr(input).is_ok());
+        }
+        let valid_examples = ["TRUE&TRUE", "TRUE&FALSE"];
+        for input in valid_examples {
+            assert!(bop_expr(input).is_ok());
+        }
+        let valid_examples = ["TRUE&\nTRUE", "TRUE &\n FALSE"];
+        for input in valid_examples {
+            assert!(bop_expr(input).is_ok());
+        }
+
+        let invalid_examples = ["TRUE", "TRUE\n&FALSE"];
+        for input in invalid_examples {
+            assert!(bop_expr(input).is_err());
         }
     }
 }
