@@ -1,17 +1,17 @@
-use std::num::{NonZeroI8, NonZeroUsize};
-
 use crate::ast::*;
 use nom::{
     branch::alt,
-    bytes::complete::tag,
-    character::complete::{alphanumeric1, multispace0, satisfy, space0},
-    combinator::{map, recognize},
-    error::{self, Error, ErrorKind},
+    bytes::complete::{escaped, tag},
+    character::complete::{multispace0, none_of, one_of, satisfy, space0},
+    combinator::{map, not, recognize},
+    error::ParseError,
     multi::many0,
-    sequence::{pair, tuple},
-    Err, IResult, InputTakeAtPosition, Needed,
+    sequence::{delimited, pair, tuple},
+    AsChar, Compare, FindToken, IResult, InputIter, InputTake, InputTakeAtPosition, Parser,
 };
 
+// TODO: Add support for vectorized operators
+// && and ||
 pub fn bop(input: &str) -> IResult<&str, Bop> {
     alt((
         map(tag("+"), |_| Bop::Plus),
@@ -67,6 +67,30 @@ pub fn nan_literal(input: &str) -> IResult<&str, Literal> {
 
 pub fn inf_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("Inf"), |_| Literal::Inf)(input)
+}
+
+// TODO: support line breaks in the middle of string literals
+// I don't even know how R behaves if there are line breaks in the middle
+// of a string literal
+pub fn string_literal(input: &str) -> IResult<&str, Literal> {
+    fn parse_delimited_string<'a, E: ParseError<&'a str>>(
+        delimited_by: &'a str,
+        string_chars: &'a str,
+    ) -> impl Parser<&'a str, &'a str, E> {
+        delimited(
+            tag(delimited_by),
+            escaped(none_of(string_chars), '\\', one_of("\\nrtbafvxuU'\"")),
+            tag(delimited_by),
+        )
+    }
+
+    map(
+        alt((
+            parse_delimited_string("\"", "\\\""),
+            parse_delimited_string("\'", "\\\'"),
+        )),
+        |s: &str| Literal::String(s.to_owned()),
+    )(input)
 }
 
 pub fn literal(input: &str) -> IResult<&str, Expression> {
@@ -131,6 +155,12 @@ pub fn call(input: &str) -> IResult<&str, Expression> {
     todo!()
 }
 
+pub fn uop_expr(input: &str) -> IResult<&str, Expression> {
+    map(tuple((uop, multispace0, expression)), |(uop, _, expr)| {
+        Expression::Uop(uop, Box::new(expr))
+    })(input)
+}
+
 pub fn bop_expr(input: &str) -> IResult<&str, Expression> {
     map(
         tuple((expression, space0, bop, multispace0, expression)),
@@ -147,10 +177,51 @@ mod tests {
     use nom::IResult;
 
     use crate::{
-        ast::Expression,
+        ast::{Expression, Literal},
         expression::{bop_expr, identifier},
         helpers::assert_parse_eq,
     };
+
+    use super::string_literal;
+
+    #[test]
+    fn test_string_literal() {
+        // " delimited
+        assert_parse_eq(
+            string_literal("\"Something\""),
+            IResult::Ok(("", Literal::String(String::from("Something")))),
+        );
+        assert_parse_eq(
+            string_literal("\"\\\\\\\"\""), // Printed as: "\\\""
+            IResult::Ok(("", Literal::String(String::from("\\\\\\\"")))),
+        );
+        assert_parse_eq(
+            string_literal("\"apostro\'phe\""),
+            IResult::Ok(("", Literal::String(String::from("apostro\'phe")))),
+        );
+        assert_parse_eq(
+            string_literal("\"Something\" test"),
+            IResult::Ok((" test", Literal::String(String::from("Something")))),
+        );
+
+        // ' delimited
+        assert_parse_eq(
+            string_literal("\"Something\""),
+            IResult::Ok(("", Literal::String(String::from("Something")))),
+        );
+        assert_parse_eq(
+            string_literal("\"\\\\\\\"\""), // Printed as: "\\\""
+            IResult::Ok(("", Literal::String(String::from("\\\\\\\"")))),
+        );
+        assert_parse_eq(
+            string_literal("\'apostro\"phe\'"),
+            IResult::Ok(("", Literal::String(String::from("apostro\"phe")))),
+        );
+        assert_parse_eq(
+            string_literal("\"Something\" test"),
+            IResult::Ok((" test", Literal::String(String::from("Something")))),
+        );
+    }
 
     #[test]
     fn test_identifier() {
@@ -165,6 +236,23 @@ mod tests {
         for example in invalid_examples {
             assert!(identifier(example).is_err())
         }
+    }
+
+    #[test]
+    fn test_uop_expr() {
+        // TODO: write tests for these
+        // let valid_examples = ["+5", "-5", "!2", "!FALSE", "!\n\nTRUE", "+-5"];
+        // let expected = [5, 5, 2, Literal::False, Literal::True, Expression::Uop(Uop::Minus, Box::new())]
+        // for example in valid_examples {
+        //     assert_parse_eq(
+        //         identifier(example),
+        //         IResult::Ok(("", Expression::Identifier(example.to_owned()))),
+        //     )
+        // }
+        // let invalid_examples = [".3", "_something", "123"];
+        // for example in invalid_examples {
+        //     assert!(identifier(example).is_err())
+        // }
     }
 
     #[test]

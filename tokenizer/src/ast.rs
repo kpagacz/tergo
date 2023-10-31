@@ -41,6 +41,7 @@ pub enum Expression {
     Literal(Literal),
     Identifier(String),
     Call(Box<Expression>, Vec<Argument>), // expr(arguments)
+    Uop(Uop, Box<Expression>),            // Uop expr
     Bop(Bop, Box<Expression>, Box<Expression>), // lhs Bop rhs
     MultiBop(Box<Expression>, Vec<(Bop, Box<Expression>)>), // lhs (Bop rhs)+
 }
