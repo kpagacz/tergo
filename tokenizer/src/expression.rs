@@ -6,6 +6,7 @@ use nom::{
     combinator::{map, opt, recognize},
     error::ParseError,
     multi::many1,
+    number::complete::recognize_float,
     sequence::{delimited, pair, preceded, terminated, tuple},
     IResult, InputTakeAtPosition, Parser,
 };
@@ -137,6 +138,8 @@ fn decimal(input: &str) -> IResult<&str, &str> {
 /// Valid numeric constants: 1 10 0.1 .2 1e-7 1.2e+7
 /// Adapted from https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#floating-point-numbers
 fn number(input: &str) -> IResult<&str, Literal> {
+    // The below doesn't work with &str, would need to cast it to u8 and then back to &str
+    // map(recognize_float, |num| Literal::Number(num))(input)
     map(
         alt((
             // Case one: .42
@@ -159,6 +162,7 @@ fn number(input: &str) -> IResult<&str, Literal> {
                 nom::character::complete::char('.'),
                 opt(decimal),
             ))),
+            recognize(decimal),
         )),
         |num| Literal::Number(num.to_owned()),
     )(input)
@@ -253,7 +257,7 @@ mod tests {
         helpers::assert_parse_eq,
     };
 
-    use super::{hexadecimal, string_literal};
+    use super::{hexadecimal, number, string_literal};
 
     #[test]
     fn test_hexadecimal() {
@@ -269,6 +273,22 @@ mod tests {
             assert!(hexadecimal(example).is_err())
         }
     }
+
+    #[test]
+    fn test_number() {
+        let valid_examples = ["1", "10", "0.1", ".2", "1e-7", "1.2e+7"];
+        for example in valid_examples {
+            assert_parse_eq(
+                number(example),
+                IResult::Ok(("", Literal::Number(example.to_owned()))),
+            )
+        }
+        let invalid_examples = [".something", "_something", "a123", "X\n0"];
+        for example in invalid_examples {
+            assert!(number(example).is_err(), "Panicked at: {example}")
+        }
+    }
+
     #[test]
     fn test_string_literal() {
         // " delimited
