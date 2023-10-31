@@ -3,11 +3,11 @@ use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
     character::complete::{multispace0, none_of, one_of, satisfy, space0},
-    combinator::{map, not, recognize},
+    combinator::{map, opt, recognize},
     error::ParseError,
-    multi::many0,
-    sequence::{delimited, pair, tuple},
-    AsChar, Compare, FindToken, IResult, InputIter, InputTake, InputTakeAtPosition, Parser,
+    multi::many1,
+    sequence::{delimited, pair, preceded, terminated, tuple},
+    IResult, InputTakeAtPosition, Parser,
 };
 
 // TODO: Add support for vectorized operators
@@ -69,10 +69,27 @@ pub fn inf_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("Inf"), |_| Literal::Inf)(input)
 }
 
-// TODO: support line breaks in the middle of string literals
-// I don't even know how R behaves if there are line breaks in the middle
-// of a string literal
+/// String constants are delimited by a pair of single (‘'’) or double (‘"’) quotes
+/// and can contain all other printable characters. Quotes and other special
+/// characters within strings are specified using escape sequences: \' single quote
+/// \" double quote \n newline (aka ‘line feed’, LF) \r carriage return (CR)
+/// \t tab character \b backspace \a bell \f form feed \v vertical tab \\ backslash itself
+/// \nnn character with given octal code – sequences of one, two or three digits
+/// in the range 0 ... 7 are accepted.  \xnn character with given hex code – sequences
+/// of one or two hex digits (with entries 0 ... 9 A ... F a ... f).
+/// \unnnn \u{nnnn} (where multibyte locales are supported, otherwise an error).
+/// Unicode character with given hex code – sequences of up to four hex digits.
+/// The character needs to be valid in the current locale.
+/// \Unnnnnnnn \U{nnnnnnnn} (where multibyte locales are supported, otherwise an error).
+/// Unicode character with given hex code – sequences of up to eight hex digits.
+/// A single quote may also be embedded directly in a double-quote delimited string and vice versa.
+/// A ‘nul’ (\0) is not allowed in a character string,
+/// so using \0 in a string constant terminates the constant (usually with a warning):
+/// further characters up to the closing quote are scanned but ignored.
 pub fn string_literal(input: &str) -> IResult<&str, Literal> {
+    // TODO: support line breaks in the middle of string literals
+    // I don't even know how R behaves if there are line breaks in the middle
+    // of a string literal
     fn parse_delimited_string<'a, E: ParseError<&'a str>>(
         delimited_by: &'a str,
         string_chars: &'a str,
@@ -90,6 +107,60 @@ pub fn string_literal(input: &str) -> IResult<&str, Literal> {
             parse_delimited_string("\'", "\\\'"),
         )),
         |s: &str| Literal::String(s.to_owned()),
+    )(input)
+}
+
+/// Numeric constants can also be hexadecimal, starting with ‘0x’ or ‘0x’
+/// followed by zero or more digits, ‘a-f’ or ‘A-F’. Hexadecimal floating point
+/// constants are supported using C99 syntax, e.g. ‘0x1.1p1’.
+pub fn hexadecimal(input: &str) -> IResult<&str, Literal> {
+    // TODO: Add hexadecimal fraction
+    map(
+        tuple((
+            alt((tag("0x"), tag("0X"))),
+            recognize(many1(one_of("0123456789abcdefABCDEF"))),
+        )),
+        |(prefix, rest)| Literal::Number(format!("{prefix}{rest}")),
+    )(input)
+}
+
+fn decimal(input: &str) -> IResult<&str, &str> {
+    recognize(many1(one_of("0123456789")))(input)
+}
+
+/// Numeric constants follow a similar syntax to that of the C language.
+/// They consist of an integer part consisting of zero or more digits,
+/// followed optionally by ‘.’ and a fractional part of zero or more digits
+/// optionally followed by an exponent part consisting of an ‘E’ or an ‘e’,
+/// an optional sign and a string of one or more digits.
+/// Either the fractional or the decimal part can be empty, but not both at once.
+/// Valid numeric constants: 1 10 0.1 .2 1e-7 1.2e+7
+/// Adapted from https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#floating-point-numbers
+fn number(input: &str) -> IResult<&str, Literal> {
+    map(
+        alt((
+            // Case one: .42
+            recognize(tuple((
+                nom::character::complete::char('.'),
+                decimal,
+                opt(tuple((one_of("eE"), opt(one_of("+-")), decimal))),
+            ))),
+            // Case two: 42e42 and 42.42e42
+            recognize(tuple((
+                decimal,
+                opt(preceded(nom::character::complete::char('.'), decimal)),
+                one_of("eE"),
+                opt(one_of("+-")),
+                decimal,
+            ))),
+            // Case three: 42. and 42.42
+            recognize(tuple((
+                decimal,
+                nom::character::complete::char('.'),
+                opt(decimal),
+            ))),
+        )),
+        |num| Literal::Number(num.to_owned()),
     )(input)
 }
 
@@ -151,7 +222,7 @@ pub fn identifier(input: &str) -> IResult<&str, Expression> {
     )(input)
 }
 
-pub fn call(input: &str) -> IResult<&str, Expression> {
+pub fn call(_input: &str) -> IResult<&str, Expression> {
     todo!()
 }
 
@@ -182,8 +253,22 @@ mod tests {
         helpers::assert_parse_eq,
     };
 
-    use super::string_literal;
+    use super::{hexadecimal, string_literal};
 
+    #[test]
+    fn test_hexadecimal() {
+        let valid_examples = ["0X1", "0x0", "0xABCDEF", "0xabcdef", "0X1234567890abcdef"];
+        for example in valid_examples {
+            assert_parse_eq(
+                hexadecimal(example),
+                IResult::Ok(("", Literal::Number(example.to_owned()))),
+            )
+        }
+        let invalid_examples = [".3", "_something", "123", "0X\n0"];
+        for example in invalid_examples {
+            assert!(hexadecimal(example).is_err())
+        }
+    }
     #[test]
     fn test_string_literal() {
         // " delimited
