@@ -172,6 +172,39 @@ pub fn number_literal(input: &str) -> IResult<&str, Literal> {
     alt((hexadecimal, number))(input)
 }
 
+/// There is now a separate class of integer constants.
+/// They are created by using the qualifier L at the end of the number.
+/// For example, 123L gives an integer value rather than a numeric value.
+/// The suffix L can be used to qualify
+/// any non-complex number with the intent of creating an integer.
+/// So it can be used with numbers given by hexadecimal or scientific notation.
+/// However, if the value is not a valid integer, a warning is emitted and the numeric value created.
+/// The following shows examples of valid integer constants,
+/// values which will generate a warning and give numeric constants and syntax errors.
+///
+/// Valid integer constants:  1L, 0x10L, 1000000L, 1e6L
+/// Valid numeric constants:  1.1L, 1e-3L, 0x1.1p-2
+/// Syntax error:  12iL 0x1.1
+pub fn integer_literal(input: &str) -> IResult<&str, Literal> {
+    map(
+        tuple((number_literal, nom::character::complete::char('L'))),
+        |(num, _)| match num {
+            Literal::Number(num) => Literal::Integer(format!("{num}L")),
+            _ => unreachable!(),
+        },
+    )(input)
+}
+
+pub fn complex_literal(input: &str) -> IResult<&str, Literal> {
+    map(
+        tuple((number, nom::character::complete::char('i'))),
+        |(num, _)| match num {
+            Literal::Number(num) => Literal::Complex(format!("{num}i")),
+            _ => unreachable!(),
+        },
+    )(input)
+}
+
 pub fn literal(input: &str) -> IResult<&str, Expression> {
     map(
         alt((
@@ -318,6 +351,36 @@ mod tests {
         let invalid_examples = ["something", "\"something\"", "\"0.3\""];
         for example in invalid_examples {
             assert!(number_literal(example).is_err())
+        }
+    }
+
+    #[test]
+    fn test_integer_literal() {
+        let valid_examples = ["0.1L", ".2L", "1e-7L", "1.2e+7L", "0X0L", "0x0L"];
+        for example in valid_examples {
+            assert_parse_eq(
+                integer_literal(example),
+                IResult::Ok(("", Literal::Integer(example.to_owned()))),
+            )
+        }
+        let invalid_examples = [".something", "_something", "a123", "X\n0"];
+        for example in invalid_examples {
+            assert!(integer_literal(example).is_err(), "Panicked at: {example}")
+        }
+    }
+
+    #[test]
+    fn test_complex_literal() {
+        let valid_examples = ["0.1i", ".2i", "1e-7i", "1.2e+7i"];
+        for example in valid_examples {
+            assert_parse_eq(
+                complex_literal(example),
+                IResult::Ok(("", Literal::Complex(example.to_owned()))),
+            )
+        }
+        let invalid_examples = [".something", "_something", "a123", "X\n0"];
+        for example in invalid_examples {
+            assert!(integer_literal(example).is_err(), "Panicked at: {example}")
         }
     }
 
