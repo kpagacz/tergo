@@ -162,17 +162,14 @@ fn number(input: &str) -> IResult<&str, Literal> {
                 nom::character::complete::char('.'),
                 opt(decimal),
             ))),
+            recognize(decimal),
         )),
         |num| Literal::Number(num.to_owned()),
     )(input)
 }
 
 pub fn number_literal(input: &str) -> IResult<&str, Literal> {
-    alt((
-        hexadecimal,
-        number,
-        map(decimal, |num| Literal::Number(num.to_owned())),
-    ))(input)
+    alt((hexadecimal, number))(input)
 }
 
 pub fn literal(input: &str) -> IResult<&str, Expression> {
