@@ -5,11 +5,28 @@ use nom::{
     character::complete::{multispace0, none_of, one_of, satisfy, space0},
     combinator::{map, opt, recognize},
     error::ParseError,
-    multi::many1,
+    multi::{many0, many1},
     number::complete::recognize_float,
     sequence::{delimited, pair, preceded, terminated, tuple},
     IResult, InputTakeAtPosition, Parser,
 };
+
+/// R allows user-defined infix operators.
+/// These have the form of a string of characters delimited by the ‘%’ character.
+/// The string can contain any printable character except ‘%’.
+/// The escape sequences for strings do not apply here.
+/// Note that the following operators are predefined
+/// %% %*% %/% %in% %o% %x%
+fn infix(input: &str) -> IResult<&str, Bop> {
+    map(
+        recognize(tuple((
+            nom::character::complete::char('%'),
+            many0(none_of("%")),
+            nom::character::complete::char('%'),
+        ))),
+        |op| Bop::Infix(String::from(op)),
+    )(input)
+}
 
 // TODO: Add support for vectorized operators
 // && and ||
@@ -35,6 +52,7 @@ pub fn bop(input: &str) -> IResult<&str, Bop> {
         // map(tag("="), |_| Bop::OldAssignment),
         map(tag("$"), |_| Bop::Dollar),
         map(tag(":"), |_| Bop::Colon),
+        infix,
     ))(input)
 }
 
@@ -298,6 +316,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_infix() {
+        let valid_examples = ["% something %", "%%"];
+        for example in valid_examples {
+            assert_parse_eq(
+                infix(example),
+                IResult::Ok(("", Bop::Infix(example.to_owned()))),
+            )
+        }
+        let remaining = "%%2";
+        assert_parse_eq(
+            infix(remaining),
+            IResult::Ok(("2", Bop::Infix(remaining[..2].to_owned()))),
+        );
+        let invalid_examples = ["a%%", "..."];
+        for example in invalid_examples {
+            assert!(infix(example).is_err())
+        }
+    }
+
+    #[test]
     fn test_hexadecimal() {
         let valid_examples = ["0X1", "0x0", "0xABCDEF", "0xabcdef", "0X1234567890abcdef"];
         for example in valid_examples {
@@ -363,7 +401,7 @@ mod tests {
                 IResult::Ok(("", Literal::Integer(example.to_owned()))),
             )
         }
-        let invalid_examples = [".something", "_something", "a123", "X\n0"];
+        let invalid_examples = ["123", ".something", "_something", "a123", "X\n0"];
         for example in invalid_examples {
             assert!(integer_literal(example).is_err(), "Panicked at: {example}")
         }
@@ -378,7 +416,7 @@ mod tests {
                 IResult::Ok(("", Literal::Complex(example.to_owned()))),
             )
         }
-        let invalid_examples = [".something", "_something", "a123", "X\n0"];
+        let invalid_examples = ["123", ".something", "_something", "a123", "X\n0"];
         for example in invalid_examples {
             assert!(integer_literal(example).is_err(), "Panicked at: {example}")
         }

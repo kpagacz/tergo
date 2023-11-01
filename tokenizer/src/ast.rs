@@ -27,6 +27,8 @@ pub enum Bop {
     Dollar, // $
     // Sequence
     Colon, // :
+    // Infix
+    Infix(String), // %chars%
 }
 
 #[derive(Debug, PartialEq)]
