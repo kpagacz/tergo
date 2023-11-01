@@ -116,12 +116,12 @@ pub fn string_literal(input: &str) -> IResult<&str, Literal> {
 /// constants are supported using C99 syntax, e.g. ‘0x1.1p1’.
 pub fn hexadecimal(input: &str) -> IResult<&str, Literal> {
     // TODO: Add hexadecimal fraction
+    fn hex_prefix(input: &str) -> IResult<&str, &str> {
+        alt((tag("0x"), tag("0X")))(input)
+    }
     map(
-        tuple((
-            alt((tag("0x"), tag("0X"))),
-            recognize(many1(one_of("0123456789abcdefABCDEF"))),
-        )),
-        |(prefix, rest)| Literal::Number(format!("{prefix}{rest}")),
+        recognize(tuple((hex_prefix, many1(one_of("0123456789abcdefABCDEF"))))),
+        |num| Literal::Number(num.to_owned()),
     )(input)
 }
 
@@ -162,10 +162,17 @@ fn number(input: &str) -> IResult<&str, Literal> {
                 nom::character::complete::char('.'),
                 opt(decimal),
             ))),
-            recognize(decimal),
         )),
         |num| Literal::Number(num.to_owned()),
     )(input)
+}
+
+pub fn number_literal(input: &str) -> IResult<&str, Literal> {
+    alt((
+        hexadecimal,
+        number,
+        map(decimal, |num| Literal::Number(num.to_owned())),
+    ))(input)
 }
 
 pub fn literal(input: &str) -> IResult<&str, Expression> {
@@ -177,6 +184,7 @@ pub fn literal(input: &str) -> IResult<&str, Expression> {
             na_literal,
             nan_literal,
             inf_literal,
+            number,
         )),
         |literal| Expression::Literal(literal),
     )(input)
@@ -257,7 +265,7 @@ mod tests {
         helpers::assert_parse_eq,
     };
 
-    use super::{hexadecimal, number, string_literal};
+    use super::*;
 
     #[test]
     fn test_hexadecimal() {
@@ -276,7 +284,7 @@ mod tests {
 
     #[test]
     fn test_number() {
-        let valid_examples = ["1", "10", "0.1", ".2", "1e-7", "1.2e+7"];
+        let valid_examples = ["0.1", ".2", "1e-7", "1.2e+7"];
         for example in valid_examples {
             assert_parse_eq(
                 number(example),
@@ -286,6 +294,33 @@ mod tests {
         let invalid_examples = [".something", "_something", "a123", "X\n0"];
         for example in invalid_examples {
             assert!(number(example).is_err(), "Panicked at: {example}")
+        }
+    }
+
+    #[test]
+    fn test_number_literal() {
+        let valid_examples = [
+            "0X1",
+            "0x0",
+            "0xABCDEF",
+            "0xabcdef",
+            "0X1234567890abcdef",
+            "0.1",
+            "1",
+            "10",
+            ".2",
+            "1e-7",
+            "1.2e+7",
+        ];
+        for example in valid_examples {
+            assert_parse_eq(
+                number_literal(example),
+                IResult::Ok(("", Literal::Number(example.to_owned()))),
+            )
+        }
+        let invalid_examples = ["something", "\"something\"", "\"0.3\""];
+        for example in invalid_examples {
+            assert!(number_literal(example).is_err())
         }
     }
 
