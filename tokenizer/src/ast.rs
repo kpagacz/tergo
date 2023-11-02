@@ -38,16 +38,6 @@ pub enum Uop {
     Not,   // !
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Expression {
-    Literal(Literal),
-    Identifier(String),
-    Call(Box<Expression>, Vec<Argument>), // expr(arguments)
-    Uop(Uop, Box<Expression>),            // Uop expr
-    Bop(Bop, Box<Expression>, Box<Expression>), // lhs Bop rhs
-    MultiBop(Box<Expression>, Vec<(Bop, Box<Expression>)>), // lhs (Bop rhs)+
-}
-
 /// There are five types of constants: integer, logical, numeric, complex and string.
 /// In addition, there are four special constants, NULL, NA, Inf, and NaN.
 #[derive(Debug, PartialEq)]
@@ -67,7 +57,24 @@ pub enum Literal {
     Complex(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
+pub enum Expression {
+    Literal(Literal),
+    Identifier(String),
+    Call(Box<Expression>, Vec<Argument>), // expr(arguments)
+    Uop(Uop, Box<Expression>),            // Uop expr
+    Bop(Bop, Box<Expression>, Box<Expression>), // lhs Bop rhs
+    MultiBop(Box<Expression>, Vec<(Bop, Box<Expression>)>), // lhs (Bop rhs)+
+    // In R if statements evaluate to value, like an ordinary ternary
+    // operator in other languages, so here we go...
+    If(
+        Vec<(Box<Statement>, Vec<Statement>)>,
+        Option<Vec<Statement>>,
+    ),
+    Function, // function(args list) definition
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Statement {
     Library(String), // library(package)
     Break,           // break
@@ -77,12 +84,8 @@ pub enum Statement {
     Compound(CompoundStatement),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CompoundStatement {
-    If(
-        Vec<(Box<Statement>, Vec<Statement>)>,
-        Option<Vec<Statement>>,
-    ),
     Repeat(Box<Statement>),
     While(Box<Statement>, Box<Statement>),
     For(String, Box<Expression>, Box<Statement>),
@@ -92,4 +95,5 @@ pub enum CompoundStatement {
 pub enum Argument {
     Named(String, Expression),
     Positional(Expression),
+    Empty
 }

@@ -3,9 +3,9 @@ use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
     character::complete::{multispace0, none_of, one_of, satisfy, space0},
-    combinator::{map, opt, recognize},
+    combinator::{map, opt, peek, recognize},
     error::ParseError,
-    multi::{many0, many1},
+    multi::{fold_many0, fold_many1, many0, many1, separated_list0},
     number::complete::recognize_float,
     sequence::{delimited, pair, preceded, terminated, tuple},
     IResult, InputTakeAtPosition, Parser,
@@ -224,6 +224,7 @@ pub fn complex_literal(input: &str) -> IResult<&str, Literal> {
 }
 
 pub fn literal(input: &str) -> IResult<&str, Expression> {
+    eprintln!("Literal: {input}");
     map(
         alt((
             true_literal,
@@ -232,7 +233,10 @@ pub fn literal(input: &str) -> IResult<&str, Expression> {
             na_literal,
             nan_literal,
             inf_literal,
-            number,
+            number_literal,
+            complex_literal,
+            integer_literal,
+            string_literal,
         )),
         |literal| Expression::Literal(literal),
     )(input)
@@ -249,59 +253,156 @@ pub fn literal(input: &str) -> IResult<&str, Expression> {
 /// * Reserved words cannot be used as variables (TRUE, FALSE, NULL, if...)
 ///
 pub fn identifier(input: &str) -> IResult<&str, Expression> {
+    // TODO: add support for identifiers declared and referenced in this way:
+    // e.g.
+    // `% test%` <- function(first, second) first + second
+    // `% test%`(1, 2) == 3
+    // Interestingly, this doesn't work
+    // # 1 `% test%` 2
+    // but this does:
+    // `some thing` <- 1
+    // print(`some thing` + 2)
+    // What it tells me is that the binary operator cannot be referenced in this way
+    // (it cannot be referenced as an identifier), but it can be referenced as the name
+    // of the function.
     fn letter_digit_period_underscore(input: &str) -> IResult<&str, &str> {
         input.split_at_position_complete(|item| {
             !item.is_alphanumeric() && item != '.' && item != '_'
         })
     }
-    // TODO: disallow reserved keywords
-    // The following identifiers have a special meaning and cannot be used for object names
-    // if else repeat while function for in next break
-    // TRUE FALSE NULL Inf NaN
-    // NA NA_integer_ NA_real_ NA_complex_ NA_character_
-    // ... ..1 ..2 etc.
+
+    eprintln!("identifier: {input}");
     map(
-        recognize(alt((
-            map(
-                pair(
-                    satisfy(|c| c.is_alphabetic()),
-                    letter_digit_period_underscore,
-                ),
-                |(first, second)| format!("{first}{second}"),
-            ),
-            map(
-                tuple((
-                    tag("."),
-                    satisfy(|c| c.is_alphabetic()),
-                    letter_digit_period_underscore,
-                )),
-                |(first, second, third)| format!("{first}{second}{third}"),
-            ),
-        ))),
+        alt((
+            recognize(pair(
+                satisfy(|c| c.is_alphabetic()),
+                letter_digit_period_underscore,
+            )),
+            recognize(tuple((
+                nom::character::complete::char('.'),
+                satisfy(|c| c.is_alphabetic()),
+                letter_digit_period_underscore,
+            ))),
+        )),
         |identifier| Expression::Identifier(identifier.to_owned()),
     )(input)
 }
 
-pub fn call(_input: &str) -> IResult<&str, Expression> {
-    todo!()
+/// A function call takes the form of a function reference followed
+/// by a comma-separated list of arguments within a set of parentheses.
+/// function_reference ( arg1, arg2, ...... , argn )
+/// The function reference can be either
+///     an identifier (the name of the function)
+///     a text string (ditto, but handy if the function has a name which is not a valid identifier)
+///     an expression (which should evaluate to a function object)
+/// Each argument can be tagged (tag=expr), or just be a simple expression.
+/// It can also be empty or it can be one of the special tokens ..., ..2, etc.
+/// A tag can be an identifier or a text string.
+/// Examples:
+/// f(x)
+/// g(tag = value, , 5)
+/// "odd name"("strange tag" = 5, y)
+/// (function(x) x^2)(5)
+pub fn call(input: &str) -> IResult<&str, Expression> {
+    println!("call input: {input}");
+    fn function_args(input: &str) -> IResult<&str, Vec<Argument>> {
+        separated_list0(
+            delimited(
+                multispace0,
+                nom::character::complete::char(','),
+                multispace0,
+            ),
+            alt((
+                map(
+                    tuple((
+                        opt(tuple((
+                            alt((recognize(identifier), recognize(string_literal))),
+                            multispace0,
+                            nom::character::complete::char('='),
+                            multispace0,
+                        ))),
+                        expression,
+                    )),
+                    |(optional, value)| match optional {
+                        Some((tag, _, _, _)) => Argument::Named(String::from(tag), value),
+                        None => Argument::Positional(value),
+                    },
+                ),
+                map(multispace0, |_| Argument::Empty),
+            )),
+        )(input)
+    }
+
+    map(
+        tuple((
+            expression,
+            delimited(
+                nom::character::complete::char('('),
+                function_args,
+                nom::character::complete::char(')'),
+            ),
+        )),
+        |(function, args)| Expression::Call(Box::new(function), args),
+    )(input)
 }
 
+// uop_expr := uop space_with_newlines expression
 pub fn uop_expr(input: &str) -> IResult<&str, Expression> {
+    println!("uop: {input}");
     map(tuple((uop, multispace0, expression)), |(uop, _, expr)| {
         Expression::Uop(uop, Box::new(expr))
     })(input)
 }
 
+// lhs (bop rhs)+
 pub fn bop_expr(input: &str) -> IResult<&str, Expression> {
+    println!("bop: {input}");
     map(
-        tuple((expression, space0, bop, multispace0, expression)),
-        |res| Expression::Bop(res.2, Box::new(res.0), Box::new(res.4)),
+        tuple((
+            expression,
+            space0,
+            bop,
+            multispace0,
+            expression,
+            fold_many0(
+                tuple((space0, bop, multispace0, expression)),
+                || vec![],
+                |mut acc, (_, bop, _, expr)| {
+                    acc.push((bop, Box::new(expr)));
+                    acc
+                },
+            ),
+        )),
+        |(expr1, _, bop, _, expr2, rest)| {
+            if rest.is_empty() {
+                Expression::Bop(bop, Box::new(expr1), Box::new(expr2))
+            } else {
+                Expression::MultiBop(
+                    Box::new(Expression::Bop(bop, Box::new(expr1), Box::new(expr2))),
+                    rest,
+                )
+            }
+        },
     )(input)
 }
 
 pub fn expression(input: &str) -> IResult<&str, Expression> {
-    alt((literal, identifier, call, bop_expr))(input)
+    // Unfortunately, the order here is important.
+    // If the bop_expr goes before the uop_expr
+    // the recurrent relation between box_expr and expression
+    // will never end for such expressions: +-5
+    // It's a poor man's 1 character look ahead.
+    println!("expr:{input}");
+    peek(none_of(","))(input)?;
+    alt((literal, identifier, uop_expr, bop_expr, call))(input)
 }
+
+// TODO: disallow reserved keywords
+// The following identifiers have a special meaning and cannot be used for object names
+// if else repeat while function for in next break
+// TRUE FALSE NULL Inf NaN
+// NA NA_integer_ NA_real_ NA_complex_ NA_character_
+// ... ..1 ..2 etc.
 
 #[cfg(test)]
 mod tests {
@@ -470,6 +571,11 @@ mod tests {
                 IResult::Ok(("", Expression::Identifier(example.to_owned()))),
             )
         }
+        assert_eq!(
+            identifier("value,"),
+            Ok((",", Expression::Identifier(String::from("value"))))
+        );
+
         let invalid_examples = [".3", "_something", "123"];
         for example in invalid_examples {
             assert!(identifier(example).is_err())
@@ -477,34 +583,103 @@ mod tests {
     }
 
     #[test]
+    fn test_call() {
+        let valid_examples = vec![
+            "f(x)",
+            "g(tag = value, , 5)",
+            "\"odd name\"(\"strange tag\" = 5, y)",
+            // "(function(x) x^2)(5)", TODO: make this test pass after function definitions are implemented
+        ];
+
+        for input in valid_examples {
+            let call = call(input);
+            println!("{call:?}");
+            assert!(call.is_ok());
+        }
+    }
+
+    #[test]
     fn test_uop_expr() {
-        // TODO: write tests for these
-        // let valid_examples = ["+5", "-5", "!2", "!FALSE", "!\n\nTRUE", "+-5"];
-        // let expected = [5, 5, 2, Literal::False, Literal::True, Expression::Uop(Uop::Minus, Box::new())]
-        // for example in valid_examples {
-        //     assert_parse_eq(
-        //         identifier(example),
-        //         IResult::Ok(("", Expression::Identifier(example.to_owned()))),
-        //     )
-        // }
-        // let invalid_examples = [".3", "_something", "123"];
-        // for example in invalid_examples {
-        //     assert!(identifier(example).is_err())
-        // }
+        assert_parse_eq(
+            uop_expr("+5"),
+            IResult::Ok((
+                "",
+                Expression::Uop(
+                    Uop::Plus,
+                    Box::new(Expression::Literal(Literal::Number(String::from("5")))),
+                ),
+            )),
+        );
+
+        assert_parse_eq(
+            uop_expr("-5"),
+            IResult::Ok((
+                "",
+                Expression::Uop(
+                    Uop::Minus,
+                    Box::new(Expression::Literal(Literal::Number(String::from("5")))),
+                ),
+            )),
+        );
+
+        assert_parse_eq(
+            uop_expr("!5"),
+            IResult::Ok((
+                "",
+                Expression::Uop(
+                    Uop::Not,
+                    Box::new(Expression::Literal(Literal::Number(String::from("5")))),
+                ),
+            )),
+        );
+
+        assert_parse_eq(
+            uop_expr("+\n\n5"),
+            IResult::Ok((
+                "",
+                Expression::Uop(
+                    Uop::Plus,
+                    Box::new(Expression::Literal(Literal::Number(String::from("5")))),
+                ),
+            )),
+        );
+
+        assert_parse_eq(
+            uop_expr("+-5"),
+            IResult::Ok((
+                "",
+                Expression::Uop(
+                    Uop::Plus,
+                    Box::new(Expression::Uop(
+                        Uop::Minus,
+                        Box::new(Expression::Literal(Literal::Number(String::from("5")))),
+                    )),
+                ),
+            )),
+        );
+
+        assert!(uop_expr(".something").is_err());
+        assert!(uop_expr("3").is_err());
     }
 
     #[test]
     fn test_bop_expr() {
         let valid_examples = ["TRUE & TRUE", "TRUE & FALSE"];
         for input in valid_examples {
-            assert!(bop_expr(input).is_ok());
+            let bop = bop_expr(input);
+            println!("{bop:?}");
+            assert!(bop.is_ok());
         }
         let valid_examples = ["TRUE&TRUE", "TRUE&FALSE"];
         for input in valid_examples {
+            let bop = bop_expr(input);
+            println!("{bop:?}");
             assert!(bop_expr(input).is_ok());
         }
         let valid_examples = ["TRUE&\nTRUE", "TRUE &\n FALSE"];
         for input in valid_examples {
+            let bop = bop_expr(input);
+            println!("{bop:?}");
             assert!(bop_expr(input).is_ok());
         }
 
@@ -512,5 +687,68 @@ mod tests {
         for input in invalid_examples {
             assert!(bop_expr(input).is_err());
         }
+    }
+
+    #[test]
+    fn test_multibox_expr() {
+        assert_eq!(
+            bop_expr("3 + 7 + 8"),
+            Ok((
+                "",
+                Expression::MultiBop(
+                    Box::new(Expression::Bop(
+                        Bop::Plus,
+                        Box::new(Expression::Literal(Literal::Number(String::from("3")))),
+                        Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+                    )),
+                    vec![(
+                        Bop::Plus,
+                        Box::new(Expression::Literal(Literal::Number(String::from("8"))))
+                    )]
+                )
+            ))
+        );
+
+        assert_eq!(
+            bop_expr("3 +\n 7 +\n 8"),
+            Ok((
+                "",
+                Expression::MultiBop(
+                    Box::new(Expression::Bop(
+                        Bop::Plus,
+                        Box::new(Expression::Literal(Literal::Number(String::from("3")))),
+                        Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+                    )),
+                    vec![(
+                        Bop::Plus,
+                        Box::new(Expression::Literal(Literal::Number(String::from("8"))))
+                    )]
+                )
+            ))
+        );
+
+        assert_eq!(
+            bop_expr("3 +\n 7 +\n 8 * 3"),
+            Ok((
+                "",
+                Expression::MultiBop(
+                    Box::new(Expression::Bop(
+                        Bop::Plus,
+                        Box::new(Expression::Literal(Literal::Number(String::from("3")))),
+                        Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+                    )),
+                    vec![
+                        (
+                            Bop::Plus,
+                            Box::new(Expression::Literal(Literal::Number(String::from("8"))))
+                        ),
+                        (
+                            Bop::Multiply,
+                            Box::new(Expression::Literal(Literal::Number(String::from("3"))))
+                        )
+                    ]
+                )
+            ))
+        );
     }
 }
