@@ -1,13 +1,12 @@
-use crate::ast::*;
+use crate::{ast::*, statement::statement};
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
-    character::complete::{multispace0, none_of, one_of, satisfy, space0},
-    combinator::{map, opt, peek, recognize},
+    character::complete::{multispace0, multispace1, none_of, one_of, satisfy, space0},
+    combinator::{map, not, opt, peek, recognize},
     error::ParseError,
-    multi::{fold_many0, fold_many1, many0, many1, separated_list0},
-    number::complete::recognize_float,
-    sequence::{delimited, pair, preceded, terminated, tuple},
+    multi::{fold_many0, many0, many1, separated_list0},
+    sequence::{delimited, pair, preceded, tuple},
     IResult, InputTakeAtPosition, Parser,
 };
 
@@ -28,35 +27,35 @@ fn infix(input: &str) -> IResult<&str, Bop> {
     )(input)
 }
 
-// TODO: Add support for vectorized operators
-// && and ||
-pub fn bop(input: &str) -> IResult<&str, Bop> {
-    alt((
-        map(tag("+"), |_| Bop::Plus),
-        map(tag("-"), |_| Bop::Minus),
-        map(tag("*"), |_| Bop::Multiply),
-        map(tag("/"), |_| Bop::Divide),
-        map(tag("%%"), |_| Bop::Modulo),
-        map(tag("^"), |_| Bop::Power),
-        map(tag(">"), |_| Bop::Greater),
-        map(tag(">="), |_| Bop::Ge),
-        map(tag("<"), |_| Bop::Lower),
-        map(tag("<="), |_| Bop::Le),
-        map(tag("=="), |_| Bop::Equal),
-        map(tag("!="), |_| Bop::NotEqual),
-        map(tag("&"), |_| Bop::And),
-        map(tag("|"), |_| Bop::Or),
-        map(tag("~"), |_| Bop::ModelFormulae),
-        // map(tag("<-"), |_| Bop::Assignment),
-        // map(tag("->"), |_| Bop::RightAssignment),
-        // map(tag("="), |_| Bop::OldAssignment),
-        map(tag("$"), |_| Bop::Dollar),
-        map(tag(":"), |_| Bop::Colon),
-        infix,
-    ))(input)
-}
+// // TODO: Add support for vectorized operators
+// // && and ||
+// fn bop(input: &str) -> IResult<&str, Bop> {
+//     alt((
+//         map(tag("+"), |_| Bop::Plus),
+//         map(tag("-"), |_| Bop::Minus),
+//         map(tag("*"), |_| Bop::Multiply),
+//         map(tag("/"), |_| Bop::Divide),
+//         map(tag("%%"), |_| Bop::Modulo),
+//         map(tag("^"), |_| Bop::Power),
+//         map(tag(">"), |_| Bop::Greater),
+//         map(tag(">="), |_| Bop::Ge),
+//         map(tag("<"), |_| Bop::Lower),
+//         map(tag("<="), |_| Bop::Le),
+//         map(tag("=="), |_| Bop::Equal),
+//         map(tag("!="), |_| Bop::NotEqual),
+//         map(tag("&"), |_| Bop::And),
+//         map(tag("|"), |_| Bop::Or),
+//         map(tag("~"), |_| Bop::ModelFormulae),
+//         // map(tag("<-"), |_| Bop::Assignment),
+//         // map(tag("->"), |_| Bop::RightAssignment),
+//         // map(tag("="), |_| Bop::OldAssignment),
+//         map(tag("$"), |_| Bop::Dollar),
+//         map(tag(":"), |_| Bop::Colon),
+//         infix,
+//     ))(input)
+// }
 
-pub fn uop(input: &str) -> IResult<&str, Uop> {
+fn uop(input: &str) -> IResult<&str, Uop> {
     alt((
         map(tag("+"), |_| Uop::Plus),
         map(tag("-"), |_| Uop::Minus),
@@ -64,19 +63,19 @@ pub fn uop(input: &str) -> IResult<&str, Uop> {
     ))(input)
 }
 
-pub fn true_literal(input: &str) -> IResult<&str, Literal> {
+fn true_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("TRUE"), |_| Literal::True)(input)
 }
 
-pub fn false_literal(input: &str) -> IResult<&str, Literal> {
+fn false_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("FALSE"), |_| Literal::False)(input)
 }
 
-pub fn null_literal(input: &str) -> IResult<&str, Literal> {
+fn null_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("NULL"), |_| Literal::Null)(input)
 }
 
-pub fn na_literal(input: &str) -> IResult<&str, Literal> {
+fn na_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("NA"), |_| Literal::Na)(input)
 }
 
@@ -84,7 +83,7 @@ pub fn nan_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("NaN"), |_| Literal::NaN)(input)
 }
 
-pub fn inf_literal(input: &str) -> IResult<&str, Literal> {
+fn inf_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("Inf"), |_| Literal::Inf)(input)
 }
 
@@ -105,7 +104,7 @@ pub fn inf_literal(input: &str) -> IResult<&str, Literal> {
 /// A ‘nul’ (\0) is not allowed in a character string,
 /// so using \0 in a string constant terminates the constant (usually with a warning):
 /// further characters up to the closing quote are scanned but ignored.
-pub fn string_literal(input: &str) -> IResult<&str, Literal> {
+fn string_literal(input: &str) -> IResult<&str, Literal> {
     // TODO: support line breaks in the middle of string literals
     // I don't even know how R behaves if there are line breaks in the middle
     // of a string literal
@@ -132,7 +131,7 @@ pub fn string_literal(input: &str) -> IResult<&str, Literal> {
 /// Numeric constants can also be hexadecimal, starting with ‘0x’ or ‘0x’
 /// followed by zero or more digits, ‘a-f’ or ‘A-F’. Hexadecimal floating point
 /// constants are supported using C99 syntax, e.g. ‘0x1.1p1’.
-pub fn hexadecimal(input: &str) -> IResult<&str, Literal> {
+fn hexadecimal(input: &str) -> IResult<&str, Literal> {
     // TODO: Add hexadecimal fraction
     fn hex_prefix(input: &str) -> IResult<&str, &str> {
         alt((tag("0x"), tag("0X")))(input)
@@ -186,7 +185,7 @@ fn number(input: &str) -> IResult<&str, Literal> {
     )(input)
 }
 
-pub fn number_literal(input: &str) -> IResult<&str, Literal> {
+fn number_literal(input: &str) -> IResult<&str, Literal> {
     alt((hexadecimal, number))(input)
 }
 
@@ -203,7 +202,7 @@ pub fn number_literal(input: &str) -> IResult<&str, Literal> {
 /// Valid integer constants:  1L, 0x10L, 1000000L, 1e6L
 /// Valid numeric constants:  1.1L, 1e-3L, 0x1.1p-2
 /// Syntax error:  12iL 0x1.1
-pub fn integer_literal(input: &str) -> IResult<&str, Literal> {
+fn integer_literal(input: &str) -> IResult<&str, Literal> {
     map(
         tuple((number_literal, nom::character::complete::char('L'))),
         |(num, _)| match num {
@@ -213,7 +212,7 @@ pub fn integer_literal(input: &str) -> IResult<&str, Literal> {
     )(input)
 }
 
-pub fn complex_literal(input: &str) -> IResult<&str, Literal> {
+fn complex_literal(input: &str) -> IResult<&str, Literal> {
     map(
         tuple((number, nom::character::complete::char('i'))),
         |(num, _)| match num {
@@ -223,8 +222,8 @@ pub fn complex_literal(input: &str) -> IResult<&str, Literal> {
     )(input)
 }
 
-pub fn literal(input: &str) -> IResult<&str, Expression> {
-    eprintln!("Literal: {input}");
+fn literal(input: &str) -> IResult<&str, Box<Expression>> {
+    eprintln!("Literal:{input}");
     map(
         alt((
             true_literal,
@@ -238,7 +237,7 @@ pub fn literal(input: &str) -> IResult<&str, Expression> {
             integer_literal,
             string_literal,
         )),
-        |literal| Expression::Literal(literal),
+        |literal| Box::new(Expression::Literal(literal)),
     )(input)
 }
 
@@ -252,7 +251,7 @@ pub fn literal(input: &str) -> IResult<&str, Expression> {
 /// * Variable names are case-sensitive (age, Age and AGE are three different variables)
 /// * Reserved words cannot be used as variables (TRUE, FALSE, NULL, if...)
 ///
-pub fn identifier(input: &str) -> IResult<&str, Expression> {
+fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
     // TODO: add support for identifiers declared and referenced in this way:
     // e.g.
     // `% test%` <- function(first, second) first + second
@@ -265,13 +264,36 @@ pub fn identifier(input: &str) -> IResult<&str, Expression> {
     // What it tells me is that the binary operator cannot be referenced in this way
     // (it cannot be referenced as an identifier), but it can be referenced as the name
     // of the function.
+    peek(not(alt((
+        tag("else"),
+        tag("if"),
+        tag("repeat"),
+        tag("while"),
+        tag("function"),
+        tag("for"),
+        tag("in"),
+        tag("next"),
+        tag("break"),
+        tag("TRUE"),
+        tag("FALSE"),
+        tag("NULL"),
+        tag("Inf"),
+        tag("NaN"),
+        tag("NA"),
+        tag("NA_integer_"),
+        tag("NA_real_"),
+        tag("NA_complex_"),
+        tag("NA_character_"),
+        tag("..."),
+        // TODO: add ..1, ..2, etc to reserved
+    ))))(input)?;
     fn letter_digit_period_underscore(input: &str) -> IResult<&str, &str> {
         input.split_at_position_complete(|item| {
             !item.is_alphanumeric() && item != '.' && item != '_'
         })
     }
 
-    eprintln!("identifier: {input}");
+    eprintln!("identifier:{input}");
     map(
         alt((
             recognize(pair(
@@ -284,8 +306,12 @@ pub fn identifier(input: &str) -> IResult<&str, Expression> {
                 letter_digit_period_underscore,
             ))),
         )),
-        |identifier| Expression::Identifier(identifier.to_owned()),
+        |identifier| Box::new(Expression::Identifier(identifier.to_owned())),
     )(input)
+}
+
+fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((literal, identifier))(input)
 }
 
 /// A function call takes the form of a function reference followed
@@ -303,8 +329,8 @@ pub fn identifier(input: &str) -> IResult<&str, Expression> {
 /// g(tag = value, , 5)
 /// "odd name"("strange tag" = 5, y)
 /// (function(x) x^2)(5)
-pub fn call(input: &str) -> IResult<&str, Expression> {
-    println!("call input: {input}");
+fn call(input: &str) -> IResult<&str, Box<Expression>> {
+    eprintln!("call input: {input}");
     fn function_args(input: &str) -> IResult<&str, Vec<Argument>> {
         separated_list0(
             delimited(
@@ -342,59 +368,155 @@ pub fn call(input: &str) -> IResult<&str, Expression> {
                 nom::character::complete::char(')'),
             ),
         )),
-        |(function, args)| Expression::Call(Box::new(function), args),
+        |(function, args)| Box::new(Expression::Call(function, args)),
     )(input)
 }
 
-// uop_expr := uop space_with_newlines expression
-pub fn uop_expr(input: &str) -> IResult<&str, Expression> {
-    println!("uop: {input}");
-    map(tuple((uop, multispace0, expression)), |(uop, _, expr)| {
-        Expression::Uop(uop, Box::new(expr))
-    })(input)
-}
-
-// lhs (bop rhs)+
-pub fn bop_expr(input: &str) -> IResult<&str, Expression> {
-    println!("bop: {input}");
+// expression: test [<- test]
+pub(crate) fn expression(input: &str) -> IResult<&str, Box<Expression>> {
+    // TODO different assignments
     map(
-        tuple((
-            expression,
-            space0,
-            bop,
-            multispace0,
-            expression,
-            fold_many0(
-                tuple((space0, bop, multispace0, expression)),
-                || vec![],
-                |mut acc, (_, bop, _, expr)| {
-                    acc.push((bop, Box::new(expr)));
-                    acc
-                },
-            ),
-        )),
-        |(expr1, _, bop, _, expr2, rest)| {
-            if rest.is_empty() {
-                Expression::Bop(bop, Box::new(expr1), Box::new(expr2))
-            } else {
-                Expression::MultiBop(
-                    Box::new(Expression::Bop(bop, Box::new(expr1), Box::new(expr2))),
-                    rest,
-                )
-            }
+        tuple((test, opt(tuple((tag("<-"), test))))),
+        |(left, right)| match right {
+            Some((_, rhs)) => Box::new(Expression::Assignment(left, rhs)),
+            None => left,
         },
     )(input)
 }
 
-pub fn expression(input: &str) -> IResult<&str, Expression> {
-    // Unfortunately, the order here is important.
-    // If the bop_expr goes before the uop_expr
-    // the recurrent relation between box_expr and expression
-    // will never end for such expressions: +-5
-    // It's a poor man's 1 character look ahead.
-    println!("expr:{input}");
-    peek(none_of(","))(input)?;
-    alt((literal, identifier, uop_expr, bop_expr, call))(input)
+// test: or_test
+fn test(input: &str) -> IResult<&str, Box<Expression>> {
+    // Add if expr
+    or_test(input)
+}
+
+fn bop<'a, Error: ParseError<&'a str>, C, B>(
+    child_parser: C,
+    bop_parser: B,
+) -> impl FnMut(&'a str) -> IResult<&str, Box<Expression>, Error>
+where
+    C: Parser<&'a str, Box<Expression>, Error> + Copy,
+    B: Parser<&'a str, Bop, Error>,
+{
+    map(
+        tuple((
+            child_parser,
+            fold_many0(
+                tuple((delimited(space0, bop_parser, multispace0), child_parser)),
+                Vec::new,
+                |mut acc: Vec<_>, (op, f)| {
+                    acc.push((op, *f));
+                    acc
+                },
+            ),
+        )),
+        |(first, rest)| match rest.len() {
+            0 => first,
+            1 => {
+                let (op, rhs) = &rest[0];
+                Box::new(Expression::Bop(op.clone(), first, Box::new(rhs.clone())))
+            }
+            _ => Box::new(Expression::MultiBop(first, rest)),
+        },
+    )
+}
+
+// or_test: and_test [| and_test]*
+fn or_test(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(and_test, map(tag("|"), |_| Bop::Or))(input)
+}
+
+// and_test: not_test [& not_test]*
+fn and_test(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(not_test, map(tag("&"), |_| Bop::And))(input)
+}
+
+// not_test: ! not_test | comparison
+fn not_test(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((
+        map(preceded(tuple((tag("!"), multispace0)), not_test), |e| {
+            Box::new(Expression::Uop(Uop::Not, e))
+        }),
+        comparison,
+    ))(input)
+}
+
+// comparison: expr (comp_op expr)*
+// comp_op: > >= < <= == !=
+fn comparison(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(
+        arithmetic_op,
+        alt((
+            map(tag(">"), |_| Bop::Greater),
+            map(tag(">="), |_| Bop::Ge),
+            map(tag("<"), |_| Bop::Lower),
+            map(tag("<="), |_| Bop::Le),
+            map(tag("=="), |_| Bop::Equal),
+            map(tag("!="), |_| Bop::NotEqual),
+        )),
+    )(input)
+}
+
+// arithmetic_op: factor [factor_op factor]*
+// factor_op: * /
+fn arithmetic_op(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(
+        infix_op,
+        alt((
+            map(tag("*"), |_| Bop::Multiply),
+            map(tag("/"), |_| Bop::Divide),
+        )),
+    )(input)
+}
+
+// infix_op: array_literal [infix_op array_literal]*
+// infix_op: %xyz% |>
+fn infix_op(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(factor, alt((infix, map(tag("|>"), |_| Bop::Pipe))))(input)
+}
+
+// factor: (+ | -) factor | power
+fn factor(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((
+        map(
+            preceded(tuple((multispace0, tag("+"), multispace0)), factor),
+            |f| Box::new(Expression::Uop(Uop::Plus, f)),
+        ),
+        map(
+            preceded(tuple((multispace0, tag("-"), multispace0)), factor),
+            |f| Box::new(Expression::Uop(Uop::Minus, f)),
+        ),
+        power,
+    ))(input)
+}
+
+// power: atomic_expression [^ factor]
+fn power(input: &str) -> IResult<&str, Box<Expression>> {
+    map(
+        tuple((
+            atomic_expression,
+            opt(preceded(
+                tuple((multispace0, tag("^"), multispace0)),
+                factor,
+            )),
+        )),
+        |(atomic, f)| match f {
+            Some(f) => Box::new(Expression::Bop(Bop::Power, atomic, f)),
+            None => atomic,
+        },
+    )(input)
+}
+
+pub(crate) fn block(input: &str) -> IResult<&str, Expression> {
+    eprintln!("block:{input}");
+    map(
+        delimited(
+            nom::character::complete::char('{'),
+            many0(statement),
+            nom::character::complete::char('}'),
+        ),
+        |stmts| Expression::Block(stmts),
+    )(input)
 }
 
 // TODO: disallow reserved keywords
@@ -410,7 +532,7 @@ mod tests {
 
     use crate::{
         ast::{Expression, Literal},
-        expression::{bop_expr, identifier},
+        expression::identifier,
         helpers::assert_parse_eq,
     };
 
@@ -568,12 +690,12 @@ mod tests {
         for example in valid_examples {
             assert_parse_eq(
                 identifier(example),
-                IResult::Ok(("", Expression::Identifier(example.to_owned()))),
+                IResult::Ok(("", Box::new(Expression::Identifier(example.to_owned())))),
             )
         }
         assert_eq!(
             identifier("value,"),
-            Ok((",", Expression::Identifier(String::from("value"))))
+            Ok((",", Box::new(Expression::Identifier(String::from("value")))))
         );
 
         let invalid_examples = [".3", "_something", "123"];
@@ -589,166 +711,13 @@ mod tests {
             "g(tag = value, , 5)",
             "\"odd name\"(\"strange tag\" = 5, y)",
             // "(function(x) x^2)(5)", TODO: make this test pass after function definitions are implemented
+            // "lib::f()"
         ];
 
         for input in valid_examples {
             let call = call(input);
-            println!("{call:?}");
+            eprintln!("{call:?}");
             assert!(call.is_ok());
         }
-    }
-
-    #[test]
-    fn test_uop_expr() {
-        assert_parse_eq(
-            uop_expr("+5"),
-            IResult::Ok((
-                "",
-                Expression::Uop(
-                    Uop::Plus,
-                    Box::new(Expression::Literal(Literal::Number(String::from("5")))),
-                ),
-            )),
-        );
-
-        assert_parse_eq(
-            uop_expr("-5"),
-            IResult::Ok((
-                "",
-                Expression::Uop(
-                    Uop::Minus,
-                    Box::new(Expression::Literal(Literal::Number(String::from("5")))),
-                ),
-            )),
-        );
-
-        assert_parse_eq(
-            uop_expr("!5"),
-            IResult::Ok((
-                "",
-                Expression::Uop(
-                    Uop::Not,
-                    Box::new(Expression::Literal(Literal::Number(String::from("5")))),
-                ),
-            )),
-        );
-
-        assert_parse_eq(
-            uop_expr("+\n\n5"),
-            IResult::Ok((
-                "",
-                Expression::Uop(
-                    Uop::Plus,
-                    Box::new(Expression::Literal(Literal::Number(String::from("5")))),
-                ),
-            )),
-        );
-
-        assert_parse_eq(
-            uop_expr("+-5"),
-            IResult::Ok((
-                "",
-                Expression::Uop(
-                    Uop::Plus,
-                    Box::new(Expression::Uop(
-                        Uop::Minus,
-                        Box::new(Expression::Literal(Literal::Number(String::from("5")))),
-                    )),
-                ),
-            )),
-        );
-
-        assert!(uop_expr(".something").is_err());
-        assert!(uop_expr("3").is_err());
-    }
-
-    #[test]
-    fn test_bop_expr() {
-        let valid_examples = ["TRUE & TRUE", "TRUE & FALSE"];
-        for input in valid_examples {
-            let bop = bop_expr(input);
-            println!("{bop:?}");
-            assert!(bop.is_ok());
-        }
-        let valid_examples = ["TRUE&TRUE", "TRUE&FALSE"];
-        for input in valid_examples {
-            let bop = bop_expr(input);
-            println!("{bop:?}");
-            assert!(bop_expr(input).is_ok());
-        }
-        let valid_examples = ["TRUE&\nTRUE", "TRUE &\n FALSE"];
-        for input in valid_examples {
-            let bop = bop_expr(input);
-            println!("{bop:?}");
-            assert!(bop_expr(input).is_ok());
-        }
-
-        let invalid_examples = ["TRUE", "TRUE\n&FALSE"];
-        for input in invalid_examples {
-            assert!(bop_expr(input).is_err());
-        }
-    }
-
-    #[test]
-    fn test_multibox_expr() {
-        assert_eq!(
-            bop_expr("3 + 7 + 8"),
-            Ok((
-                "",
-                Expression::MultiBop(
-                    Box::new(Expression::Bop(
-                        Bop::Plus,
-                        Box::new(Expression::Literal(Literal::Number(String::from("3")))),
-                        Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-                    )),
-                    vec![(
-                        Bop::Plus,
-                        Box::new(Expression::Literal(Literal::Number(String::from("8"))))
-                    )]
-                )
-            ))
-        );
-
-        assert_eq!(
-            bop_expr("3 +\n 7 +\n 8"),
-            Ok((
-                "",
-                Expression::MultiBop(
-                    Box::new(Expression::Bop(
-                        Bop::Plus,
-                        Box::new(Expression::Literal(Literal::Number(String::from("3")))),
-                        Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-                    )),
-                    vec![(
-                        Bop::Plus,
-                        Box::new(Expression::Literal(Literal::Number(String::from("8"))))
-                    )]
-                )
-            ))
-        );
-
-        assert_eq!(
-            bop_expr("3 +\n 7 +\n 8 * 3"),
-            Ok((
-                "",
-                Expression::MultiBop(
-                    Box::new(Expression::Bop(
-                        Bop::Plus,
-                        Box::new(Expression::Literal(Literal::Number(String::from("3")))),
-                        Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-                    )),
-                    vec![
-                        (
-                            Bop::Plus,
-                            Box::new(Expression::Literal(Literal::Number(String::from("8"))))
-                        ),
-                        (
-                            Bop::Multiply,
-                            Box::new(Expression::Literal(Literal::Number(String::from("3"))))
-                        )
-                    ]
-                )
-            ))
-        );
     }
 }
