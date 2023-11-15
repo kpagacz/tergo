@@ -15,28 +15,36 @@ pub enum Bop {
     Equal,    // ==
     NotEqual, // !=
     // Logical
-    And, // &
-    Or,  // |
+    And,  // &
+    And2, // &&
+    Or,   // |
+    Or2,  // ||
     // Model formulae
     ModelFormulae, // ~
     // Assignment
-    // Assignment,      // <-
-    // RightAssignment, // ->
-    // OldAssignment,   // =
+    Assignment,      // <-
+    RightAssignment, // ->
+    OldAssignment,   // =
     // List indexing
     Dollar, // $
     // Sequence
     Colon, // :
     // Infix
     Infix(String), // %chars% // TODO add support for infix
-    Pipe // |>
+    Pipe,          // |>
+    // Namespaces
+    NsGet,    // ::
+    NsGetInt, // :::
+    // Help
+    Questionmark, // ?
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Uop {
-    Plus,  // +
-    Minus, // -
-    Not,   // !
+    Plus,         // +
+    Minus,        // -
+    Not,          // !
+    Questionmark, // ?
 }
 
 /// There are five types of constants: integer, logical, numeric, complex and string.
@@ -46,12 +54,13 @@ pub enum Literal {
     // TODO: Add some of the reserved literals
     // NA NA_integer_ NA_real_ NA_complex_ NA_character_
     // ... ..1 ..2 etc.
-    True,  // TRUE
-    False, // FALSE
-    Null,  // NULL
-    Na,    // NA
-    Inf,   // Inf
-    NaN,   // Nan
+    True,        // TRUE
+    False,       // FALSE
+    Null,        // NULL
+    Na,          // NA
+    Inf,         // Inf
+    NaN,         // Nan
+    Placeholder, // _
     String(String),
     Number(String),
     Integer(String),
@@ -69,16 +78,12 @@ pub enum Expression {
     // In R if statements evaluate to value, like an ordinary ternary
     // operator in other languages, so here we go...
     If(
-        Vec<(Box<Expression>, Box<Statement>)>,
-        Option<Box<Statement>>,
+        Vec<(Box<Expression>, Box<Expression>)>,
+        Option<Box<Expression>>,
     ),
     Function, // function(args list) definition
-    Block(Vec<Statement>),
+    Block(Vec<Expression>),
     Assignment(Box<Expression>, Box<Expression>),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Statement {
     Library(String), // library(package)
     Break,           // break
     Next,            // next
@@ -89,9 +94,9 @@ pub enum Statement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum CompoundStatement {
-    Repeat(Box<Statement>),
-    While(Box<Statement>, Box<Statement>),
-    For(String, Box<Expression>, Box<Statement>),
+    Repeat(Box<Expression>),
+    While(Box<Expression>, Box<Expression>),
+    For(String, Box<Expression>, Box<Expression>),
 }
 
 #[derive(Debug, PartialEq, Clone)]

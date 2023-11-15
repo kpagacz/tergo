@@ -1,11 +1,11 @@
-use crate::{ast::*, statement::statement};
+use crate::ast::*;
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
-    character::complete::{multispace0, multispace1, none_of, one_of, satisfy, space0},
+    character::complete::{multispace0, newline, none_of, one_of, satisfy, space0},
     combinator::{map, not, opt, peek, recognize},
     error::ParseError,
-    multi::{fold_many0, many0, many1, separated_list0},
+    multi::{fold_many0, many0, many1},
     sequence::{delimited, pair, preceded, tuple},
     IResult, InputTakeAtPosition, Parser,
 };
@@ -26,34 +26,6 @@ fn infix(input: &str) -> IResult<&str, Bop> {
         |op| Bop::Infix(String::from(op)),
     )(input)
 }
-
-// // TODO: Add support for vectorized operators
-// // && and ||
-// fn bop(input: &str) -> IResult<&str, Bop> {
-//     alt((
-//         map(tag("+"), |_| Bop::Plus),
-//         map(tag("-"), |_| Bop::Minus),
-//         map(tag("*"), |_| Bop::Multiply),
-//         map(tag("/"), |_| Bop::Divide),
-//         map(tag("%%"), |_| Bop::Modulo),
-//         map(tag("^"), |_| Bop::Power),
-//         map(tag(">"), |_| Bop::Greater),
-//         map(tag(">="), |_| Bop::Ge),
-//         map(tag("<"), |_| Bop::Lower),
-//         map(tag("<="), |_| Bop::Le),
-//         map(tag("=="), |_| Bop::Equal),
-//         map(tag("!="), |_| Bop::NotEqual),
-//         map(tag("&"), |_| Bop::And),
-//         map(tag("|"), |_| Bop::Or),
-//         map(tag("~"), |_| Bop::ModelFormulae),
-//         // map(tag("<-"), |_| Bop::Assignment),
-//         // map(tag("->"), |_| Bop::RightAssignment),
-//         // map(tag("="), |_| Bop::OldAssignment),
-//         map(tag("$"), |_| Bop::Dollar),
-//         map(tag(":"), |_| Bop::Colon),
-//         infix,
-//     ))(input)
-// }
 
 fn uop(input: &str) -> IResult<&str, Uop> {
     alt((
@@ -85,6 +57,10 @@ pub fn nan_literal(input: &str) -> IResult<&str, Literal> {
 
 fn inf_literal(input: &str) -> IResult<&str, Literal> {
     map(tag("Inf"), |_| Literal::Inf)(input)
+}
+
+fn placeholder(input: &str) -> IResult<&str, Literal> {
+    map(tag("_"), |_| Literal::Placeholder)(input)
 }
 
 /// String constants are delimited by a pair of single (‘'’) or double (‘"’) quotes
@@ -229,6 +205,7 @@ fn literal(input: &str) -> IResult<&str, Box<Expression>> {
             true_literal,
             false_literal,
             null_literal,
+            placeholder,
             na_literal,
             nan_literal,
             inf_literal,
@@ -293,7 +270,6 @@ fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
         })
     }
 
-    eprintln!("identifier:{input}");
     map(
         alt((
             recognize(pair(
@@ -310,84 +286,108 @@ fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
-    alt((literal, identifier))(input)
+fn program(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((
+        map(
+            tuple((expr_or_assign_or_help, multispace0, newline)),
+            |(e, _, _)| Box::new(Expression::Expressions(vec![*e])),
+        ),
+        map(
+            tuple((expr_or_assign_or_help, multispace0, tag(";"))),
+            |(e, _, _)| Box::new(Expression::Expressions(vec![*e])),
+        ),
+        map(multispace0, |_| Box::new(Expression::Expressions(vec![]))),
+    ))(input)
 }
 
-/// A function call takes the form of a function reference followed
-/// by a comma-separated list of arguments within a set of parentheses.
-/// function_reference ( arg1, arg2, ...... , argn )
-/// The function reference can be either
-///     an identifier (the name of the function)
-///     a text string (ditto, but handy if the function has a name which is not a valid identifier)
-///     an expression (which should evaluate to a function object)
-/// Each argument can be tagged (tag=expr), or just be a simple expression.
-/// It can also be empty or it can be one of the special tokens ..., ..2, etc.
-/// A tag can be an identifier or a text string.
-/// Examples:
-/// f(x)
-/// g(tag = value, , 5)
-/// "odd name"("strange tag" = 5, y)
-/// (function(x) x^2)(5)
-fn call(input: &str) -> IResult<&str, Box<Expression>> {
-    eprintln!("call input: {input}");
-    fn function_args(input: &str) -> IResult<&str, Vec<Argument>> {
-        separated_list0(
+// expr_or_assign_or_help:
+// expr |
+// expr_or_assign_or_help EQ_ASSIGN expr_or_assign_or_help |
+// expr_or_assign_or_help '?'  expr_or_assign_or_help
+fn expr_or_assign_or_help(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((
+        map(
+            tuple((expr, space0, tag("="), multispace0, expr_or_assign_or_help)),
+            |(e1, _, _, _, e2)| {
+                Box::new(Expression::Expressions(vec![Expression::Bop(
+                    Bop::OldAssignment,
+                    e1,
+                    e2,
+                )]))
+            },
+        ),
+        map(
+            tuple((expr, space0, tag("?"), multispace0, expr_or_assign_or_help)),
+            |(e1, _, _, _, e2)| Box::new(Expression::Expressions(vec![*e1, *e2])),
+        ),
+        expr,
+    ))(input)
+}
+
+// expr_or_help:
+// expr |
+// expr_or_help '?' expr_or_help
+fn expr_or_help(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((
+        map(
+            tuple((expr, space0, tag("?"), multispace0, expr_or_help)),
+            |(e1, _, _, _, e2)| Box::new(Expression::Bop(Bop::Questionmark, e1, e2)),
+        ),
+        expr,
+    ))(input)
+}
+
+// expr:
+// left_assignment |
+// literal |
+// identifier
+fn expr(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((
+        left_assignment,
+        map(
             delimited(
-                multispace0,
-                nom::character::complete::char(','),
-                multispace0,
+                tuple((tag("{"), multispace0)),
+                exprlist,
+                tuple((multispace0, tag("}"))),
             ),
-            alt((
-                map(
-                    tuple((
-                        opt(tuple((
-                            alt((recognize(identifier), recognize(string_literal))),
-                            multispace0,
-                            nom::character::complete::char('='),
-                            multispace0,
-                        ))),
-                        expression,
-                    )),
-                    |(optional, value)| match optional {
-                        Some((tag, _, _, _)) => Argument::Named(String::from(tag), value),
-                        None => Argument::Positional(value),
-                    },
-                ),
-                map(multispace0, |_| Argument::Empty),
+            |e| e,
+        ),
+    ))(input)
+}
+
+fn exprlist(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((
+        map(
+            tuple((
+                expr_or_assign_or_help,
+                space0,
+                tag(";"),
+                multispace0,
+                expr_or_assign_or_help,
             )),
-        )(input)
-    }
-
-    map(
-        tuple((
-            expression,
-            delimited(
-                nom::character::complete::char('('),
-                function_args,
-                nom::character::complete::char(')'),
-            ),
-        )),
-        |(function, args)| Box::new(Expression::Call(function, args)),
-    )(input)
-}
-
-// expression: test [<- test]
-pub(crate) fn expression(input: &str) -> IResult<&str, Box<Expression>> {
-    // TODO different assignments
-    map(
-        tuple((test, opt(tuple((tag("<-"), test))))),
-        |(left, right)| match right {
-            Some((_, rhs)) => Box::new(Expression::Assignment(left, rhs)),
-            None => left,
-        },
-    )(input)
-}
-
-// test: or_test
-fn test(input: &str) -> IResult<&str, Box<Expression>> {
-    // Add if expr
-    or_test(input)
+            |(exprl, _, _, _, exprl2)| Box::new(Expression::Expressions(vec![*exprl, *exprl2])),
+        ),
+        map(
+            tuple((
+                expr_or_assign_or_help,
+                space0,
+                newline,
+                multispace0,
+                expr_or_assign_or_help,
+            )),
+            |(e1, _, _, _, e2)| Box::new(Expression::Expressions(vec![*e1, *e2])),
+        ),
+        map(
+            tuple((expr_or_assign_or_help, space0, tag(";"), multispace0)),
+            |(e1, _, _, _)| e1,
+        ),
+        map(
+            tuple((expr_or_assign_or_help, space0, newline, multispace0)),
+            |(e1, _, _, _)| e1,
+        ),
+        expr_or_assign_or_help,
+        map(multispace0, |_| Box::new(Expression::Expressions(vec![]))),
+    ))(input)
 }
 
 fn bop<'a, Error: ParseError<&'a str>, C, B>(
@@ -421,6 +421,21 @@ where
     )
 }
 
+// left_assignment: right_assignment ['<-' right_assignment]*
+fn left_assignment(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(right_assignment, map(tag("<-"), |_| Bop::Assignment))(input)
+}
+
+// right_assignment: tilde_bop ['->' tilde_bop]*
+fn right_assignment(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(tilde_bop, map(tag("->"), |_| Bop::RightAssignment))(input)
+}
+
+// tilde_bop: or_test ['~' or_test]*
+fn tilde_bop(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(or_test, map(tag("~"), |_| Bop::ModelFormulae))(input)
+}
+
 // or_test: and_test [| and_test]*
 fn or_test(input: &str) -> IResult<&str, Box<Expression>> {
     bop(and_test, map(tag("|"), |_| Bop::Or))(input)
@@ -431,7 +446,7 @@ fn and_test(input: &str) -> IResult<&str, Box<Expression>> {
     bop(not_test, map(tag("&"), |_| Bop::And))(input)
 }
 
-// not_test: ! not_test | comparison
+// not_test: '!' not_test | comparison
 fn not_test(input: &str) -> IResult<&str, Box<Expression>> {
     alt((
         map(preceded(tuple((tag("!"), multispace0)), not_test), |e| {
@@ -441,7 +456,7 @@ fn not_test(input: &str) -> IResult<&str, Box<Expression>> {
     ))(input)
 }
 
-// comparison: expr (comp_op expr)*
+// comparison: arithmetic_op [comp_op arithmetic_op]*
 // comp_op: > >= < <= == !=
 fn comparison(input: &str) -> IResult<&str, Box<Expression>> {
     bop(
@@ -457,11 +472,18 @@ fn comparison(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-// arithmetic_op: factor [factor_op factor]*
-// factor_op: * /
+// arithmetic_op: term [('+' | '-') term]*
 fn arithmetic_op(input: &str) -> IResult<&str, Box<Expression>> {
     bop(
-        infix_op,
+        term,
+        alt((map(tag("+"), |_| Bop::Plus), map(tag("-"), |_| Bop::Minus))),
+    )(input)
+}
+
+// term: pipe_op [('*' | '/') pipe_op]*
+fn term(input: &str) -> IResult<&str, Box<Expression>> {
+    bop(
+        pipe_op,
         alt((
             map(tag("*"), |_| Bop::Multiply),
             map(tag("/"), |_| Bop::Divide),
@@ -469,9 +491,9 @@ fn arithmetic_op(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-// infix_op: array_literal [infix_op array_literal]*
+// infix_op: factor [infix_op factor]*
 // infix_op: %xyz% |>
-fn infix_op(input: &str) -> IResult<&str, Box<Expression>> {
+fn pipe_op(input: &str) -> IResult<&str, Box<Expression>> {
     bop(factor, alt((infix, map(tag("|>"), |_| Bop::Pipe))))(input)
 }
 
@@ -479,26 +501,23 @@ fn infix_op(input: &str) -> IResult<&str, Box<Expression>> {
 fn factor(input: &str) -> IResult<&str, Box<Expression>> {
     alt((
         map(
-            preceded(tuple((multispace0, tag("+"), multispace0)), factor),
+            preceded(tuple((space0, tag("+"), multispace0)), factor),
             |f| Box::new(Expression::Uop(Uop::Plus, f)),
         ),
         map(
-            preceded(tuple((multispace0, tag("-"), multispace0)), factor),
+            preceded(tuple((space0, tag("-"), multispace0)), factor),
             |f| Box::new(Expression::Uop(Uop::Minus, f)),
         ),
         power,
     ))(input)
 }
 
-// power: atomic_expression [^ factor]
+// power: expr [^ factor]
 fn power(input: &str) -> IResult<&str, Box<Expression>> {
     map(
         tuple((
             atomic_expression,
-            opt(preceded(
-                tuple((multispace0, tag("^"), multispace0)),
-                factor,
-            )),
+            opt(preceded(tuple((space0, tag("^"), multispace0)), factor)),
         )),
         |(atomic, f)| match f {
             Some(f) => Box::new(Expression::Bop(Bop::Power, atomic, f)),
@@ -507,24 +526,14 @@ fn power(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-pub(crate) fn block(input: &str) -> IResult<&str, Expression> {
-    eprintln!("block:{input}");
-    map(
-        delimited(
-            nom::character::complete::char('{'),
-            many0(statement),
-            nom::character::complete::char('}'),
-        ),
-        |stmts| Expression::Block(stmts),
-    )(input)
+fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
+    alt((
+        literal,
+        identifier,
+        delimited(tag("("), expr_or_assign_or_help, tag(")")),
+        delimited(tag("{"), expr_or_assign_or_help, tag("}")),
+    ))(input)
 }
-
-// TODO: disallow reserved keywords
-// The following identifiers have a special meaning and cannot be used for object names
-// if else repeat while function for in next break
-// TRUE FALSE NULL Inf NaN
-// NA NA_integer_ NA_real_ NA_complex_ NA_character_
-// ... ..1 ..2 etc.
 
 #[cfg(test)]
 mod tests {
@@ -705,19 +714,117 @@ mod tests {
     }
 
     #[test]
-    fn test_call() {
-        let valid_examples = vec![
-            "f(x)",
-            "g(tag = value, , 5)",
-            "\"odd name\"(\"strange tag\" = 5, y)",
-            // "(function(x) x^2)(5)", TODO: make this test pass after function definitions are implemented
-            // "lib::f()"
-        ];
+    fn test_power() {
+        // Parses literals
+        assert_eq!(
+            power("7"),
+            Ok((
+                "",
+                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+            ))
+        );
 
-        for input in valid_examples {
-            let call = call(input);
-            eprintln!("{call:?}");
-            assert!(call.is_ok());
-        }
+        // Spaces don't matter
+        assert_eq!(power("7^1"), power("7 ^ 1"));
+
+        // Newlines don't matter after the operator
+        assert_eq!(power("7^1"), power("7^\n 1"));
+    }
+
+    #[test]
+    fn test_factor() {
+        // Parses literals
+        assert_eq!(
+            factor("7"),
+            Ok((
+                "",
+                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+            ))
+        );
+
+        // Parses plus and minus unary ops
+        assert_eq!(
+            factor("+7"),
+            Ok((
+                "",
+                Box::new(Expression::Uop(
+                    Uop::Plus,
+                    Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+                ))
+            ))
+        );
+
+        assert_eq!(
+            factor("-7"),
+            Ok((
+                "",
+                Box::new(Expression::Uop(
+                    Uop::Minus,
+                    Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+                ))
+            ))
+        );
+
+        // Precedence with ^
+        assert_eq!(
+            factor("-7^1"),
+            Ok((
+                "",
+                Box::new(Expression::Uop(
+                    Uop::Minus,
+                    Box::new(Expression::Bop(
+                        Bop::Power,
+                        Box::new(Expression::Literal(Literal::Number(String::from("7")))),
+                        Box::new(Expression::Literal(Literal::Number(String::from("1"))))
+                    ))
+                ))
+            ))
+        );
+    }
+
+    #[test]
+    fn test_pipe() {
+        // Parses literals
+        assert_eq!(
+            pipe_op("7"),
+            Ok((
+                "",
+                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+            ))
+        );
+
+        assert_eq!(
+            pipe_op("7 |> 1"),
+            Ok((
+                "",
+                Box::new(Expression::Bop(
+                    Bop::Pipe,
+                    Box::new(Expression::Literal(Literal::Number(String::from("7")))),
+                    Box::new(Expression::Literal(Literal::Number(String::from("1"))))
+                ))
+            ))
+        );
+
+        // Spaces don't matter
+        assert_eq!(pipe_op("7|>1"), pipe_op("7 |> \n1"));
+    }
+    #[test]
+    fn test_expression() {
+        // Test with parentheses
+        assert_eq!(
+            expr("(7)"),
+            Ok((
+                "",
+                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
+            ))
+        );
+
+        // With or without parentheses ast is the same
+        assert_eq!(expr("7"), expr("(7)"));
+
+        println!("{:?}", expr("\"a\" + 1"));
+        println!("{:?}", expr("(7+1)*1"));
+        println!("{:?}", expr("(7+1)*(0+1)"));
+        println!("{:?}", expr("7+1*0+1"));
     }
 }
