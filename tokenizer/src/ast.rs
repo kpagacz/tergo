@@ -73,9 +73,10 @@ pub enum Expression {
     Literal(Literal),
     Identifier(String),
     Call(Box<Expression>, Vec<Argument>), // expr(arguments)
-    Uop(Uop, Box<Expression>),            // Uop expr
-    Bop(Bop, Box<Expression>, Box<Expression>), // lhs Bop rhs
-    MultiBop(Box<Expression>, Vec<(Bop, Expression)>), // lhs (Bop rhs)+
+    Subscript(Box<Expression>, Vec<Argument>, SubscriptType), // expr [[ sublist ]] | expr [ sublist ]
+    Uop(Uop, Box<Expression>),                                // Uop expr
+    Bop(Bop, Box<Expression>, Box<Expression>),               // lhs Bop rhs
+    MultiBop(Box<Expression>, Vec<(Bop, Expression)>),        // lhs (Bop rhs)+
     // In R if statements evaluate to value, like an ordinary ternary
     // operator in other languages, so here we go...
     If(
@@ -105,6 +106,12 @@ pub enum Argument {
     Named(Box<Expression>, Box<Expression>),
     Positional(Box<Expression>),
     Empty,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum SubscriptType {
+    Single,
+    Double,
 }
 
 #[derive(Debug, PartialEq, Clone)]

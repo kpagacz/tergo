@@ -199,7 +199,6 @@ fn complex_literal(input: &str) -> IResult<&str, Literal> {
 }
 
 fn literal(input: &str) -> IResult<&str, Box<Expression>> {
-    eprintln!("Literal:{input}");
     map(
         alt((
             true_literal,
@@ -286,6 +285,17 @@ fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
+/// A function definition is of the form
+///
+/// function ( arglist ) body
+///
+/// The function body is an expression, often a compound expression.
+/// The arglist is a comma-separated list of items each of which can be an identifier,
+/// or of the form ‘identifier = default’, or the special token ....
+/// The default can be any valid expression.
+///
+/// Notice that function arguments unlike list tags, etc.,
+/// cannot have “strange names” given as text strings.
 fn function_definition(input: &str) -> IResult<&str, Box<Expression>> {
     fn three_dots(input: &str) -> IResult<&str, Box<Expression>> {
         map(tag("..."), |_| {
@@ -337,17 +347,20 @@ fn function_definition(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
-    // TODO: support special tokens like ..., ...1, ...2, etc
-    fn function_reference(input: &str) -> IResult<&str, Box<Expression>> {
-        alt((
-            identifier,
-            map(string_literal, |literal| {
-                Box::new(Expression::Literal(literal))
-            }),
-            expr,
-        ))(input)
-    }
+/// TODO: Implement the weird empty assignments
+///
+/// sublist : sub
+/// | sublist cr ',' sub
+///
+/// sub:
+///  | expr
+///  | SYMBOL EQ_ASSIGN
+///  | SYMBOL EQ_ASSIGN expr
+///  | STR_CONST EQ_ASSIGN
+///  | STR_CONST EQ_ASSIGN expr
+///  | NULL_CONST EQ_ASSIGN
+///  | NULL_CONST EQ_ASSIGN expr
+fn sublist(input: &str) -> IResult<&str, Vec<Argument>> {
     fn argument(input: &str) -> IResult<&str, Argument> {
         alt((
             map(
@@ -365,20 +378,50 @@ fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
                 )),
                 |(tag, _, _, _, value)| Argument::Named(tag, value),
             ),
-            map(expr, |e| Argument::Positional(e)),
+            map(expr, Argument::Positional),
             map(multispace0, |_| Argument::Empty),
         ))(input)
     }
+    separated_list0(
+        tuple((
+            multispace0,
+            nom::character::complete::char(','),
+            multispace0,
+        )),
+        argument,
+    )(input)
+}
 
-    fn arguments(input: &str) -> IResult<&str, Vec<Argument>> {
-        separated_list0(
-            tuple((
-                multispace0,
-                nom::character::complete::char(','),
-                multispace0,
-            )),
-            argument,
-        )(input)
+/// A function call takes the form of a function reference followed
+/// by a comma-separated list of arguments within a set of parentheses.
+///
+/// function_reference ( arg1, arg2, ...... , argn )
+///
+/// The function reference can be either
+///     an identifier (the name of the function)
+///     a text string (ditto, but handy if the function has a name which is not a valid identifier)
+///     an expression (which should evaluate to a function object)
+///
+/// Each argument can be tagged (tag=expr), or just be a simple expression.
+/// It can also be empty or it can be one of the special tokens ..., ..2, etc.
+///
+/// A tag can be an identifier or a text string.
+///
+/// Examples from the R-lang docs
+/// f(x)
+/// g(tag = value, , 5)
+/// "odd name"("strange tag" = 5, y)
+/// (function(x) x^2)(5)
+fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
+    // TODO: support special tokens like ..., ...1, ...2, etc
+    fn function_reference(input: &str) -> IResult<&str, Box<Expression>> {
+        alt((
+            identifier,
+            map(string_literal, |literal| {
+                Box::new(Expression::Literal(literal))
+            }),
+            subatomic_expression,
+        ))(input)
     }
 
     map(
@@ -386,11 +429,49 @@ fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
             function_reference,
             delimited(
                 nom::character::complete::char('('),
-                arguments,
+                sublist,
                 nom::character::complete::char(')'),
             ),
         )),
-        |(function_reference, arguments)| Box::new(Expression::Call(function_reference, arguments)),
+        |(function_reference, sublist)| Box::new(Expression::Call(function_reference, sublist)),
+    )(input)
+}
+
+/// R has three indexing constructs, two of which are syntactically
+/// similar although with somewhat different semantics:
+///
+/// object [ arg1, ...... , argn ]
+/// object [[ arg1, ...... , argn ]]
+///
+/// The object can formally be any valid expression,
+/// but it is understood to denote or evaluate to a subsettable object.
+/// The arguments generally evaluate to numerical or character indices,
+/// but other kinds of arguments are possible (notably drop = FALSE).
+///
+/// Here's what the grammar says about the subscripts:
+/// | expr LBB sublist ']' ']'
+/// | expr '[' sublist ']'
+fn subscript(input: &str) -> IResult<&str, Box<Expression>> {
+    map(
+        tuple((
+            atomic_expression,
+            alt((
+                map(
+                    tuple((
+                        nom::character::complete::char('['),
+                        sublist,
+                        nom::character::complete::char(']'),
+                    )),
+                    |(_, sublist, _)| (SubscriptType::Single, sublist),
+                ),
+                map(tuple((tag("[["), sublist, tag("]]"))), |(_, sublist, _)| {
+                    (SubscriptType::Double, sublist)
+                }),
+            )),
+        )),
+        |(object, (subscript_type, sublist))| {
+            Box::new(Expression::Subscript(object, sublist, subscript_type))
+        },
     )(input)
 }
 
@@ -447,8 +528,7 @@ fn expr_or_help(input: &str) -> IResult<&str, Box<Expression>> {
 
 // expr:
 // left_assignment |
-// literal |
-// identifier
+// { explist }
 fn expr(input: &str) -> IResult<&str, Box<Expression>> {
     alt((
         left_assignment,
@@ -635,12 +715,21 @@ fn power(input: &str) -> IResult<&str, Box<Expression>> {
 }
 
 fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
+    // The order here is important.
+    // Firstly we want to unwrap the expression from ( or {.
+    // Secondly, we want to try matching the possibilities that have others as their prefixes (e.g.
+    // function call and identifier).
+    //
+    // Otherwise, we might end up with an error or an infinite loop.
+    alt((function_definition, function_call, subatomic_expression))(input)
+}
+
+fn subatomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
     alt((
-        delimited(tag("("), expr_or_assign_or_help, tag(")")),
-        delimited(tag("{"), expr_or_assign_or_help, tag("}")),
-        function_definition,
         literal,
         identifier,
+        delimited(tag("("), expr_or_assign_or_help, tag(")")),
+        delimited(tag("{"), expr_or_assign_or_help, tag("}")),
     ))(input)
 }
 
@@ -1180,5 +1269,34 @@ mod tests {
             vec![Argument::Empty],
         ));
         assert_eq!(function_call(input), Ok(("", expected)));
+    }
+
+    #[test]
+    fn subscripts() {
+        let input = "a[]";
+        let expected = Box::new(Expression::Subscript(
+            Box::new(Expression::Identifier("a".to_owned())),
+            vec![Argument::Empty],
+            SubscriptType::Single,
+        ));
+        assert_eq!(subscript(input), Ok(("", expected)));
+
+        let input = "a[[]]";
+        let expected = Box::new(Expression::Subscript(
+            Box::new(Expression::Identifier("a".to_owned())),
+            vec![Argument::Empty],
+            SubscriptType::Double,
+        ));
+        assert_eq!(subscript(input), Ok(("", expected)));
+
+        let input = "a[[7]]";
+        let expected = Box::new(Expression::Subscript(
+            Box::new(Expression::Identifier("a".to_owned())),
+            vec![Argument::Positional(Box::new(Expression::Literal(
+                Literal::Number("7".to_owned()),
+            )))],
+            SubscriptType::Double,
+        ));
+        assert_eq!(subscript(input), Ok(("", expected)));
     }
 }
