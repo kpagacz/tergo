@@ -61,6 +61,7 @@ pub enum Literal {
     Inf,         // Inf
     NaN,         // Nan
     Placeholder, // _
+    ThreeDots,   // ...
     String(String),
     Number(String),
     Integer(String),
@@ -81,7 +82,7 @@ pub enum Expression {
         Vec<(Box<Expression>, Box<Expression>)>,
         Option<Box<Expression>>,
     ),
-    Function, // function(args list) definition
+    Function(FunctionDefinition), // function(args list) definition
     Block(Vec<Expression>),
     Assignment(Box<Expression>, Box<Expression>),
     Library(String), // library(package)
@@ -101,7 +102,14 @@ pub enum CompoundStatement {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Argument {
-    Named(String, Box<Expression>),
+    Named(Box<Expression>, Box<Expression>),
     Positional(Box<Expression>),
     Empty,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct FunctionDefinition {
+    pub arg_names: Vec<Expression>,
+    pub arg_values: Vec<Option<Expression>>,
+    pub body: Box<Expression>,
 }
