@@ -84,9 +84,6 @@ fn placeholder(input: &str) -> IResult<&str, Literal> {
 /// so using \0 in a string constant terminates the constant (usually with a warning):
 /// further characters up to the closing quote are scanned but ignored.
 fn string_literal(input: &str) -> IResult<&str, Literal> {
-    // TODO: support line breaks in the middle of string literals
-    // I don't even know how R behaves if there are line breaks in the middle
-    // of a string literal
     fn parse_delimited_string<'a, E: ParseError<&'a str>>(
         delimited_by: &'a str,
         string_chars: &'a str,
@@ -110,13 +107,33 @@ fn string_literal(input: &str) -> IResult<&str, Literal> {
 /// Numeric constants can also be hexadecimal, starting with ‘0x’ or ‘0x’
 /// followed by zero or more digits, ‘a-f’ or ‘A-F’. Hexadecimal floating point
 /// constants are supported using C99 syntax, e.g. ‘0x1.1p1’.
+const HEXADECIMAL_DIGITS: &str = "0123456789abcdefABCDEF";
 fn hexadecimal(input: &str) -> IResult<&str, Literal> {
-    // TODO: Add hexadecimal fraction
     fn hex_prefix(input: &str) -> IResult<&str, &str> {
         alt((tag("0x"), tag("0X")))(input)
     }
     map(
-        recognize(tuple((hex_prefix, many1(one_of("0123456789abcdefABCDEF"))))),
+        alt((
+            // 0x1(.1p10)
+            recognize(tuple((
+                hex_prefix,
+                many1(one_of(HEXADECIMAL_DIGITS)),
+                opt(tuple((
+                    nom::character::complete::char('.'),
+                    many1(one_of(HEXADECIMAL_DIGITS)),
+                    one_of("pP"),
+                    many1(one_of(HEXADECIMAL_DIGITS)),
+                ))),
+            ))),
+            // 0x.1p10
+            recognize(tuple((
+                hex_prefix,
+                nom::character::complete::char('.'),
+                many1(one_of(HEXADECIMAL_DIGITS)),
+                one_of("pP"),
+                many1(one_of(HEXADECIMAL_DIGITS)),
+            ))),
+        )),
         |num| Literal::Number(num.to_owned()),
     )(input)
 }
@@ -832,6 +849,13 @@ mod tests {
         for example in invalid_examples {
             assert!(hexadecimal(example).is_err())
         }
+
+        // Floating point
+        let input = ["0x0.1p10", "0x.1p10", "0x0.1P10"];
+        for example in input {
+            let expected = Literal::Number(example.to_string());
+            assert_eq!(hexadecimal(example), Ok(("", expected)));
+        }
     }
 
     #[test]
@@ -943,6 +967,12 @@ mod tests {
             string_literal("\"Something\" test"),
             IResult::Ok((" test", Literal::String(String::from("Something")))),
         );
+
+        // new lines
+        let input = r#""Something 
+            Something""#;
+        let expected = Literal::String("Something \n            Something".to_string());
+        assert_eq!(string_literal(input), Ok(("", expected)));
     }
 
     #[test]
