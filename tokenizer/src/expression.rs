@@ -458,16 +458,20 @@ fn subscript(input: &str) -> IResult<&str, Box<Expression>> {
             alt((function_call, subatomic_expression)),
             alt((
                 map(
-                    tuple((
+                    delimited(
                         nom::character::complete::char('['),
                         sublist,
                         nom::character::complete::char(']'),
-                    )),
-                    |(_, sublist, _)| (SubscriptType::Single, sublist),
+                    ),
+                    |sublist| (SubscriptType::Single, sublist),
                 ),
-                map(tuple((tag("[["), sublist, tag("]]"))), |(_, sublist, _)| {
+                map(delimited(tag("[["), sublist, tag("]]")), |sublist| {
                     (SubscriptType::Double, sublist)
                 }),
+                map(
+                    preceded(nom::character::complete::char('$'), sublist),
+                    |sublist| (SubscriptType::Dollar, sublist),
+                ),
             )),
         )),
         |(object, (subscript_type, sublist))| {
@@ -1324,6 +1328,16 @@ mod tests {
                 Literal::Number("1".to_owned()),
             )))],
             SubscriptType::Single,
+        ));
+        assert_eq!(subscript(input), Ok(("", expected)));
+
+        let input = "a$a";
+        let expected = Box::new(Expression::Subscript(
+            Box::new(Expression::Identifier("a".to_string())),
+            vec![Argument::Positional(Box::new(Expression::Identifier(
+                "a".to_string(),
+            )))],
+            SubscriptType::Dollar,
         ));
         assert_eq!(subscript(input), Ok(("", expected)));
     }

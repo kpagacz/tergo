@@ -25,8 +25,6 @@ pub enum Bop {
     Assignment,      // <-
     RightAssignment, // ->
     OldAssignment,   // =
-    // List indexing
-    Dollar, // $
     // Sequence
     Colon, // :
     // Infix
@@ -111,6 +109,7 @@ pub enum Argument {
 pub enum SubscriptType {
     Single,
     Double,
+    Dollar,
 }
 
 #[derive(Debug, PartialEq, Clone)]
