@@ -480,7 +480,7 @@ fn subscript(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-fn condition(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn condition(input: &str) -> IResult<&str, Box<Expression>> {
     delimited(
         tuple((multispace0, nom::character::complete::char('('))),
         expr,
@@ -571,7 +571,7 @@ fn expr_or_help(input: &str) -> IResult<&str, Box<Expression>> {
 // expr:
 // left_assignment |
 // { explist }
-fn expr(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn expr(input: &str) -> IResult<&str, Box<Expression>> {
     alt((
         left_assignment,
         map(
