@@ -5,7 +5,7 @@ use crate::{
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
-    character::complete::{multispace0, newline, none_of, one_of, satisfy, space0},
+    character::complete::{digit1, multispace0, newline, none_of, one_of, satisfy, space0},
     combinator::{map, not, opt, peek, recognize},
     error::ParseError,
     multi::{fold_many0, many0, many1, separated_list0},
@@ -286,8 +286,6 @@ pub fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
         tag("NA_real_"),
         tag("NA_complex_"),
         tag("NA_character_"),
-        tag("..."),
-        // TODO: add ..1, ..2, etc to reserved
     ))))(input)?;
     fn letter_digit_period_underscore(input: &str) -> IResult<&str, &str> {
         input.split_at_position_complete(|item| {
@@ -297,6 +295,9 @@ pub fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
 
     map(
         alt((
+            recognize(tag("...length")),
+            recognize(tag("...elt")),
+            recognize(tuple((tag(".."), digit1))),
             recognize(pair(
                 satisfy(|c| c.is_alphabetic()),
                 letter_digit_period_underscore,
@@ -998,7 +999,18 @@ mod tests {
 
     #[test]
     fn test_identifier() {
-        let valid_examples = ["Test", "t1", "l", ".something", ".s", "underscore_"];
+        let valid_examples = [
+            "Test",
+            "t1",
+            "l",
+            ".something",
+            ".s",
+            "underscore_",
+            "...length",
+            "...elt",
+            "..1",
+            "..10",
+        ];
         for example in valid_examples {
             assert_parse_eq(
                 identifier(example),

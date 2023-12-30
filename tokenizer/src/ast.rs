@@ -58,9 +58,6 @@ pub enum Na {
 /// In addition, there are four special constants, NULL, NA, Inf, and NaN.
 #[derive(Debug, PartialEq, Clone)]
 pub enum Literal {
-    // TODO: Add some of the reserved literals
-    // NA NA_integer_ NA_real_ NA_complex_ NA_character_
-    // ... ..1 ..2 etc.
     True,        // TRUE
     False,       // FALSE
     Null,        // NULL
