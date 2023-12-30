@@ -480,6 +480,43 @@ fn subscript(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
+fn condition(input: &str) -> IResult<&str, Box<Expression>> {
+    delimited(
+        tuple((multispace0, nom::character::complete::char('('))),
+        expr,
+        tuple((
+            multispace0,
+            nom::character::complete::char(')'),
+            multispace0,
+        )),
+    )(input)
+}
+
+fn if_expr(input: &str) -> IResult<&str, Box<Expression>> {
+    fn one_if_arm(input: &str) -> IResult<&str, (Box<Expression>, Box<Expression>)> {
+        preceded(tag("if"), tuple((condition, expr_or_assign_or_help)))(input)
+    }
+    map(
+        tuple((
+            one_if_arm,
+            many0(preceded(
+                tuple((space0, tag("else"), multispace0)),
+                one_if_arm,
+            )),
+            opt(preceded(
+                tuple((space0, tag("else"), multispace0)),
+                expr_or_assign_or_help,
+            )),
+        )),
+        |(first_if, other_arms, else_arm)| {
+            Box::new(Expression::If(
+                std::iter::once(first_if).chain(other_arms).collect(),
+                else_arm,
+            ))
+        },
+    )(input)
+}
+
 fn program(input: &str) -> IResult<&str, Box<Expression>> {
     alt((
         map(
@@ -727,6 +764,7 @@ fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
     //
     // Otherwise, we might end up with an error or an infinite loop.
     alt((
+        if_expr,
         function_definition,
         subscript,
         function_call,
@@ -1340,5 +1378,61 @@ mod tests {
             SubscriptType::Dollar,
         ));
         assert_eq!(subscript(input), Ok(("", expected)));
+    }
+
+    #[test]
+    fn test_if() {
+        let input = r#"if
+          (TRUE)
+          TRUE"#;
+        let expected = Box::new(Expression::If(
+            vec![(
+                Box::new(Expression::Literal(Literal::True)),
+                Box::new(Expression::Literal(Literal::True)),
+            )],
+            None,
+        ));
+        assert_eq!(if_expr(input), Ok(("", expected)));
+
+        let input = r#"if 
+        (FALSE) {} else 
+        if (FALSE) {}"#;
+        let expected = Box::new(Expression::If(
+            vec![
+                (
+                    Box::new(Expression::Literal(Literal::False)),
+                    Box::new(Expression::Expressions(vec![])),
+                ),
+                (
+                    Box::new(Expression::Literal(Literal::False)),
+                    Box::new(Expression::Expressions(vec![])),
+                ),
+            ],
+            None,
+        ));
+        assert_eq!(if_expr(input), Ok(("", expected)));
+
+        let input = r#"if 
+        (FALSE) {} else TRUE"#;
+        let expected = Box::new(Expression::If(
+            vec![(
+                Box::new(Expression::Literal(Literal::False)),
+                Box::new(Expression::Expressions(vec![])),
+            )],
+            Some(Box::new(Expression::Literal(Literal::True))),
+        ));
+        assert_eq!(if_expr(input), Ok(("", expected)));
+
+        let input = r#"if 
+        (FALSE) {} else
+        {}"#;
+        let expected = Box::new(Expression::If(
+            vec![(
+                Box::new(Expression::Literal(Literal::False)),
+                Box::new(Expression::Expressions(vec![])),
+            )],
+            Some(Box::new(Expression::Expressions(vec![]))),
+        ));
+        assert_eq!(if_expr(input), Ok(("", expected)));
     }
 }
