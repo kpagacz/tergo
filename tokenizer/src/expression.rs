@@ -374,8 +374,6 @@ fn function_definition(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-/// TODO: Implement the weird empty assignments
-///
 /// sublist : sub
 /// | sublist cr ',' sub
 ///
@@ -440,7 +438,6 @@ fn sublist(input: &str) -> IResult<&str, Vec<Argument>> {
 /// "odd name"("strange tag" = 5, y)
 /// (function(x) x^2)(5)
 fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
-    // TODO: support special tokens like ..., ...1, ...2, etc
     fn function_reference(input: &str) -> IResult<&str, Box<Expression>> {
         alt((
             identifier,
