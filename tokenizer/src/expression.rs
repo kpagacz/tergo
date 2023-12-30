@@ -1,4 +1,7 @@
-use crate::ast::*;
+use crate::{
+    ast::*,
+    compound::{for_stmt, repeat, while_stmt},
+};
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
@@ -227,7 +230,7 @@ fn literal(input: &str) -> IResult<&str, Box<Expression>> {
 /// * Variable names are case-sensitive (age, Age and AGE are three different variables)
 /// * Reserved words cannot be used as variables (TRUE, FALSE, NULL, if...)
 ///
-fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
     // TODO: add support for identifiers declared and referenced in this way:
     // e.g.
     // `% test%` <- function(first, second) first + second
@@ -765,6 +768,9 @@ fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
     // Otherwise, we might end up with an error or an infinite loop.
     alt((
         if_expr,
+        while_stmt,
+        repeat,
+        for_stmt,
         function_definition,
         subscript,
         function_call,

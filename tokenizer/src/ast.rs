@@ -95,7 +95,7 @@ pub enum Expression {
 pub enum CompoundStatement {
     Repeat(Box<Expression>),
     While(Box<Expression>, Box<Expression>),
-    For(String, Box<Expression>, Box<Expression>),
+    For(Box<Expression>, Box<Expression>, Box<Expression>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
