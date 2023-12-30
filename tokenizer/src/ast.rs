@@ -90,7 +90,6 @@ pub enum Expression {
     Break,           // break
     Next,            // next
     Expressions(Vec<Expression>),
-    // Assignment(Vec<Expression>, Vec<Vec<Expression>>), // lhs <- rhs1 <- rhs2
     Compound(CompoundStatement),
 }
 

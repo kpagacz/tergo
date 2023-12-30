@@ -442,6 +442,7 @@ fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
 ///
 /// object [ arg1, ...... , argn ]
 /// object [[ arg1, ...... , argn ]]
+/// object $ something
 ///
 /// The object can formally be any valid expression,
 /// but it is understood to denote or evaluate to a subsettable object.
@@ -454,7 +455,7 @@ fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
 fn subscript(input: &str) -> IResult<&str, Box<Expression>> {
     map(
         tuple((
-            atomic_expression,
+            alt((function_call, subatomic_expression)),
             alt((
                 map(
                     tuple((
@@ -721,7 +722,12 @@ fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
     // function call and identifier).
     //
     // Otherwise, we might end up with an error or an infinite loop.
-    alt((function_definition, function_call, subatomic_expression))(input)
+    alt((
+        function_definition,
+        subscript,
+        function_call,
+        subatomic_expression,
+    ))(input)
 }
 
 fn subatomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
@@ -1296,6 +1302,28 @@ mod tests {
                 Literal::Number("7".to_owned()),
             )))],
             SubscriptType::Double,
+        ));
+        assert_eq!(subscript(input), Ok(("", expected)));
+
+        let input = "(function() c(1))()[1]";
+        let expected = Box::new(Expression::Subscript(
+            Box::new(Expression::Call(
+                Box::new(Expression::Function(FunctionDefinition {
+                    arg_names: vec![],
+                    arg_values: vec![],
+                    body: Box::new(Expression::Call(
+                        Box::new(Expression::Identifier("c".to_string())),
+                        vec![Argument::Positional(Box::new(Expression::Literal(
+                            Literal::Number("1".to_string()),
+                        )))],
+                    )),
+                })),
+                vec![Argument::Empty],
+            )),
+            vec![Argument::Positional(Box::new(Expression::Literal(
+                Literal::Number("1".to_owned()),
+            )))],
+            SubscriptType::Single,
         ));
         assert_eq!(subscript(input), Ok(("", expected)));
     }
