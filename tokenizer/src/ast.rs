@@ -45,6 +45,15 @@ pub enum Uop {
     Questionmark, // ?
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Na {
+    Na,
+    Integer,
+    Real,
+    Complex,
+    Character,
+}
+
 /// There are five types of constants: integer, logical, numeric, complex and string.
 /// In addition, there are four special constants, NULL, NA, Inf, and NaN.
 #[derive(Debug, PartialEq, Clone)]
@@ -55,7 +64,7 @@ pub enum Literal {
     True,        // TRUE
     False,       // FALSE
     Null,        // NULL
-    Na,          // NA
+    Na(Na),      // NA
     Inf,         // Inf
     NaN,         // Nan
     Placeholder, // _

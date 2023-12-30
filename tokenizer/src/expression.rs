@@ -51,7 +51,13 @@ fn null_literal(input: &str) -> IResult<&str, Literal> {
 }
 
 fn na_literal(input: &str) -> IResult<&str, Literal> {
-    map(tag("NA"), |_| Literal::Na)(input)
+    alt((
+        map(tag("NA_integer_"), |_| Literal::Na(Na::Integer)),
+        map(tag("NA_real_"), |_| Literal::Na(Na::Real)),
+        map(tag("NA_complex_"), |_| Literal::Na(Na::Complex)),
+        map(tag("NA_character_"), |_| Literal::Na(Na::Character)),
+        map(tag("NA"), |_| Literal::Na(Na::Na)),
+    ))(input)
 }
 
 fn nan_literal(input: &str) -> IResult<&str, Literal> {
@@ -833,6 +839,21 @@ mod tests {
         let invalid_examples = ["a%%", "..."];
         for example in invalid_examples {
             assert!(infix(example).is_err())
+        }
+    }
+
+    #[test]
+    fn test_na_literal() {
+        let examples = [
+            "NA",
+            "NA_integer_",
+            "NA_real_",
+            "NA_complex_",
+            "NA_character_",
+        ];
+        let expected = [Na::Na, Na::Integer, Na::Real, Na::Complex, Na::Character];
+        for (example, expected) in examples.iter().zip(expected) {
+            assert_eq!(na_literal(example), Ok(("", Literal::Na(expected))));
         }
     }
 
