@@ -119,8 +119,15 @@ pub enum SubscriptType {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum FunctionDefinitionType {
+    Default,
+    Lambda,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionDefinition {
     pub arg_names: Vec<Expression>,
     pub arg_values: Vec<Option<Expression>>,
     pub body: Box<Expression>,
+    pub def_type: FunctionDefinitionType,
 }

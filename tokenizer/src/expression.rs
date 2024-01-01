@@ -153,17 +153,22 @@ fn function_definition(input: &str) -> IResult<&str, Box<Expression>> {
     }
     map(
         tuple((
-            tag("function"),
+            alt((tag("function"), tag("\\"))),
             multispace0,
             delimited(tag("("), args, tag(")")),
             multispace0,
             expr_or_assign_or_help,
         )),
-        |(_, _, args, _, body)| {
+        |(def_keyword, _, args, _, body)| {
             Box::new(Expression::Function(FunctionDefinition {
                 arg_names: args.0,
                 arg_values: args.1,
                 body,
+                def_type: if def_keyword == "function" {
+                    FunctionDefinitionType::Default
+                } else {
+                    FunctionDefinitionType::Lambda
+                },
             }))
         },
     )(input)
@@ -867,6 +872,7 @@ mod tests {
             arg_names: vec![Expression::Identifier(String::from("a"))],
             arg_values: vec![None],
             body: Box::new(Expression::Literal(Literal::Number(7.to_string()))),
+            def_type: FunctionDefinitionType::Default,
         }));
         for input in examples {
             assert_eq!(function_definition(input), Ok(("", expected.clone())));
@@ -881,6 +887,7 @@ mod tests {
             ],
             arg_values: vec![None, None],
             body: Box::new(Expression::Literal(Literal::Number(7.to_string()))),
+            def_type: FunctionDefinitionType::Default,
         }));
         assert_eq!(function_definition(input), Ok(("", expected)));
 
@@ -890,6 +897,7 @@ mod tests {
             arg_names: vec![Expression::Literal(Literal::ThreeDots)],
             arg_values: vec![None],
             body: Box::new(Expression::Literal(Literal::Number(7.to_string()))),
+            def_type: FunctionDefinitionType::Default,
         }));
         assert_eq!(function_definition(input), Ok(("", expected)));
 
@@ -905,6 +913,7 @@ mod tests {
                 None,
             ],
             body: Box::new(Expression::Literal(Literal::Number(7.to_string()))),
+            def_type: FunctionDefinitionType::Default,
         }));
         assert_eq!(function_definition(input), Ok(("", expected)));
     }
@@ -919,6 +928,7 @@ mod tests {
                 arg_names: vec![Expression::Identifier(String::from("a"))],
                 arg_values: vec![None],
                 body: Box::new(Expression::Literal(Literal::Number(7.to_string()))),
+                def_type: FunctionDefinitionType::Default,
             })),
         ));
         assert_eq!(expr(input), Ok(("", expected)));
@@ -1007,6 +1017,7 @@ mod tests {
                 arg_names: vec![],
                 arg_values: vec![],
                 body: Box::new(Expression::Literal(Literal::Number("1".to_owned()))),
+                def_type: FunctionDefinitionType::Default,
             })),
             vec![Argument::Empty],
         ));
@@ -1053,6 +1064,7 @@ mod tests {
                             Literal::Number("1".to_string()),
                         )))],
                     )),
+                    def_type: FunctionDefinitionType::Default,
                 })),
                 vec![Argument::Empty],
             )),
