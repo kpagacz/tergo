@@ -1,3 +1,7 @@
+use nom_locate::LocatedSpan;
+
+pub type CodeSpan<'a> = LocatedSpan<&'a str>;
+
 #[cfg(test)]
 pub(crate) fn assert_parse_eq<T: std::fmt::Debug + PartialEq>(
     left: Result<(&str, T), nom::Err<nom::error::Error<&str>>>,

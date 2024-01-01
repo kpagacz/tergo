@@ -1,6 +1,7 @@
 use crate::{
     ast::*,
     compound::{for_stmt, repeat, while_stmt},
+    helpers::CodeSpan,
     literals::{literal, string_literal},
 };
 use nom::{
@@ -20,14 +21,14 @@ use nom::{
 /// The escape sequences for strings do not apply here.
 /// Note that the following operators are predefined
 /// %% %*% %/% %in% %o% %x%
-fn infix(input: &str) -> IResult<&str, Bop> {
+fn infix(input: CodeSpan) -> IResult<CodeSpan, Bop> {
     map(
         recognize(tuple((
-            nom::character::complete::char('%'),
-            many0(none_of("%")),
-            nom::character::complete::char('%'),
+            tag("%"),
+            many0(none_of(CodeSpan::new("%"))),
+            tag("%"),
         ))),
-        |op| Bop::Infix(String::from(op)),
+        |op: CodeSpan| Bop::Infix(op.to_string()),
     )(input)
 }
 
@@ -41,7 +42,7 @@ fn infix(input: &str) -> IResult<&str, Bop> {
 /// * Variable names are case-sensitive (age, Age and AGE are three different variables)
 /// * Reserved words cannot be used as variables (TRUE, FALSE, NULL, if...)
 ///
-pub fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn identifier(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     // TODO: add support for identifiers declared and referenced in this way:
     // e.g.
     // `% test%` <- function(first, second) first + second
@@ -75,7 +76,7 @@ pub fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
         tag("NA_complex_"),
         tag("NA_character_"),
     ))))(input)?;
-    fn letter_digit_period_underscore(input: &str) -> IResult<&str, &str> {
+    fn letter_digit_period_underscore(input: CodeSpan) -> IResult<CodeSpan, CodeSpan> {
         input.split_at_position_complete(|item| {
             !item.is_alphanumeric() && item != '.' && item != '_'
         })
@@ -96,7 +97,7 @@ pub fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
                 letter_digit_period_underscore,
             ))),
         )),
-        |identifier| Box::new(Expression::Identifier(identifier.to_owned())),
+        |identifier| Box::new(Expression::Identifier(identifier.to_string())),
     )(input)
 }
 
@@ -111,13 +112,13 @@ pub fn identifier(input: &str) -> IResult<&str, Box<Expression>> {
 ///
 /// Notice that function arguments unlike list tags, etc.,
 /// cannot have “strange names” given as text strings.
-fn function_definition(input: &str) -> IResult<&str, Box<Expression>> {
-    fn three_dots(input: &str) -> IResult<&str, Box<Expression>> {
+fn function_definition(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
+    fn three_dots(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
         map(tag("..."), |_| {
             Box::new(Expression::Literal(Literal::ThreeDots))
         })(input)
     }
-    fn args(input: &str) -> IResult<&str, (Vec<Expression>, Vec<Option<Expression>>)> {
+    fn args(input: CodeSpan) -> IResult<CodeSpan, (Vec<Expression>, Vec<Option<Expression>>)> {
         map(
             separated_list0(
                 tuple((tag(","), multispace0)),
@@ -157,7 +158,7 @@ fn function_definition(input: &str) -> IResult<&str, Box<Expression>> {
                 arg_names: args.0,
                 arg_values: args.1,
                 body,
-                def_type: if def_keyword == "function" {
+                def_type: if &def_keyword[..] == "function" {
                     FunctionDefinitionType::Default
                 } else {
                     FunctionDefinitionType::Lambda
@@ -178,8 +179,8 @@ fn function_definition(input: &str) -> IResult<&str, Box<Expression>> {
 ///  | STR_CONST EQ_ASSIGN expr
 ///  | NULL_CONST EQ_ASSIGN
 ///  | NULL_CONST EQ_ASSIGN expr
-fn sublist(input: &str) -> IResult<&str, Vec<Argument>> {
-    fn argument(input: &str) -> IResult<&str, Argument> {
+fn sublist(input: CodeSpan) -> IResult<CodeSpan, Vec<Argument>> {
+    fn argument(input: CodeSpan) -> IResult<CodeSpan, Argument> {
         alt((
             map(
                 tuple((
@@ -230,8 +231,8 @@ fn sublist(input: &str) -> IResult<&str, Vec<Argument>> {
 /// g(tag = value, , 5)
 /// "odd name"("strange tag" = 5, y)
 /// (function(x) x^2)(5)
-fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
-    fn function_reference(input: &str) -> IResult<&str, Box<Expression>> {
+fn function_call(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
+    fn function_reference(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
         alt((
             identifier,
             map(string_literal, |literal| {
@@ -269,7 +270,7 @@ fn function_call(input: &str) -> IResult<&str, Box<Expression>> {
 /// Here's what the grammar says about the subscripts:
 /// | expr LBB sublist ']' ']'
 /// | expr '[' sublist ']'
-fn subscript(input: &str) -> IResult<&str, Box<Expression>> {
+fn subscript(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     map(
         tuple((
             alt((function_call, subatomic_expression)),
@@ -297,7 +298,7 @@ fn subscript(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-pub fn condition(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn condition(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     delimited(
         tuple((multispace0, nom::character::complete::char('('))),
         expr,
@@ -309,8 +310,8 @@ pub fn condition(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-fn if_expr(input: &str) -> IResult<&str, Box<Expression>> {
-    fn one_if_arm(input: &str) -> IResult<&str, (Box<Expression>, Box<Expression>)> {
+fn if_expr(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
+    fn one_if_arm(input: CodeSpan) -> IResult<CodeSpan, (Box<Expression>, Box<Expression>)> {
         preceded(tag("if"), tuple((condition, expr_or_assign_or_help)))(input)
     }
     map(
@@ -338,8 +339,7 @@ fn if_expr(input: &str) -> IResult<&str, Box<Expression>> {
 // expr |
 // expr_or_assign_or_help EQ_ASSIGN expr_or_assign_or_help |
 // expr_or_assign_or_help '?'  expr_or_assign_or_help
-pub fn expr_or_assign_or_help(input: &str) -> IResult<&str, Box<Expression>> {
-    println!("Expr or assign or help:{input}");
+pub fn expr_or_assign_or_help(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     alt((
         map(
             tuple((expr, space0, tag("="), multispace0, expr_or_assign_or_help)),
@@ -362,7 +362,7 @@ pub fn expr_or_assign_or_help(input: &str) -> IResult<&str, Box<Expression>> {
 // expr:
 // left_assignment |
 // { explist }
-pub fn expr(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn expr(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     alt((
         left_assignment,
         map(
@@ -376,7 +376,7 @@ pub fn expr(input: &str) -> IResult<&str, Box<Expression>> {
     ))(input)
 }
 
-fn exprlist(input: &str) -> IResult<&str, Box<Expression>> {
+fn exprlist(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     alt((
         map(
             tuple((
@@ -411,13 +411,13 @@ fn exprlist(input: &str) -> IResult<&str, Box<Expression>> {
     ))(input)
 }
 
-fn bop<'a, Error: ParseError<&'a str>, C, B>(
+fn bop<'a, Error: ParseError<CodeSpan<'a>>, C, B>(
     child_parser: C,
     bop_parser: B,
-) -> impl FnMut(&'a str) -> IResult<&str, Box<Expression>, Error>
+) -> impl FnMut(CodeSpan<'a>) -> IResult<CodeSpan, Box<Expression>, Error>
 where
-    C: Parser<&'a str, Box<Expression>, Error> + Copy,
-    B: Parser<&'a str, Bop, Error>,
+    C: Parser<CodeSpan<'a>, Box<Expression>, Error> + Copy,
+    B: Parser<CodeSpan<'a>, Bop, Error>,
 {
     map(
         tuple((
@@ -443,32 +443,32 @@ where
 }
 
 // left_assignment: right_assignment ['<-' right_assignment]*
-fn left_assignment(input: &str) -> IResult<&str, Box<Expression>> {
+fn left_assignment(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(right_assignment, map(tag("<-"), |_| Bop::Assignment))(input)
 }
 
 // right_assignment: tilde_bop ['->' tilde_bop]*
-fn right_assignment(input: &str) -> IResult<&str, Box<Expression>> {
+fn right_assignment(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(tilde_bop, map(tag("->"), |_| Bop::RightAssignment))(input)
 }
 
 // tilde_bop: or_test ['~' or_test]*
-fn tilde_bop(input: &str) -> IResult<&str, Box<Expression>> {
+fn tilde_bop(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(or_test, map(tag("~"), |_| Bop::ModelFormulae))(input)
 }
 
 // or_test: and_test [| and_test]*
-fn or_test(input: &str) -> IResult<&str, Box<Expression>> {
+fn or_test(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(and_test, map(tag("|"), |_| Bop::Or))(input)
 }
 
 // and_test: not_test [& not_test]*
-fn and_test(input: &str) -> IResult<&str, Box<Expression>> {
+fn and_test(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(not_test, map(tag("&"), |_| Bop::And))(input)
 }
 
 // not_test: '!' not_test | comparison
-fn not_test(input: &str) -> IResult<&str, Box<Expression>> {
+fn not_test(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     alt((
         map(preceded(tuple((tag("!"), multispace0)), not_test), |e| {
             Box::new(Expression::Uop(Uop::Not, e))
@@ -479,7 +479,7 @@ fn not_test(input: &str) -> IResult<&str, Box<Expression>> {
 
 // comparison: arithmetic_op [comp_op arithmetic_op]*
 // comp_op: > >= < <= == !=
-fn comparison(input: &str) -> IResult<&str, Box<Expression>> {
+fn comparison(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(
         arithmetic_op,
         alt((
@@ -494,7 +494,7 @@ fn comparison(input: &str) -> IResult<&str, Box<Expression>> {
 }
 
 // arithmetic_op: term [('+' | '-') term]*
-fn arithmetic_op(input: &str) -> IResult<&str, Box<Expression>> {
+fn arithmetic_op(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(
         term,
         alt((map(tag("+"), |_| Bop::Plus), map(tag("-"), |_| Bop::Minus))),
@@ -502,7 +502,7 @@ fn arithmetic_op(input: &str) -> IResult<&str, Box<Expression>> {
 }
 
 // term: pipe_op [('*' | '/') pipe_op]*
-fn term(input: &str) -> IResult<&str, Box<Expression>> {
+fn term(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(
         pipe_op,
         alt((
@@ -514,12 +514,12 @@ fn term(input: &str) -> IResult<&str, Box<Expression>> {
 
 // infix_op: factor [infix_op factor]*
 // infix_op: %xyz% |>
-fn pipe_op(input: &str) -> IResult<&str, Box<Expression>> {
+fn pipe_op(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     bop(factor, alt((infix, map(tag("|>"), |_| Bop::Pipe))))(input)
 }
 
 // factor: (+ | -) factor | power
-fn factor(input: &str) -> IResult<&str, Box<Expression>> {
+fn factor(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     alt((
         map(
             preceded(tuple((space0, tag("+"), multispace0)), factor),
@@ -534,7 +534,7 @@ fn factor(input: &str) -> IResult<&str, Box<Expression>> {
 }
 
 // power: expr [^ factor]
-fn power(input: &str) -> IResult<&str, Box<Expression>> {
+fn power(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     map(
         tuple((
             atomic_expression,
@@ -547,7 +547,7 @@ fn power(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
+fn atomic_expression(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     // The order here is important.
     // Firstly we want to unwrap the expression from ( or {.
     // Secondly, we want to try matching the possibilities that have others as their prefixes (e.g.
@@ -566,7 +566,7 @@ fn atomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
     ))(input)
 }
 
-fn subatomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
+fn subatomic_expression(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     alt((
         literal,
         identifier,
@@ -577,12 +577,10 @@ fn subatomic_expression(input: &str) -> IResult<&str, Box<Expression>> {
 
 #[cfg(test)]
 mod tests {
-    use nom::IResult;
 
     use crate::{
         ast::{Expression, Literal},
         expression::identifier,
-        helpers::assert_parse_eq,
     };
 
     use super::*;
@@ -591,18 +589,17 @@ mod tests {
     fn test_infix() {
         let valid_examples = ["% something %", "%%"];
         for example in valid_examples {
-            assert_parse_eq(
-                infix(example),
-                IResult::Ok(("", Bop::Infix(example.to_owned()))),
-            )
+            let example = CodeSpan::new(example);
+            assert_eq!(infix(example).unwrap().1, Bop::Infix(example.to_string()),)
         }
-        let remaining = "%%2";
-        assert_parse_eq(
-            infix(remaining),
-            IResult::Ok(("2", Bop::Infix(remaining[..2].to_owned()))),
+        let remaining = CodeSpan::new("%%2");
+        assert_eq!(
+            infix(remaining).unwrap().1,
+            Bop::Infix(remaining[..2].to_string()),
         );
         let invalid_examples = ["a%%", "..."];
         for example in invalid_examples {
+            let example = CodeSpan::new(example);
             assert!(infix(example).is_err())
         }
     }
@@ -622,18 +619,20 @@ mod tests {
             "..10",
         ];
         for example in valid_examples {
-            assert_parse_eq(
-                identifier(example),
-                IResult::Ok(("", Box::new(Expression::Identifier(example.to_owned())))),
+            let example = CodeSpan::new(example);
+            assert_eq!(
+                identifier(example).unwrap().1,
+                Box::new(Expression::Identifier(example.to_string()))
             )
         }
         assert_eq!(
-            identifier("value,"),
-            Ok((",", Box::new(Expression::Identifier(String::from("value")))))
+            identifier(CodeSpan::new("value,")).unwrap().1,
+            Box::new(Expression::Identifier(String::from("value")))
         );
 
         let invalid_examples = [".3", "_something", "123"];
         for example in invalid_examples {
+            let example = CodeSpan::new(example);
             assert!(identifier(example).is_err())
         }
     }
@@ -642,66 +641,57 @@ mod tests {
     fn test_power() {
         // Parses literals
         assert_eq!(
-            power("7"),
-            Ok((
-                "",
-                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-            ))
+            power(CodeSpan::new("7")).unwrap().1,
+            Box::new(Expression::Literal(Literal::Number(String::from("7"))))
         );
 
         // Spaces don't matter
-        assert_eq!(power("7^1"), power("7 ^ 1"));
+        assert_eq!(
+            power(CodeSpan::new("7^1")).unwrap().1,
+            power(CodeSpan::new("7 ^ 1")).unwrap().1
+        );
 
         // Newlines don't matter after the operator
-        assert_eq!(power("7^1"), power("7^\n 1"));
+        assert_eq!(
+            power(CodeSpan::new("7^1")).unwrap().1,
+            power(CodeSpan::new("7^\n 1")).unwrap().1
+        );
     }
 
     #[test]
     fn test_factor() {
         // Parses literals
         assert_eq!(
-            factor("7"),
-            Ok((
-                "",
-                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-            ))
+            factor(CodeSpan::new("7")).unwrap().1,
+            Box::new(Expression::Literal(Literal::Number(String::from("7"))))
         );
 
         // Parses plus and minus unary ops
         assert_eq!(
-            factor("+7"),
-            Ok((
-                "",
-                Box::new(Expression::Uop(
-                    Uop::Plus,
-                    Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-                ))
+            factor(CodeSpan::new("+7")).unwrap().1,
+            Box::new(Expression::Uop(
+                Uop::Plus,
+                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
             ))
         );
 
         assert_eq!(
-            factor("-7"),
-            Ok((
-                "",
-                Box::new(Expression::Uop(
-                    Uop::Minus,
-                    Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-                ))
+            factor(CodeSpan::new("-7")).unwrap().1,
+            Box::new(Expression::Uop(
+                Uop::Minus,
+                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
             ))
         );
 
         // Precedence with ^
         assert_eq!(
-            factor("-7^1"),
-            Ok((
-                "",
-                Box::new(Expression::Uop(
-                    Uop::Minus,
-                    Box::new(Expression::Bop(
-                        Bop::Power,
-                        Box::new(Expression::Literal(Literal::Number(String::from("7")))),
-                        Box::new(Expression::Literal(Literal::Number(String::from("1"))))
-                    ))
+            factor(CodeSpan::new("-7^1")).unwrap().1,
+            Box::new(Expression::Uop(
+                Uop::Minus,
+                Box::new(Expression::Bop(
+                    Bop::Power,
+                    Box::new(Expression::Literal(Literal::Number(String::from("7")))),
+                    Box::new(Expression::Literal(Literal::Number(String::from("1"))))
                 ))
             ))
         );
@@ -711,63 +701,57 @@ mod tests {
     fn test_pipe() {
         // Parses literals
         assert_eq!(
-            pipe_op("7"),
-            Ok((
-                "",
-                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-            ))
+            pipe_op(CodeSpan::new("7")).unwrap().1,
+            Box::new(Expression::Literal(Literal::Number(String::from("7"))))
         );
 
         assert_eq!(
-            pipe_op("7 |> 1"),
-            Ok((
-                "",
-                Box::new(Expression::Bop(
-                    Bop::Pipe,
-                    Box::new(Expression::Literal(Literal::Number(String::from("7")))),
-                    Box::new(Expression::Literal(Literal::Number(String::from("1"))))
-                ))
+            pipe_op(CodeSpan::new("7 |> 1")).unwrap().1,
+            Box::new(Expression::Bop(
+                Bop::Pipe,
+                Box::new(Expression::Literal(Literal::Number(String::from("7")))),
+                Box::new(Expression::Literal(Literal::Number(String::from("1"))))
             ))
         );
 
         // Spaces don't matter
-        assert_eq!(pipe_op("7|>1"), pipe_op("7 |> \n1"));
+        assert_eq!(
+            pipe_op(CodeSpan::new("7|>1")).unwrap().1,
+            pipe_op(CodeSpan::new("7 |> \n1")).unwrap().1
+        );
     }
 
     #[test]
     fn test_left_assignment() {
-        let input = "a <- 7";
+        let input = CodeSpan::new("a <- 7");
         let expected = Box::new(Expression::Bop(
             Bop::Assignment,
             Box::new(Expression::Identifier(String::from("a"))),
             Box::new(Expression::Literal(Literal::Number(7.to_string()))),
         ));
-        assert_eq!(left_assignment(input), Ok(("", expected)));
+        assert_eq!(left_assignment(input).unwrap().1, expected);
     }
 
     #[test]
     fn test_expression() {
         // Test with parentheses
         assert_eq!(
-            expr("(7)"),
-            Ok((
-                "",
-                Box::new(Expression::Literal(Literal::Number(String::from("7"))))
-            ))
+            expr(CodeSpan::new("(7)")).unwrap().1,
+            Box::new(Expression::Literal(Literal::Number(String::from("7"))))
         );
 
         // With or without parentheses ast is the same
-        assert_eq!(expr("7"), expr("(7)"));
+        assert_eq!(
+            expr(CodeSpan::new("7")).unwrap().1,
+            expr(CodeSpan::new("(7)")).unwrap().1
+        );
 
         assert_eq!(
-            expr("\"a\" + 1"),
-            Ok((
-                "",
-                Box::new(Expression::Bop(
-                    Bop::Plus,
-                    Box::new(Expression::Literal(Literal::String(String::from("a")))),
-                    Box::new(Expression::Literal(Literal::Number(1.to_string())))
-                ))
+            expr(CodeSpan::new("\"a\" + 1")).unwrap().1,
+            Box::new(Expression::Bop(
+                Bop::Plus,
+                Box::new(Expression::Literal(Literal::String(String::from("a")))),
+                Box::new(Expression::Literal(Literal::Number(1.to_string())))
             ))
         );
         let seven_plus_one = Box::new(Expression::Bop(
@@ -776,14 +760,11 @@ mod tests {
             Box::new(Expression::Literal(Literal::Number(1.to_string()))),
         ));
         assert_eq!(
-            expr("(7+1)*1"),
-            Ok((
-                "",
-                Box::new(Expression::Bop(
-                    Bop::Multiply,
-                    seven_plus_one,
-                    Box::new(Expression::Literal(Literal::Number(1.to_string())))
-                ))
+            expr(CodeSpan::new("(7+1)*1")).unwrap().1,
+            Box::new(Expression::Bop(
+                Bop::Multiply,
+                seven_plus_one,
+                Box::new(Expression::Literal(Literal::Number(1.to_string())))
             ))
         );
         let seven_plus_one = Box::new(Expression::Bop(
@@ -797,14 +778,11 @@ mod tests {
             Box::new(Expression::Literal(Literal::Number(1.to_string()))),
         ));
         assert_eq!(
-            expr("(7+1)*(0+1)"),
-            Ok((
-                "",
-                Box::new(Expression::Bop(
-                    Bop::Multiply,
-                    seven_plus_one,
-                    zero_plus_one
-                ))
+            expr(CodeSpan::new("(7+1)*(0+1)")).unwrap().1,
+            Box::new(Expression::Bop(
+                Bop::Multiply,
+                seven_plus_one,
+                zero_plus_one
             ))
         );
     }
@@ -812,26 +790,23 @@ mod tests {
     #[test]
     fn test_op_precedence() {
         assert_eq!(
-            expr("7+1*0+1"),
-            Ok((
-                "",
-                Box::new(Expression::MultiBop(
-                    Box::new(Expression::Literal(Literal::Number(7.to_string()))),
-                    vec![
-                        (
-                            Bop::Plus,
-                            Expression::Bop(
-                                Bop::Multiply,
-                                Box::new(Expression::Literal(Literal::Number(1.to_string()))),
-                                Box::new(Expression::Literal(Literal::Number(0.to_string())))
-                            )
-                        ),
-                        (
-                            Bop::Plus,
-                            Expression::Literal(Literal::Number(1.to_string()))
+            expr(CodeSpan::new("7+1*0+1")).unwrap().1,
+            Box::new(Expression::MultiBop(
+                Box::new(Expression::Literal(Literal::Number(7.to_string()))),
+                vec![
+                    (
+                        Bop::Plus,
+                        Expression::Bop(
+                            Bop::Multiply,
+                            Box::new(Expression::Literal(Literal::Number(1.to_string()))),
+                            Box::new(Expression::Literal(Literal::Number(0.to_string())))
                         )
-                    ]
-                ))
+                    ),
+                    (
+                        Bop::Plus,
+                        Expression::Literal(Literal::Number(1.to_string()))
+                    )
+                ]
             ))
         )
     }
@@ -855,11 +830,12 @@ mod tests {
             def_type: FunctionDefinitionType::Default,
         }));
         for input in examples {
-            assert_eq!(function_definition(input), Ok(("", expected.clone())));
+            let input = CodeSpan::new(input);
+            assert_eq!(function_definition(input).unwrap().1, expected.clone());
         }
 
         // Two args
-        let input = "function(a, b)\n7";
+        let input = CodeSpan::new("function(a, b)\n7");
         let expected = Box::new(Expression::Function(FunctionDefinition {
             arg_names: vec![
                 Expression::Identifier(String::from("a")),
@@ -869,20 +845,20 @@ mod tests {
             body: Box::new(Expression::Literal(Literal::Number(7.to_string()))),
             def_type: FunctionDefinitionType::Default,
         }));
-        assert_eq!(function_definition(input), Ok(("", expected)));
+        assert_eq!(function_definition(input).unwrap().1, expected);
 
         // Three dots in args
-        let input = "function(...)\n7";
+        let input = CodeSpan::new("function(...)\n7");
         let expected = Box::new(Expression::Function(FunctionDefinition {
             arg_names: vec![Expression::Literal(Literal::ThreeDots)],
             arg_values: vec![None],
             body: Box::new(Expression::Literal(Literal::Number(7.to_string()))),
             def_type: FunctionDefinitionType::Default,
         }));
-        assert_eq!(function_definition(input), Ok(("", expected)));
+        assert_eq!(function_definition(input).unwrap().1, expected);
 
         // Default values
-        let input = "function(a=7, b)\n7";
+        let input = CodeSpan::new("function(a=7, b)\n7");
         let expected = Box::new(Expression::Function(FunctionDefinition {
             arg_names: vec![
                 Expression::Identifier(String::from("a")),
@@ -895,12 +871,12 @@ mod tests {
             body: Box::new(Expression::Literal(Literal::Number(7.to_string()))),
             def_type: FunctionDefinitionType::Default,
         }));
-        assert_eq!(function_definition(input), Ok(("", expected)));
+        assert_eq!(function_definition(input).unwrap().1, expected);
     }
 
     #[test]
     fn function_assignment() {
-        let input = "a <- function(a) {7}";
+        let input = CodeSpan::new("a <- function(a) {7}");
         let expected = Box::new(Expression::Bop(
             Bop::Assignment,
             Box::new(Expression::Identifier(String::from("a"))),
@@ -911,214 +887,221 @@ mod tests {
                 def_type: FunctionDefinitionType::Default,
             })),
         ));
-        assert_eq!(expr(input), Ok(("", expected)));
+        assert_eq!(expr(input).unwrap().1, expected);
     }
 
     #[test]
     fn function_calls() {
-        let input = "a()";
-        let expected = Box::new(Expression::Call(
-            Box::new(Expression::Identifier(String::from("a"))),
-            vec![Argument::Empty],
-        ));
-        assert_eq!(function_call(input), Ok(("", expected)));
-
-        let input = "a(7)";
-        let expected = Box::new(Expression::Call(
-            Box::new(Expression::Identifier(String::from("a"))),
-            vec![Argument::Positional(Box::new(Expression::Literal(
-                Literal::Number("7".to_owned()),
-            )))],
-        ));
-        assert_eq!(function_call(input), Ok(("", expected)));
-
-        let input = "a(a = 7)";
-        let expected = Box::new(Expression::Call(
-            Box::new(Expression::Identifier(String::from("a"))),
-            vec![Argument::Named(
-                Box::new(Expression::Identifier("a".to_owned())),
-                Box::new(Expression::Literal(Literal::Number("7".to_owned()))),
-            )],
-        ));
-        assert_eq!(function_call(input), Ok(("", expected)));
-
-        let input = "\"a\"(a = 7)";
-        let expected = Box::new(Expression::Call(
-            Box::new(Expression::Literal(Literal::String("a".to_owned()))),
-            vec![Argument::Named(
-                Box::new(Expression::Identifier("a".to_owned())),
-                Box::new(Expression::Literal(Literal::Number("7".to_owned()))),
-            )],
-        ));
-        assert_eq!(function_call(input), Ok(("", expected)));
-
-        let input = "a(\"a\" = 7)";
-        let expected = Box::new(Expression::Call(
-            Box::new(Expression::Identifier(String::from("a"))),
-            vec![Argument::Named(
+        let inputs = [
+            "a()",
+            "a(7)",
+            "a(a = 7)",
+            "\"a\"(a = 7)",
+            "a(\"a\" = 7)",
+            "a(7, \"a\")",
+            "a(7, ,7)",
+            "(function() 1)()",
+        ];
+        let expected = [
+            Box::new(Expression::Call(
+                Box::new(Expression::Identifier(String::from("a"))),
+                vec![Argument::Empty],
+            )),
+            Box::new(Expression::Call(
+                Box::new(Expression::Identifier(String::from("a"))),
+                vec![Argument::Positional(Box::new(Expression::Literal(
+                    Literal::Number("7".to_owned()),
+                )))],
+            )),
+            Box::new(Expression::Call(
+                Box::new(Expression::Identifier(String::from("a"))),
+                vec![Argument::Named(
+                    Box::new(Expression::Identifier("a".to_owned())),
+                    Box::new(Expression::Literal(Literal::Number("7".to_owned()))),
+                )],
+            )),
+            Box::new(Expression::Call(
                 Box::new(Expression::Literal(Literal::String("a".to_owned()))),
-                Box::new(Expression::Literal(Literal::Number("7".to_owned()))),
-            )],
-        ));
-        assert_eq!(function_call(input), Ok(("", expected)));
-
-        let input = "a(7, \"a\")";
-        let expected = Box::new(Expression::Call(
-            Box::new(Expression::Identifier(String::from("a"))),
-            vec![
-                Argument::Positional(Box::new(Expression::Literal(Literal::Number(
-                    "7".to_owned(),
-                )))),
-                Argument::Positional(Box::new(Expression::Literal(Literal::String(
-                    "a".to_owned(),
-                )))),
-            ],
-        ));
-        assert_eq!(function_call(input), Ok(("", expected)));
-
-        let input = "a(7, ,7)";
-        let expected = Box::new(Expression::Call(
-            Box::new(Expression::Identifier(String::from("a"))),
-            vec![
-                Argument::Positional(Box::new(Expression::Literal(Literal::Number(
-                    "7".to_owned(),
-                )))),
-                Argument::Empty,
-                Argument::Positional(Box::new(Expression::Literal(Literal::Number(
-                    "7".to_owned(),
-                )))),
-            ],
-        ));
-        assert_eq!(function_call(input), Ok(("", expected)));
-
-        let input = "(function() 1)()";
-        let expected = Box::new(Expression::Call(
-            Box::new(Expression::Function(FunctionDefinition {
-                arg_names: vec![],
-                arg_values: vec![],
-                body: Box::new(Expression::Literal(Literal::Number("1".to_owned()))),
-                def_type: FunctionDefinitionType::Default,
-            })),
-            vec![Argument::Empty],
-        ));
-        assert_eq!(function_call(input), Ok(("", expected)));
-    }
-
-    #[test]
-    fn subscripts() {
-        let input = "a[]";
-        let expected = Box::new(Expression::Subscript(
-            Box::new(Expression::Identifier("a".to_owned())),
-            vec![Argument::Empty],
-            SubscriptType::Single,
-        ));
-        assert_eq!(subscript(input), Ok(("", expected)));
-
-        let input = "a[[]]";
-        let expected = Box::new(Expression::Subscript(
-            Box::new(Expression::Identifier("a".to_owned())),
-            vec![Argument::Empty],
-            SubscriptType::Double,
-        ));
-        assert_eq!(subscript(input), Ok(("", expected)));
-
-        let input = "a[[7]]";
-        let expected = Box::new(Expression::Subscript(
-            Box::new(Expression::Identifier("a".to_owned())),
-            vec![Argument::Positional(Box::new(Expression::Literal(
-                Literal::Number("7".to_owned()),
-            )))],
-            SubscriptType::Double,
-        ));
-        assert_eq!(subscript(input), Ok(("", expected)));
-
-        let input = "(function() c(1))()[1]";
-        let expected = Box::new(Expression::Subscript(
+                vec![Argument::Named(
+                    Box::new(Expression::Identifier("a".to_owned())),
+                    Box::new(Expression::Literal(Literal::Number("7".to_owned()))),
+                )],
+            )),
+            Box::new(Expression::Call(
+                Box::new(Expression::Identifier(String::from("a"))),
+                vec![Argument::Named(
+                    Box::new(Expression::Literal(Literal::String("a".to_owned()))),
+                    Box::new(Expression::Literal(Literal::Number("7".to_owned()))),
+                )],
+            )),
+            Box::new(Expression::Call(
+                Box::new(Expression::Identifier(String::from("a"))),
+                vec![
+                    Argument::Positional(Box::new(Expression::Literal(Literal::Number(
+                        "7".to_owned(),
+                    )))),
+                    Argument::Positional(Box::new(Expression::Literal(Literal::String(
+                        "a".to_owned(),
+                    )))),
+                ],
+            )),
+            Box::new(Expression::Call(
+                Box::new(Expression::Identifier(String::from("a"))),
+                vec![
+                    Argument::Positional(Box::new(Expression::Literal(Literal::Number(
+                        "7".to_owned(),
+                    )))),
+                    Argument::Empty,
+                    Argument::Positional(Box::new(Expression::Literal(Literal::Number(
+                        "7".to_owned(),
+                    )))),
+                ],
+            )),
             Box::new(Expression::Call(
                 Box::new(Expression::Function(FunctionDefinition {
                     arg_names: vec![],
                     arg_values: vec![],
-                    body: Box::new(Expression::Call(
-                        Box::new(Expression::Identifier("c".to_string())),
-                        vec![Argument::Positional(Box::new(Expression::Literal(
-                            Literal::Number("1".to_string()),
-                        )))],
-                    )),
+                    body: Box::new(Expression::Literal(Literal::Number("1".to_owned()))),
                     def_type: FunctionDefinitionType::Default,
                 })),
                 vec![Argument::Empty],
             )),
-            vec![Argument::Positional(Box::new(Expression::Literal(
-                Literal::Number("1".to_owned()),
-            )))],
-            SubscriptType::Single,
-        ));
-        assert_eq!(subscript(input), Ok(("", expected)));
+        ];
+        for (input, expected) in inputs.into_iter().zip(expected) {
+            let input = CodeSpan::new(input);
+            assert_eq!(function_call(input).unwrap().1, expected);
+        }
+    }
 
-        let input = "a$a";
-        let expected = Box::new(Expression::Subscript(
-            Box::new(Expression::Identifier("a".to_string())),
-            vec![Argument::Positional(Box::new(Expression::Identifier(
-                "a".to_string(),
-            )))],
-            SubscriptType::Dollar,
-        ));
-        assert_eq!(subscript(input), Ok(("", expected)));
+    #[test]
+    fn subscripts() {
+        let tests = [
+            (
+                "a[]",
+                Box::new(Expression::Subscript(
+                    Box::new(Expression::Identifier("a".to_owned())),
+                    vec![Argument::Empty],
+                    SubscriptType::Single,
+                )),
+            ),
+            (
+                "a[[]]",
+                Box::new(Expression::Subscript(
+                    Box::new(Expression::Identifier("a".to_owned())),
+                    vec![Argument::Empty],
+                    SubscriptType::Double,
+                )),
+            ),
+            (
+                "a[[7]]",
+                Box::new(Expression::Subscript(
+                    Box::new(Expression::Identifier("a".to_owned())),
+                    vec![Argument::Positional(Box::new(Expression::Literal(
+                        Literal::Number("7".to_owned()),
+                    )))],
+                    SubscriptType::Double,
+                )),
+            ),
+            (
+                "(function() c(1))()[1]",
+                Box::new(Expression::Subscript(
+                    Box::new(Expression::Call(
+                        Box::new(Expression::Function(FunctionDefinition {
+                            arg_names: vec![],
+                            arg_values: vec![],
+                            body: Box::new(Expression::Call(
+                                Box::new(Expression::Identifier("c".to_string())),
+                                vec![Argument::Positional(Box::new(Expression::Literal(
+                                    Literal::Number("1".to_string()),
+                                )))],
+                            )),
+                            def_type: FunctionDefinitionType::Default,
+                        })),
+                        vec![Argument::Empty],
+                    )),
+                    vec![Argument::Positional(Box::new(Expression::Literal(
+                        Literal::Number("1".to_owned()),
+                    )))],
+                    SubscriptType::Single,
+                )),
+            ),
+            (
+                "a$a",
+                Box::new(Expression::Subscript(
+                    Box::new(Expression::Identifier("a".to_string())),
+                    vec![Argument::Positional(Box::new(Expression::Identifier(
+                        "a".to_string(),
+                    )))],
+                    SubscriptType::Dollar,
+                )),
+            ),
+        ];
+        for (input, expected) in tests {
+            let input = CodeSpan::new(input);
+            assert_eq!(subscript(input).unwrap().1, expected);
+        }
     }
 
     #[test]
     fn test_if() {
-        let input = r#"if
+        let tests = [
+            (
+                r#"if
           (TRUE)
-          TRUE"#;
-        let expected = Box::new(Expression::If(
-            vec![(
-                Box::new(Expression::Literal(Literal::True)),
-                Box::new(Expression::Literal(Literal::True)),
-            )],
-            None,
-        ));
-        assert_eq!(if_expr(input), Ok(("", expected)));
-
-        let input = r#"if 
+          TRUE"#,
+                Box::new(Expression::If(
+                    vec![(
+                        Box::new(Expression::Literal(Literal::True)),
+                        Box::new(Expression::Literal(Literal::True)),
+                    )],
+                    None,
+                )),
+            ),
+            (
+                r#"if 
         (FALSE) {} else 
-        if (FALSE) {}"#;
-        let expected = Box::new(Expression::If(
-            vec![
-                (
-                    Box::new(Expression::Literal(Literal::False)),
-                    Box::new(Expression::Expressions(vec![])),
-                ),
-                (
-                    Box::new(Expression::Literal(Literal::False)),
-                    Box::new(Expression::Expressions(vec![])),
-                ),
-            ],
-            None,
-        ));
-        assert_eq!(if_expr(input), Ok(("", expected)));
-
-        let input = r#"if 
-        (FALSE) {} else TRUE"#;
-        let expected = Box::new(Expression::If(
-            vec![(
-                Box::new(Expression::Literal(Literal::False)),
-                Box::new(Expression::Expressions(vec![])),
-            )],
-            Some(Box::new(Expression::Literal(Literal::True))),
-        ));
-        assert_eq!(if_expr(input), Ok(("", expected)));
-
-        let input = r#"if 
+        if (FALSE) {}"#,
+                Box::new(Expression::If(
+                    vec![
+                        (
+                            Box::new(Expression::Literal(Literal::False)),
+                            Box::new(Expression::Expressions(vec![])),
+                        ),
+                        (
+                            Box::new(Expression::Literal(Literal::False)),
+                            Box::new(Expression::Expressions(vec![])),
+                        ),
+                    ],
+                    None,
+                )),
+            ),
+            (
+                r#"if 
+        (FALSE) {} else TRUE"#,
+                Box::new(Expression::If(
+                    vec![(
+                        Box::new(Expression::Literal(Literal::False)),
+                        Box::new(Expression::Expressions(vec![])),
+                    )],
+                    Some(Box::new(Expression::Literal(Literal::True))),
+                )),
+            ),
+            (
+                r#"if 
         (FALSE) {} else
-        {}"#;
-        let expected = Box::new(Expression::If(
-            vec![(
-                Box::new(Expression::Literal(Literal::False)),
-                Box::new(Expression::Expressions(vec![])),
-            )],
-            Some(Box::new(Expression::Expressions(vec![]))),
-        ));
-        assert_eq!(if_expr(input), Ok(("", expected)));
+        {}"#,
+                Box::new(Expression::If(
+                    vec![(
+                        Box::new(Expression::Literal(Literal::False)),
+                        Box::new(Expression::Expressions(vec![])),
+                    )],
+                    Some(Box::new(Expression::Expressions(vec![]))),
+                )),
+            ),
+        ];
+        for (input, expected) in tests {
+            let input = CodeSpan::new(input);
+            assert_eq!(if_expr(input).unwrap().1, expected);
+        }
     }
 }

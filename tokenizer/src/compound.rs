@@ -9,16 +9,17 @@ use nom::{
 
 use crate::ast::CompoundStatement;
 use crate::expression::{condition, identifier};
+use crate::helpers::CodeSpan;
 use crate::{ast::Expression, expression::expr};
 
-pub fn repeat(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn repeat(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     map(
         preceded(tuple((tag("repeat"), multispace0)), expr),
         |repeat_expr| Box::new(Expression::Compound(CompoundStatement::Repeat(repeat_expr))),
     )(input)
 }
 
-pub fn while_stmt(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn while_stmt(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     map(
         tuple((preceded(tag("while"), condition), expr)),
         |(cond, while_expr)| {
@@ -29,8 +30,8 @@ pub fn while_stmt(input: &str) -> IResult<&str, Box<Expression>> {
     )(input)
 }
 
-pub fn for_stmt(input: &str) -> IResult<&str, Box<Expression>> {
-    fn for_cond(input: &str) -> IResult<&str, (Box<Expression>, Box<Expression>)> {
+pub fn for_stmt(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
+    fn for_cond(input: CodeSpan) -> IResult<CodeSpan, (Box<Expression>, Box<Expression>)> {
         delimited(
             tuple((
                 multispace0,
@@ -67,33 +68,48 @@ mod tests {
 
     #[test]
     fn test_repeat() {
-        let input = "repeat TRUE";
-        let expected = Box::new(Expression::Compound(CompoundStatement::Repeat(Box::new(
-            Expression::Literal(Literal::True),
-        ))));
-        assert_eq!(repeat(input), Ok(("", expected)));
-
-        let input = r#"repeat
-        {}"#;
-        let expected = Box::new(Expression::Compound(CompoundStatement::Repeat(Box::new(
-            Expression::Expressions(vec![]),
-        ))));
-        assert_eq!(repeat(input), Ok(("", expected)));
+        let tests = [
+            (
+                "repeat TRUE",
+                Box::new(Expression::Compound(CompoundStatement::Repeat(Box::new(
+                    Expression::Literal(Literal::True),
+                )))),
+            ),
+            (
+                r#"repeat
+        {}"#,
+                Box::new(Expression::Compound(CompoundStatement::Repeat(Box::new(
+                    Expression::Expressions(vec![]),
+                )))),
+            ),
+        ];
+        for (input, expected) in tests {
+            let input = CodeSpan::new(input);
+            assert_eq!(repeat(input).unwrap().1, expected);
+        }
     }
 
     #[test]
     fn test_while() {
-        let input = "while(TRUE)FALSE";
-        let expected = Box::new(Expression::Compound(CompoundStatement::While(
-            Box::new(Expression::Literal(Literal::True)),
-            Box::new(Expression::Literal(Literal::False)),
-        )));
-        assert_eq!(while_stmt(input), Ok(("", expected)));
+        let tests = [(
+            "while(TRUE)FALSE",
+            Box::new(Expression::Compound(CompoundStatement::While(
+                Box::new(Expression::Literal(Literal::True)),
+                Box::new(Expression::Literal(Literal::False)),
+            ))),
+        )];
+        for (input, expected) in tests.clone() {
+            let input = CodeSpan::new(input);
+            assert_eq!(while_stmt(input).unwrap().1, expected);
+        }
 
         let input_with_nl = r#"while
         (TRUE)
         FALSE"#;
-        assert_eq!(while_stmt(input), while_stmt(input_with_nl));
+        assert_eq!(
+            while_stmt(CodeSpan::new(tests[0].0)).unwrap().1,
+            while_stmt(CodeSpan::new(input_with_nl)).unwrap().1
+        );
     }
 
     #[test]
@@ -104,7 +120,7 @@ mod tests {
             Box::new(Expression::Literal(Literal::True)),
             Box::new(Expression::Literal(Literal::True)),
         )));
-        assert_eq!(for_stmt(input), Ok(("", expected)));
+        assert_eq!(for_stmt(CodeSpan::new(input)).unwrap().1, expected);
 
         let input_with_nl = r#"for 
         (
@@ -113,6 +129,9 @@ mod tests {
         TRUE
         )
         TRUE"#;
-        assert_eq!(for_stmt(input), for_stmt(input_with_nl));
+        assert_eq!(
+            for_stmt(CodeSpan::new(input)).unwrap().1,
+            for_stmt(CodeSpan::new(input_with_nl)).unwrap().1
+        );
     }
 }

@@ -9,21 +9,24 @@ use nom::{
     IResult, Parser,
 };
 
-use crate::ast::{Expression, Literal, Na};
+use crate::{
+    ast::{Expression, Literal, Na},
+    helpers::CodeSpan,
+};
 
-fn true_literal(input: &str) -> IResult<&str, Literal> {
+fn true_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     map(tag("TRUE"), |_| Literal::True)(input)
 }
 
-fn false_literal(input: &str) -> IResult<&str, Literal> {
+fn false_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     map(tag("FALSE"), |_| Literal::False)(input)
 }
 
-fn null_literal(input: &str) -> IResult<&str, Literal> {
+fn null_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     map(tag("NULL"), |_| Literal::Null)(input)
 }
 
-fn na_literal(input: &str) -> IResult<&str, Literal> {
+fn na_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     alt((
         map(tag("NA_integer_"), |_| Literal::Na(Na::Integer)),
         map(tag("NA_real_"), |_| Literal::Na(Na::Real)),
@@ -33,15 +36,15 @@ fn na_literal(input: &str) -> IResult<&str, Literal> {
     ))(input)
 }
 
-fn nan_literal(input: &str) -> IResult<&str, Literal> {
+fn nan_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     map(tag("NaN"), |_| Literal::NaN)(input)
 }
 
-fn inf_literal(input: &str) -> IResult<&str, Literal> {
+fn inf_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     map(tag("Inf"), |_| Literal::Inf)(input)
 }
 
-fn placeholder(input: &str) -> IResult<&str, Literal> {
+fn placeholder(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     map(tag("_"), |_| Literal::Placeholder)(input)
 }
 
@@ -62,11 +65,11 @@ fn placeholder(input: &str) -> IResult<&str, Literal> {
 /// A ‘nul’ (\0) is not allowed in a character string,
 /// so using \0 in a string constant terminates the constant (usually with a warning):
 /// further characters up to the closing quote are scanned but ignored.
-pub fn string_literal(input: &str) -> IResult<&str, Literal> {
-    fn parse_delimited_string<'a, E: ParseError<&'a str>>(
+pub fn string_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
+    fn parse_delimited_string<'a, E: ParseError<CodeSpan<'a>>>(
         delimited_by: &'a str,
         string_chars: &'a str,
-    ) -> impl Parser<&'a str, &'a str, E> {
+    ) -> impl Parser<CodeSpan<'a>, CodeSpan<'a>, E> {
         delimited(
             tag(delimited_by),
             escaped(none_of(string_chars), '\\', one_of("\\nrtbafvxuU'\"")),
@@ -79,7 +82,7 @@ pub fn string_literal(input: &str) -> IResult<&str, Literal> {
             parse_delimited_string("\"", "\\\""),
             parse_delimited_string("\'", "\\\'"),
         )),
-        |s: &str| Literal::String(s.to_owned()),
+        |s: CodeSpan| Literal::String(s.to_string()),
     )(input)
 }
 
@@ -87,8 +90,8 @@ pub fn string_literal(input: &str) -> IResult<&str, Literal> {
 /// followed by zero or more digits, ‘a-f’ or ‘A-F’. Hexadecimal floating point
 /// constants are supported using C99 syntax, e.g. ‘0x1.1p1’.
 const HEXADECIMAL_DIGITS: &str = "0123456789abcdefABCDEF";
-fn hexadecimal(input: &str) -> IResult<&str, Literal> {
-    fn hex_prefix(input: &str) -> IResult<&str, &str> {
+fn hexadecimal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
+    fn hex_prefix(input: CodeSpan) -> IResult<CodeSpan, CodeSpan> {
         alt((tag("0x"), tag("0X")))(input)
     }
     map(
@@ -113,11 +116,11 @@ fn hexadecimal(input: &str) -> IResult<&str, Literal> {
                 many1(one_of(HEXADECIMAL_DIGITS)),
             ))),
         )),
-        |num| Literal::Number(num.to_owned()),
+        |num| Literal::Number(num.to_string()),
     )(input)
 }
 
-fn decimal(input: &str) -> IResult<&str, &str> {
+fn decimal(input: CodeSpan) -> IResult<CodeSpan, CodeSpan> {
     recognize(many1(one_of("0123456789")))(input)
 }
 
@@ -129,8 +132,8 @@ fn decimal(input: &str) -> IResult<&str, &str> {
 /// Either the fractional or the decimal part can be empty, but not both at once.
 /// Valid numeric constants: 1 10 0.1 .2 1e-7 1.2e+7
 /// Adapted from https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#floating-point-numbers
-fn number(input: &str) -> IResult<&str, Literal> {
-    // The below doesn't work with &str, would need to cast it to u8 and then back to &str
+fn number(input: CodeSpan) -> IResult<CodeSpan, Literal> {
+    // The below doesn't work with CodeSpan, would need to cast it to u8 and then back to CodeSpan
     // map(recognize_float, |num| Literal::Number(num))(input)
     map(
         alt((
@@ -156,11 +159,11 @@ fn number(input: &str) -> IResult<&str, Literal> {
             ))),
             recognize(decimal),
         )),
-        |num| Literal::Number(num.to_owned()),
+        |num| Literal::Number(num.to_string()),
     )(input)
 }
 
-fn number_literal(input: &str) -> IResult<&str, Literal> {
+fn number_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     alt((hexadecimal, number))(input)
 }
 
@@ -177,7 +180,7 @@ fn number_literal(input: &str) -> IResult<&str, Literal> {
 /// Valid integer constants:  1L, 0x10L, 1000000L, 1e6L
 /// Valid numeric constants:  1.1L, 1e-3L, 0x1.1p-2
 /// Syntax error:  12iL 0x1.1
-fn integer_literal(input: &str) -> IResult<&str, Literal> {
+fn integer_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     map(
         tuple((number_literal, nom::character::complete::char('L'))),
         |(num, _)| match num {
@@ -187,7 +190,7 @@ fn integer_literal(input: &str) -> IResult<&str, Literal> {
     )(input)
 }
 
-fn complex_literal(input: &str) -> IResult<&str, Literal> {
+fn complex_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     map(
         tuple((number, nom::character::complete::char('i'))),
         |(num, _)| match num {
@@ -197,7 +200,7 @@ fn complex_literal(input: &str) -> IResult<&str, Literal> {
     )(input)
 }
 
-pub fn literal(input: &str) -> IResult<&str, Box<Expression>> {
+pub fn literal(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     map(
         alt((
             true_literal,
@@ -218,8 +221,6 @@ pub fn literal(input: &str) -> IResult<&str, Box<Expression>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::assert_parse_eq;
-
     use super::*;
 
     #[test]
@@ -239,7 +240,10 @@ mod tests {
             Na::Character,
         ];
         for (example, expected) in examples.iter().zip(expected) {
-            assert_eq!(na_literal(example), Ok(("", Literal::Na(expected))));
+            assert_eq!(
+                na_literal(CodeSpan::new(example)).unwrap().1,
+                Literal::Na(expected)
+            );
         }
     }
 
@@ -247,21 +251,21 @@ mod tests {
     fn test_hexadecimal() {
         let valid_examples = ["0X1", "0x0", "0xABCDEF", "0xabcdef", "0X1234567890abcdef"];
         for example in valid_examples {
-            assert_parse_eq(
-                hexadecimal(example),
-                IResult::Ok(("", Literal::Number(example.to_owned()))),
+            assert_eq!(
+                hexadecimal(CodeSpan::new(example)).unwrap().1,
+                Literal::Number(example.to_string()),
             )
         }
         let invalid_examples = [".3", "_something", "123", "0X\n0"];
         for example in invalid_examples {
-            assert!(hexadecimal(example).is_err())
+            assert!(hexadecimal(CodeSpan::new(example)).is_err())
         }
 
         // Floating point
         let input = ["0x0.1p10", "0x.1p10", "0x0.1P10"];
         for example in input {
             let expected = Literal::Number(example.to_string());
-            assert_eq!(hexadecimal(example), Ok(("", expected)));
+            assert_eq!(hexadecimal(CodeSpan::new(example)).unwrap().1, expected);
         }
     }
 
@@ -269,14 +273,17 @@ mod tests {
     fn test_number() {
         let valid_examples = ["0.1", ".2", "1e-7", "1.2e+7"];
         for example in valid_examples {
-            assert_parse_eq(
-                number(example),
-                IResult::Ok(("", Literal::Number(example.to_owned()))),
+            assert_eq!(
+                number(CodeSpan::new(example)).unwrap().1,
+                Literal::Number(example.to_string()),
             )
         }
         let invalid_examples = [".something", "_something", "a123", "X\n0"];
         for example in invalid_examples {
-            assert!(number(example).is_err(), "Panicked at: {example}")
+            assert!(
+                number(CodeSpan::new(example)).is_err(),
+                "Panicked at: {example}"
+            )
         }
     }
 
@@ -296,14 +303,14 @@ mod tests {
             "1.2e+7",
         ];
         for example in valid_examples {
-            assert_parse_eq(
-                number_literal(example),
-                IResult::Ok(("", Literal::Number(example.to_owned()))),
+            assert_eq!(
+                number_literal(CodeSpan::new(example)).unwrap().1,
+                Literal::Number(example.to_string()),
             )
         }
         let invalid_examples = ["something", "\"something\"", "\"0.3\""];
         for example in invalid_examples {
-            assert!(number_literal(example).is_err())
+            assert!(number_literal(CodeSpan::new(example)).is_err())
         }
     }
 
@@ -311,14 +318,17 @@ mod tests {
     fn test_integer_literal() {
         let valid_examples = ["0.1L", ".2L", "1e-7L", "1.2e+7L", "0X0L", "0x0L"];
         for example in valid_examples {
-            assert_parse_eq(
-                integer_literal(example),
-                IResult::Ok(("", Literal::Integer(example.to_owned()))),
+            assert_eq!(
+                integer_literal(CodeSpan::new(example)).unwrap().1,
+                Literal::Integer(example.to_owned()),
             )
         }
         let invalid_examples = ["123", ".something", "_something", "a123", "X\n0"];
         for example in invalid_examples {
-            assert!(integer_literal(example).is_err(), "Panicked at: {example}")
+            assert!(
+                integer_literal(CodeSpan::new(example)).is_err(),
+                "Panicked at: {example}"
+            )
         }
     }
 
@@ -326,59 +336,68 @@ mod tests {
     fn test_complex_literal() {
         let valid_examples = ["0.1i", ".2i", "1e-7i", "1.2e+7i"];
         for example in valid_examples {
-            assert_parse_eq(
-                complex_literal(example),
-                IResult::Ok(("", Literal::Complex(example.to_owned()))),
+            assert_eq!(
+                complex_literal(CodeSpan::new(example)).unwrap().1,
+                Literal::Complex(example.to_owned()),
             )
         }
         let invalid_examples = ["123", ".something", "_something", "a123", "X\n0"];
         for example in invalid_examples {
-            assert!(integer_literal(example).is_err(), "Panicked at: {example}")
+            assert!(
+                integer_literal(CodeSpan::new(example)).is_err(),
+                "Panicked at: {example}"
+            )
         }
     }
 
     #[test]
     fn test_string_literal() {
         // " delimited
-        assert_parse_eq(
-            string_literal("\"Something\""),
-            IResult::Ok(("", Literal::String(String::from("Something")))),
+        assert_eq!(
+            string_literal(CodeSpan::new("\"Something\"")).unwrap().1,
+            Literal::String(String::from("Something")),
         );
-        assert_parse_eq(
-            string_literal("\"\\\\\\\"\""), // Printed as: "\\\""
-            IResult::Ok(("", Literal::String(String::from("\\\\\\\"")))),
+        assert_eq!(
+            string_literal(CodeSpan::new("\"\\\\\\\"\"")).unwrap().1, // Printed as: "\\\""
+            Literal::String(String::from("\\\\\\\"")),
         );
-        assert_parse_eq(
-            string_literal("\"apostro\'phe\""),
-            IResult::Ok(("", Literal::String(String::from("apostro\'phe")))),
+        assert_eq!(
+            string_literal(CodeSpan::new("\"apostro\'phe\"")).unwrap().1,
+            Literal::String(String::from("apostro\'phe")),
         );
-        assert_parse_eq(
-            string_literal("\"Something\" test"),
-            IResult::Ok((" test", Literal::String(String::from("Something")))),
+        assert_eq!(
+            string_literal(CodeSpan::new("\"Something\" test"))
+                .unwrap()
+                .1,
+            Literal::String(String::from("Something"))
         );
 
         // ' delimited
-        assert_parse_eq(
-            string_literal("\"Something\""),
-            IResult::Ok(("", Literal::String(String::from("Something")))),
+        assert_eq!(
+            string_literal(CodeSpan::new("\"Something\"")).unwrap().1,
+            Literal::String(String::from("Something"))
         );
-        assert_parse_eq(
-            string_literal("\"\\\\\\\"\""), // Printed as: "\\\""
-            IResult::Ok(("", Literal::String(String::from("\\\\\\\"")))),
+        assert_eq!(
+            string_literal(CodeSpan::new("\"\\\\\\\"\"")).unwrap().1, // Printed as: "\\\""
+            Literal::String(String::from("\\\\\\\"")),
         );
-        assert_parse_eq(
-            string_literal("\'apostro\"phe\'"),
-            IResult::Ok(("", Literal::String(String::from("apostro\"phe")))),
+        assert_eq!(
+            string_literal(CodeSpan::new("\'apostro\"phe\'")).unwrap().1,
+            Literal::String(String::from("apostro\"phe"))
         );
-        assert_parse_eq(
-            string_literal("\"Something\" test"),
-            IResult::Ok((" test", Literal::String(String::from("Something")))),
+        assert_eq!(
+            string_literal(CodeSpan::new("\"Something\" test"))
+                .unwrap()
+                .1,
+            Literal::String(String::from("Something"))
         );
 
         // new lines
-        let input = r#""Something 
-            Something""#;
+        let input = CodeSpan::new(
+            r#""Something 
+            Something""#,
+        );
         let expected = Literal::String("Something \n            Something".to_string());
-        assert_eq!(string_literal(input), Ok(("", expected)));
+        assert_eq!(string_literal(input).unwrap().1, expected);
     }
 }
