@@ -29,7 +29,7 @@ fn na_literal(input: &str) -> IResult<&str, Literal> {
         map(tag("NA_real_"), |_| Literal::Na(Na::Real)),
         map(tag("NA_complex_"), |_| Literal::Na(Na::Complex)),
         map(tag("NA_character_"), |_| Literal::Na(Na::Character)),
-        map(tag("NA"), |_| Literal::Na(Na::Na)),
+        map(tag("NA"), |_| Literal::Na(Na::Generic)),
     ))(input)
 }
 
@@ -231,7 +231,13 @@ mod tests {
             "NA_complex_",
             "NA_character_",
         ];
-        let expected = [Na::Na, Na::Integer, Na::Real, Na::Complex, Na::Character];
+        let expected = [
+            Na::Generic,
+            Na::Integer,
+            Na::Real,
+            Na::Complex,
+            Na::Character,
+        ];
         for (example, expected) in examples.iter().zip(expected) {
             assert_eq!(na_literal(example), Ok(("", Literal::Na(expected))));
         }

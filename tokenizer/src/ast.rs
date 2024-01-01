@@ -47,7 +47,7 @@ pub enum Uop {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Na {
-    Na,
+    Generic,
     Integer,
     Real,
     Complex,
