@@ -61,6 +61,7 @@ pub fn for_stmt(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
     )(input)
 }
 
+#[cfg(test)]
 mod tests {
     use crate::ast::Literal;
 
