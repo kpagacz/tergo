@@ -5,11 +5,11 @@ use crate::{
 };
 use nom::{
     branch::alt,
-    bytes::complete::{escaped, tag},
-    character::complete::{digit1, multispace0, newline, none_of, one_of, satisfy, space0},
+    bytes::complete::tag,
+    character::complete::{digit1, multispace0, newline, none_of, satisfy, space0},
     combinator::{map, not, opt, peek, recognize},
     error::ParseError,
-    multi::{fold_many0, many0, many1, separated_list0},
+    multi::{fold_many0, many0, separated_list0},
     sequence::{delimited, pair, preceded, tuple},
     IResult, InputTakeAtPosition, Parser,
 };
@@ -31,13 +31,6 @@ fn infix(input: &str) -> IResult<&str, Bop> {
     )(input)
 }
 
-fn uop(input: &str) -> IResult<&str, Uop> {
-    alt((
-        map(tag("+"), |_| Uop::Plus),
-        map(tag("-"), |_| Uop::Minus),
-        map(tag("!"), |_| Uop::Not),
-    ))(input)
-}
 /// Parses an identifier of a variable
 ///
 /// A variable can have a short name (like x and y) or a more descriptive name (age, carname, total_volume).
@@ -361,19 +354,6 @@ pub fn expr_or_assign_or_help(input: &str) -> IResult<&str, Box<Expression>> {
         map(
             tuple((expr, space0, tag("?"), multispace0, expr_or_assign_or_help)),
             |(e1, _, _, _, e2)| Box::new(Expression::Expressions(vec![*e1, *e2])),
-        ),
-        expr,
-    ))(input)
-}
-
-// expr_or_help:
-// expr |
-// expr_or_help '?' expr_or_help
-fn expr_or_help(input: &str) -> IResult<&str, Box<Expression>> {
-    alt((
-        map(
-            tuple((expr, space0, tag("?"), multispace0, expr_or_help)),
-            |(e1, _, _, _, e2)| Box::new(Expression::Bop(Bop::Questionmark, e1, e2)),
         ),
         expr,
     ))(input)
