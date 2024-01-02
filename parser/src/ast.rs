@@ -1,3 +1,5 @@
+use crate::helpers::CodeSpan;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Bop {
     // Arithmetic
@@ -85,13 +87,12 @@ pub enum Expression {
     // operator in other languages, so here we go...
     If(Vec<(AstNode, AstNode)>, Option<AstNode>),
     Function(FunctionDefinition), // function(args list) definition
-    Block(Vec<Expression>),
-    Assignment(Box<Expression>, Box<Expression>),
-    Library(String), // library(package)
-    Break,           // break
-    Next,            // next
+    Library(String),              // library(package)
+    Break,                        // break
+    Next,                         // next
     Expressions(Vec<AstNode>),
     Compound(CompoundStatement),
+    Comments(Vec<String>),
 }
 
 #[derive(Debug, PartialEq, Clone)]

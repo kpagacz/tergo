@@ -1,5 +1,6 @@
 use crate::{
     ast::*,
+    comment::comments,
     compound::{for_stmt, repeat, while_stmt},
     helpers::CodeSpan,
     literals::{literal, string_literal},
@@ -374,6 +375,7 @@ pub fn expr(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
             exprlist,
             tuple((multispace0, tag("}"))),
         ),
+        comments,
     ))(input)
 }
 
