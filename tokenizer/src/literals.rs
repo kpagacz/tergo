@@ -45,7 +45,9 @@ fn inf_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
 }
 
 fn placeholder(input: CodeSpan) -> IResult<CodeSpan, Literal> {
-    map(tag("_"), |_| Literal::Placeholder)(input)
+    map(nom::character::complete::char('_'), |_| {
+        Literal::Placeholder
+    })(input)
 }
 
 /// String constants are delimited by a pair of single (‘'’) or double (‘"’) quotes

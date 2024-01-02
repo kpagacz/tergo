@@ -1173,6 +1173,24 @@ mod tests {
                     Some(AstNode::new(Box::new(Expression::Expressions(vec![])))),
                 )),
             ),
+            // Multiline if body
+            (
+                r#"if (TRUE) {
+               TRUE
+               TRUE
+            }
+            "#,
+                Box::new(Expression::If(
+                    vec![(
+                        AstNode::new(Box::new(Expression::Literal(Literal::True))),
+                        AstNode::new(Box::new(Expression::Expressions(vec![
+                            AstNode::new(Box::new(Expression::Literal(Literal::True))),
+                            AstNode::new(Box::new(Expression::Literal(Literal::True))),
+                        ]))),
+                    )],
+                    None,
+                )),
+            ),
         ];
         for (input, expected) in tests {
             let input = CodeSpan::new(input);
