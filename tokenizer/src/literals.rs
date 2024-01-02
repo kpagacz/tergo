@@ -10,7 +10,7 @@ use nom::{
 };
 
 use crate::{
-    ast::{Expression, Literal, Na},
+    ast::{AstNode, Expression, Literal, Na},
     helpers::CodeSpan,
 };
 
@@ -200,7 +200,7 @@ fn complex_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
     )(input)
 }
 
-pub fn literal(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
+pub fn literal(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
     map(
         alt((
             true_literal,
@@ -215,7 +215,7 @@ pub fn literal(input: CodeSpan) -> IResult<CodeSpan, Box<Expression>> {
             integer_literal,
             string_literal,
         )),
-        |literal| Box::new(Expression::Literal(literal)),
+        |literal| AstNode::new(Box::new(Expression::Literal(literal))),
     )(input)
 }
 

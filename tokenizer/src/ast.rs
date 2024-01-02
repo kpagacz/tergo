@@ -76,38 +76,35 @@ pub enum Literal {
 pub enum Expression {
     Literal(Literal),
     Identifier(String),
-    Call(Box<Expression>, Vec<Argument>), // expr(arguments)
-    Subscript(Box<Expression>, Vec<Argument>, SubscriptType), // expr [[ sublist ]] | expr [ sublist ]
-    Uop(Uop, Box<Expression>),                                // Uop expr
-    Bop(Bop, Box<Expression>, Box<Expression>),               // lhs Bop rhs
-    MultiBop(Box<Expression>, Vec<(Bop, Expression)>),        // lhs (Bop rhs)+
+    Call(AstNode, Vec<Argument>),                     // expr(arguments)
+    Subscript(AstNode, Vec<Argument>, SubscriptType), // expr [[ sublist ]] | expr [ sublist ]
+    Uop(Uop, AstNode),                                // Uop expr
+    Bop(Bop, AstNode, AstNode),                       // lhs Bop rhs
+    MultiBop(AstNode, Vec<(Bop, AstNode)>),           // lhs (Bop rhs)+
     // In R if statements evaluate to value, like an ordinary ternary
     // operator in other languages, so here we go...
-    If(
-        Vec<(Box<Expression>, Box<Expression>)>,
-        Option<Box<Expression>>,
-    ),
+    If(Vec<(AstNode, AstNode)>, Option<AstNode>),
     Function(FunctionDefinition), // function(args list) definition
     Block(Vec<Expression>),
     Assignment(Box<Expression>, Box<Expression>),
     Library(String), // library(package)
     Break,           // break
     Next,            // next
-    Expressions(Vec<Expression>),
+    Expressions(Vec<AstNode>),
     Compound(CompoundStatement),
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum CompoundStatement {
-    Repeat(Box<Expression>),
-    While(Box<Expression>, Box<Expression>),
-    For(Box<Expression>, Box<Expression>, Box<Expression>),
+    Repeat(AstNode),
+    While(AstNode, AstNode),
+    For(AstNode, AstNode, AstNode),
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Argument {
-    Named(Box<Expression>, Box<Expression>),
-    Positional(Box<Expression>),
+    Named(AstNode, AstNode),
+    Positional(AstNode),
     Empty,
 }
 
@@ -126,8 +123,25 @@ pub enum FunctionDefinitionType {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionDefinition {
-    pub arg_names: Vec<Expression>,
-    pub arg_values: Vec<Option<Expression>>,
-    pub body: Box<Expression>,
+    pub arg_names: Vec<AstNode>,
+    pub arg_values: Vec<Option<AstNode>>,
+    pub body: AstNode,
     pub def_type: FunctionDefinitionType,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AstNode {
+    pub expr: Box<Expression>,
+    pub leading_comment: Option<String>,
+    pub trailing_comment: Option<String>,
+}
+
+impl AstNode {
+    pub fn new(expr: Box<Expression>) -> Self {
+        Self {
+            expr,
+            leading_comment: None,
+            trailing_comment: None,
+        }
+    }
 }

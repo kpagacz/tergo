@@ -7,9 +7,13 @@ use nom::{
     IResult,
 };
 
-use crate::{ast::Expression, expression::expr_or_assign_or_help, helpers::CodeSpan};
+use crate::{
+    ast::{AstNode, Expression},
+    expression::expr_or_assign_or_help,
+    helpers::CodeSpan,
+};
 
-pub fn program(input: CodeSpan) -> IResult<CodeSpan, Vec<Box<Expression>>> {
+pub fn program(input: CodeSpan) -> IResult<CodeSpan, Vec<AstNode>> {
     many0(alt((
         delimited(
             multispace0,
@@ -20,7 +24,9 @@ pub fn program(input: CodeSpan) -> IResult<CodeSpan, Vec<Box<Expression>>> {
                 multispace0,
             )),
         ),
-        map(multispace1, |_| Box::new(Expression::Expressions(vec![]))),
+        map(multispace1, |_| {
+            AstNode::new(Box::new(Expression::Expressions(vec![])))
+        }),
     )))(input)
 }
 
@@ -38,7 +44,7 @@ mod tests {
                 r#"
         TRUE
         "#,
-                vec![Box::new(Expression::Literal(Literal::True))],
+                vec![AstNode::new(Box::new(Expression::Literal(Literal::True)))],
             ),
             // empty program
             ("", vec![]),
@@ -50,8 +56,8 @@ mod tests {
         TRUE
         "#,
                 vec![
-                    Box::new(Expression::Literal(Literal::True)),
-                    Box::new(Expression::Literal(Literal::True)),
+                    AstNode::new(Box::new(Expression::Literal(Literal::True))),
+                    AstNode::new(Box::new(Expression::Literal(Literal::True))),
                 ],
             ),
             // multiline expression
@@ -61,19 +67,19 @@ mod tests {
         (FALSE) {} else 
         if (FALSE) {}
         "#,
-                vec![Box::new(Expression::If(
+                vec![AstNode::new(Box::new(Expression::If(
                     vec![
                         (
-                            Box::new(Expression::Literal(Literal::False)),
-                            Box::new(Expression::Expressions(vec![])),
+                            AstNode::new(Box::new(Expression::Literal(Literal::False))),
+                            AstNode::new(Box::new(Expression::Expressions(vec![]))),
                         ),
                         (
-                            Box::new(Expression::Literal(Literal::False)),
-                            Box::new(Expression::Expressions(vec![])),
+                            AstNode::new(Box::new(Expression::Literal(Literal::False))),
+                            AstNode::new(Box::new(Expression::Expressions(vec![]))),
                         ),
                     ],
                     None,
-                ))],
+                )))],
             ),
         ];
         for (input, expected) in tests {
