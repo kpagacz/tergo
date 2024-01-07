@@ -23,12 +23,16 @@ pub fn comments(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
     map(
         many1(delimited(space0, inline_comment, newline)),
         |comments| {
-            AstNode::new(Box::new(Expression::Comments(
-                comments
-                    .into_iter()
-                    .map(|comment| comment.to_string())
-                    .collect(),
-            )))
+            AstNode::new(
+                Box::new(Expression::Comments(
+                    comments
+                        .into_iter()
+                        .map(|comment| comment.to_string())
+                        .collect(),
+                )),
+                input.location_line(),
+                input.location_offset(),
+            )
         },
     )(input)
 }

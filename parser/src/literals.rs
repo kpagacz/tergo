@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
     bytes::complete::{escaped, tag},
-    character::complete::{none_of, one_of},
+    character::complete::{none_of, one_of, space0},
     combinator::{map, opt, recognize},
     error::ParseError,
     multi::many1,
@@ -11,6 +11,7 @@ use nom::{
 
 use crate::{
     ast::{AstNode, Expression, Literal, Na},
+    comment::inline_comment,
     helpers::CodeSpan,
 };
 
@@ -204,20 +205,31 @@ fn complex_literal(input: CodeSpan) -> IResult<CodeSpan, Literal> {
 
 pub fn literal(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
     map(
-        alt((
-            true_literal,
-            false_literal,
-            null_literal,
-            placeholder,
-            na_literal,
-            nan_literal,
-            inf_literal,
-            number_literal,
-            complex_literal,
-            integer_literal,
-            string_literal,
+        tuple((
+            alt((
+                true_literal,
+                false_literal,
+                null_literal,
+                placeholder,
+                na_literal,
+                nan_literal,
+                inf_literal,
+                number_literal,
+                complex_literal,
+                integer_literal,
+                string_literal,
+            )),
+            preceded(space0, opt(inline_comment)),
         )),
-        |literal| AstNode::new(Box::new(Expression::Literal(literal))),
+        |(literal, comment)| {
+            let mut node = AstNode::new(
+                Box::new(Expression::Literal(literal)),
+                input.location_line(),
+                input.location_offset(),
+            );
+            node.add_trailing_comment(comment.map(|inside| inside.to_string()));
+            node
+        },
     )(input)
 }
 
@@ -401,5 +413,13 @@ mod tests {
         );
         let expected = Literal::String("Something \n            Something".to_string());
         assert_eq!(string_literal(input).unwrap().1, expected);
+    }
+
+    #[test]
+    fn test_inline_comments() {
+        let example = CodeSpan::new("TRUE # comment");
+        let res = literal(example).unwrap().1;
+        assert_eq!(res.expr, Box::new(Expression::Literal(Literal::True)));
+        assert_eq!(res.trailing_comment.unwrap(), "# comment".to_string());
     }
 }

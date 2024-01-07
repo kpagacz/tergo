@@ -1,5 +1,3 @@
-use crate::helpers::CodeSpan;
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Bop {
     // Arithmetic
@@ -130,19 +128,33 @@ pub struct FunctionDefinition {
     pub def_type: FunctionDefinitionType,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct AstNode {
     pub expr: Box<Expression>,
     pub leading_comment: Option<String>,
     pub trailing_comment: Option<String>,
+    pub line: u32,
+    pub offset: usize,
 }
 
 impl AstNode {
-    pub fn new(expr: Box<Expression>) -> Self {
+    pub fn new(expr: Box<Expression>, line: u32, offset: usize) -> Self {
         Self {
             expr,
             leading_comment: None,
             trailing_comment: None,
+            line,
+            offset,
         }
+    }
+
+    pub fn add_trailing_comment(&mut self, comment: Option<String>) {
+        self.trailing_comment = comment;
+    }
+}
+
+impl PartialEq for AstNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.expr.eq(&other.expr)
     }
 }

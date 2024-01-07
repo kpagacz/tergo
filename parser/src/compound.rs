@@ -16,9 +16,11 @@ pub fn repeat(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
     map(
         preceded(tuple((tag("repeat"), multispace0)), expr),
         |repeat_expr| {
-            AstNode::new(Box::new(Expression::Compound(CompoundStatement::Repeat(
-                repeat_expr,
-            ))))
+            AstNode::new(
+                Box::new(Expression::Compound(CompoundStatement::Repeat(repeat_expr))),
+                input.location_line(),
+                input.location_offset(),
+            )
         },
     )(input)
 }
@@ -27,9 +29,13 @@ pub fn while_stmt(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
     map(
         tuple((preceded(tag("while"), condition), expr)),
         |(cond, while_expr)| {
-            AstNode::new(Box::new(Expression::Compound(CompoundStatement::While(
-                cond, while_expr,
-            ))))
+            AstNode::new(
+                Box::new(Expression::Compound(CompoundStatement::While(
+                    cond, while_expr,
+                ))),
+                input.location_line(),
+                input.location_offset(),
+            )
         },
     )(input)
 }
@@ -58,9 +64,13 @@ pub fn for_stmt(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
     map(
         tuple((tag("for"), for_cond, expr)),
         |(_, (symbol, cond_expr), for_expr)| {
-            AstNode::new(Box::new(Expression::Compound(CompoundStatement::For(
-                symbol, cond_expr, for_expr,
-            ))))
+            AstNode::new(
+                Box::new(Expression::Compound(CompoundStatement::For(
+                    symbol, cond_expr, for_expr,
+                ))),
+                input.location_line(),
+                input.location_offset(),
+            )
         },
     )(input)
 }
@@ -77,14 +87,14 @@ mod tests {
             (
                 "repeat TRUE",
                 Box::new(Expression::Compound(CompoundStatement::Repeat(
-                    AstNode::new(Box::new(Expression::Literal(Literal::True))),
+                    AstNode::new(Box::new(Expression::Literal(Literal::True)), 0, 0),
                 ))),
             ),
             (
                 r#"repeat
         {}"#,
                 Box::new(Expression::Compound(CompoundStatement::Repeat(
-                    AstNode::new(Box::new(Expression::Expressions(vec![]))),
+                    AstNode::new(Box::new(Expression::Expressions(vec![])), 0, 0),
                 ))),
             ),
         ];
@@ -99,8 +109,8 @@ mod tests {
         let tests = [(
             "while(TRUE)FALSE",
             Box::new(Expression::Compound(CompoundStatement::While(
-                AstNode::new(Box::new(Expression::Literal(Literal::True))),
-                AstNode::new(Box::new(Expression::Literal(Literal::False))),
+                AstNode::new(Box::new(Expression::Literal(Literal::True)), 0, 0),
+                AstNode::new(Box::new(Expression::Literal(Literal::False)), 0, 0),
             ))),
         )];
         for (input, expected) in tests.clone() {
@@ -121,9 +131,9 @@ mod tests {
     fn test_for() {
         let input = "for(a in TRUE) TRUE";
         let expected = Box::new(Expression::Compound(CompoundStatement::For(
-            AstNode::new(Box::new(Expression::Identifier("a".to_string()))),
-            AstNode::new(Box::new(Expression::Literal(Literal::True))),
-            AstNode::new(Box::new(Expression::Literal(Literal::True))),
+            AstNode::new(Box::new(Expression::Identifier("a".to_string())), 0, 0),
+            AstNode::new(Box::new(Expression::Literal(Literal::True)), 0, 0),
+            AstNode::new(Box::new(Expression::Literal(Literal::True)), 0, 0),
         )));
         assert_eq!(for_stmt(CodeSpan::new(input)).unwrap().1.expr, expected);
 
