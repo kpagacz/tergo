@@ -280,17 +280,28 @@ impl<'a> Tokenizer<'a> {
                 '#' => {
                     self.comment();
                 }
+                '~' => {
+                    self.push_token(Tilde);
+                    self.next();
+                }
+                '@' => {
+                    self.push_token(Slot);
+                    self.next();
+                }
                 ':' => {
                     self.next();
                     match self.source[self.it..] {
                         [':', ':', ..] => {
                             self.push_token(NsGetInt);
                             self.next();
+                            self.next();
                         }
-                        [':', ..] => self.push_token(NsGet),
-                        _ => panic!("Script ended at ':'"),
+                        [':', ..] => {
+                            self.push_token(NsGet);
+                            self.next()
+                        }
+                        _ => self.push_token(Colon),
                     }
-                    self.next();
                 }
                 _ => unreachable!(),
             }

@@ -80,6 +80,9 @@ token_parser!(unary_not, UnaryNot);
 token_parser!(inline_comment, InlineComment(_));
 token_parser!(comment, Comment(_));
 
+// EOF
+token_parser!(eof, EOF);
+
 #[cfg(test)]
 mod tests {
     use crate::commented_tokens;

@@ -85,6 +85,10 @@ pub enum Token<'a> {
     Modulo,
     NsGet,
     NsGetInt,
+    Tilde,
+    Colon,
+    Slot,
+    Special(&'a str),
 
     // Unary operators
     UnaryNot,
@@ -92,4 +96,7 @@ pub enum Token<'a> {
     // Comments
     InlineComment(&'a str),
     Comment(&'a str),
+
+    // EOF
+    EOF,
 }

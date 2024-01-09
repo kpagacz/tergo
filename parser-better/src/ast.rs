@@ -27,6 +27,11 @@ pub(crate) enum Expression<'a> {
     Literal(&'a CommentedToken<'a>),
     Comment(&'a CommentedToken<'a>),
     Term(Box<TermExpr<'a>>),
+    Bop(
+        &'a CommentedToken<'a>,
+        Box<Expression<'a>>,
+        Box<Expression<'a>>,
+    ),
 }
 
 #[derive(Debug, Clone, PartialEq)]
