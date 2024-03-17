@@ -85,13 +85,15 @@ token_parser!(eof, EOF);
 
 #[cfg(test)]
 mod tests {
-    use crate::commented_tokens;
+    use crate::helpers::commented_tokens;
+    use crate::helpers::located_tokens;
 
     use super::*;
 
     #[test]
     fn symbols() {
-        let examples = [commented_tokens!(Symbol("a"))];
+        let located_examples = located_tokens!(Symbol("a"));
+        let examples = [commented_tokens(&located_examples)];
 
         for tokens in examples {
             let res = symbol(&tokens).unwrap().1;
@@ -101,7 +103,9 @@ mod tests {
 
     #[test]
     fn literals() {
-        let examples = [commented_tokens!(Literal("a"))];
+        let located_examples = located_tokens!(Literal("a"));
+        let examples = [commented_tokens(&located_examples)];
+
         for tokens in examples {
             let res = literal(&tokens).unwrap().1;
             assert_eq!(res, &tokens[0]);

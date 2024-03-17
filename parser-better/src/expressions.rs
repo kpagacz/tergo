@@ -132,7 +132,6 @@ fn is_binary_operator(token: &CommentedToken) -> bool {
             | LowerThan
             | LowerEqual
             | Equal
-            | NotEqual
             | Plus
             | Minus
             | Multiply
@@ -189,7 +188,7 @@ impl ExprParser {
     }
 }
 
-fn expr<'a, 'b: 'a>(
+pub(crate) fn expr<'a, 'b: 'a>(
     tokens: &'b [CommentedToken<'a>],
 ) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
     let (tokens, term) = term_expr(tokens)?;
@@ -199,12 +198,13 @@ fn expr<'a, 'b: 'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::commented_tokens;
+    use crate::helpers::commented_tokens;
+    use crate::helpers::located_tokens;
 
     use super::*;
     use tokenizer::{
         LocatedToken,
-        Token::{self, *},
+        Token::{self},
     };
 
     fn binary_op_tokens() -> Vec<Token<'static>> {
@@ -241,14 +241,16 @@ mod tests {
 
     #[test]
     fn symbol_exprs() {
-        let tokens = commented_tokens!(Symbol("a"));
+        let located_tokens = located_tokens!(Symbol("a"));
+        let tokens = commented_tokens(&located_tokens);
         let res = symbol_expr(&tokens).unwrap().1;
         assert_eq!(res, Expression::Symbol(&tokens[0]));
     }
 
     #[test]
     fn literal_exprs() {
-        let tokens = commented_tokens!(Literal("1"));
+        let located_tokens = located_tokens!(Literal("1"));
+        let tokens = commented_tokens(&located_tokens);
         let res = literal_expr(&tokens).unwrap().1;
         assert_eq!(res, Expression::Literal(&tokens[0]));
     }
@@ -256,7 +258,8 @@ mod tests {
     #[test]
     fn expressions() {
         for token in binary_op_tokens() {
-            let tokens = commented_tokens!(Literal("1"), token, Literal("1"), EOF);
+            let located_tokens = located_tokens!(Literal("1"), token, Literal("1"), EOF);
+            let tokens = commented_tokens(&located_tokens);
             let res = expr(&tokens).unwrap().1;
             assert_eq!(
                 res,
@@ -271,7 +274,9 @@ mod tests {
 
     #[test]
     fn right_associative_bop() {
-        let tokens = commented_tokens!(Literal("1"), Power, Literal("2"), Power, Literal("3"), EOF);
+        let located_tokens =
+            located_tokens!(Literal("1"), Power, Literal("2"), Power, Literal("3"), EOF);
+        let tokens = commented_tokens(&located_tokens);
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,
@@ -289,7 +294,9 @@ mod tests {
 
     #[test]
     fn left_associative_bop() {
-        let tokens = commented_tokens!(Literal("1"), Plus, Literal("2"), Plus, Literal("3"), EOF);
+        let located_tokens =
+            located_tokens!(Literal("1"), Plus, Literal("2"), Plus, Literal("3"), EOF);
+        let tokens = commented_tokens(&located_tokens);
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,
@@ -307,7 +314,7 @@ mod tests {
 
     #[test]
     fn bop_precedence() {
-        let tokens = commented_tokens!(
+        let located_tokens = located_tokens!(
             Literal("1"),
             Multiply,
             Literal("2"),
@@ -315,6 +322,7 @@ mod tests {
             Literal("3"),
             EOF
         );
+        let tokens = commented_tokens(&located_tokens);
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,

@@ -1,15 +1,15 @@
 use tokenizer::LocatedToken;
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct CommentedToken<'a> {
-    pub token: LocatedToken<'a>,
+pub struct CommentedToken<'a> {
+    pub token: &'a LocatedToken<'a>,
     pub leading_comments: &'a [LocatedToken<'a>],
     pub inline_comment: Option<LocatedToken<'a>>,
 }
 
 impl<'a> CommentedToken<'a> {
     pub fn new(
-        token: LocatedToken<'a>,
+        token: &'a LocatedToken<'a>,
         leading_comments: &'a [LocatedToken<'a>],
         inline_comment: Option<LocatedToken<'a>>,
     ) -> Self {
@@ -22,7 +22,7 @@ impl<'a> CommentedToken<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum Expression<'a> {
+pub enum Expression<'a> {
     Symbol(&'a CommentedToken<'a>),
     Literal(&'a CommentedToken<'a>),
     Comment(&'a CommentedToken<'a>),
@@ -35,9 +35,8 @@ pub(crate) enum Expression<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct TermExpr<'a> {
+pub struct TermExpr<'a> {
     pub pre_delimiters: Option<&'a CommentedToken<'a>>,
-
     pub term: Expression<'a>,
     pub post_delimiters: Option<&'a CommentedToken<'a>>,
 }

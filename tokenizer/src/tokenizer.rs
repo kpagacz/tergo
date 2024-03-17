@@ -437,14 +437,15 @@ impl<'a> Tokenizer<'a> {
         while self.it < self.source.len() && self.source[self.it] != '\n' {
             self.next();
         }
-        if let Some(last_token) = self.tokens.last() {
-            if last_token.token == Newline {
-                self.push_token(Comment(&self.raw_source[start_it..self.it]));
-            } else {
-                self.push_token(InlineComment(&self.raw_source[start_it..self.it]));
-            }
-        } else {
-            self.push_token(Comment(&self.raw_source[start_it..self.it]));
+
+        match self.tokens.last() {
+            Some(LocatedToken {
+                token: Newline,
+                line: _,
+                offset: _,
+            }) => self.push_token(Comment(&self.raw_source[start_it..self.it])),
+            Some(_) => self.push_token(InlineComment(&self.raw_source[start_it..self.it])),
+            None => self.push_token(Comment(&self.raw_source[start_it..self.it])),
         }
     }
 
