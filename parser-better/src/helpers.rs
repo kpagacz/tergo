@@ -1,6 +1,7 @@
 use crate::ast::CommentedToken;
 use tokenizer::LocatedToken;
 
+#[macro_export]
 macro_rules! located_tokens {
     ($($args:expr),*) => {{
         vec![
@@ -10,11 +11,9 @@ macro_rules! located_tokens {
         ]
     }}
 }
-pub(crate) use located_tokens;
+pub use located_tokens;
 
-pub(crate) fn commented_tokens<'a>(
-    located_tokens: &'a [LocatedToken<'a>],
-) -> Vec<CommentedToken<'a>> {
+pub fn commented_tokens<'a>(located_tokens: &'a [LocatedToken<'a>]) -> Vec<CommentedToken<'a>> {
     located_tokens
         .iter()
         .map(|token| CommentedToken::new(token, &[], None))

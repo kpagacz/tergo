@@ -21,6 +21,12 @@ impl<'a> CommentedToken<'a> {
     }
 }
 
+impl<'a> From<&'a LocatedToken<'a>> for CommentedToken<'a> {
+    fn from(token: &'a LocatedToken<'a>) -> Self {
+        Self::new(token, &[], None)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression<'a> {
     Symbol(&'a CommentedToken<'a>),

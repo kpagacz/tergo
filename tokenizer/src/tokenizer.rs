@@ -306,6 +306,8 @@ impl<'a> Tokenizer<'a> {
                 _ => unreachable!(),
             }
         }
+        self.tokens
+            .push(LocatedToken::new(EOF, self.line, self.offset));
         self.tokens.clone()
     }
 

@@ -26,7 +26,6 @@ fn literal_expr<'a, 'b: 'a>(
 fn term_expr<'a, 'b: 'a>(
     tokens: &'b [CommentedToken<'a>],
 ) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
-    println!("term_expr {tokens:?}");
     alt((
         map(symbol_expr, |symbol| symbol),
         map(literal_expr, |literal| literal),
