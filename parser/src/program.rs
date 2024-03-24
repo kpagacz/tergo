@@ -3,14 +3,14 @@ use nom::{branch::alt, combinator::map, multi::many0, sequence::tuple, IResult};
 use crate::ast::{CommentedToken, Expression};
 use crate::expressions::expr;
 use crate::token_parsers::{eof, newline, semicolon};
-use crate::whitespace::whitespace;
+use crate::whitespace::whitespace_or_comment;
 
 fn statement_or_expr<'a, 'b: 'a>(
     tokens: &'b [CommentedToken<'a>],
 ) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
     alt((
         map(tuple((expr, alt((semicolon, newline)))), |(expr, _)| expr),
-        map(whitespace, Expression::Whitespace),
+        map(whitespace_or_comment, Expression::Whitespace),
         map(eof, Expression::EOF),
     ))(tokens)
 }

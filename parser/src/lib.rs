@@ -4,7 +4,6 @@ pub(crate) mod expressions;
 pub mod helpers;
 pub mod parser;
 pub use parser::parse;
-pub(crate) mod whitespace;
-use crate::whitespace::whitespace;
 pub(crate) mod program;
 pub(crate) mod token_parsers;
+pub(crate) mod whitespace;
