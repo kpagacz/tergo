@@ -10,7 +10,7 @@ fn is_comment_or_newline(token: &CommentedToken) -> bool {
     matches!(token.token.token, Token::Comment(_) | Token::Newline)
 }
 
-pub(crate) fn whitespace<'a, 'b: 'a>(
+pub(crate) fn whitespace_or_comment<'a, 'b: 'a>(
     tokens: &'b [CommentedToken<'a>],
 ) -> IResult<&'b [CommentedToken<'a>], &'b [CommentedToken<'a>]> {
     if tokens.is_empty() {
@@ -37,12 +37,12 @@ mod tests {
     fn parses_newline() {
         let located_tokens = located_tokens![Token::Newline, Token::EOF];
         let tokens = commented_tokens(&located_tokens);
-        let res = whitespace(&tokens).unwrap().1;
+        let res = whitespace_or_comment(&tokens).unwrap().1;
         assert_eq!(res, &tokens[..1]);
 
         let located_tokens = located_tokens![Token::Newline, Token::Newline, Token::EOF];
         let tokens = commented_tokens(&located_tokens);
-        let res = whitespace(&tokens).unwrap().1;
+        let res = whitespace_or_comment(&tokens).unwrap().1;
         assert_eq!(res, &tokens[..2]);
     }
 
@@ -50,13 +50,13 @@ mod tests {
     fn parses_comments() {
         let located_tokens = located_tokens![Token::Comment("hello"), Token::EOF];
         let tokens = commented_tokens(&located_tokens);
-        let res = whitespace(&tokens).unwrap().1;
+        let res = whitespace_or_comment(&tokens).unwrap().1;
         assert_eq!(res, &tokens[..1]);
 
         let located_tokens =
             located_tokens![Token::Comment("hello"), Token::Comment("world"), Token::EOF];
         let tokens = commented_tokens(&located_tokens);
-        let res = whitespace(&tokens).unwrap().1;
+        let res = whitespace_or_comment(&tokens).unwrap().1;
         assert_eq!(res, &tokens[..2]);
     }
 
@@ -69,7 +69,7 @@ mod tests {
             Token::EOF
         ];
         let tokens = commented_tokens(&located_tokens);
-        let res = whitespace(&tokens).unwrap().1;
+        let res = whitespace_or_comment(&tokens).unwrap().1;
         assert_eq!(res, &tokens[..3]);
     }
 
@@ -77,7 +77,7 @@ mod tests {
     fn does_not_parse_eof() {
         let located_tokens = located_tokens![Token::EOF];
         let tokens = commented_tokens(&located_tokens);
-        let res = whitespace(&tokens);
+        let res = whitespace_or_comment(&tokens);
         assert!(res.is_err());
     }
 }
