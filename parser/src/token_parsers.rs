@@ -111,4 +111,12 @@ mod tests {
             assert_eq!(res, &tokens[0]);
         }
     }
+
+    #[test]
+    fn test_eof() {
+        let located_examples = located_tokens!(EOF);
+        let examples = commented_tokens(&located_examples);
+        let res = eof(&examples).unwrap().1;
+        assert_eq!(res, &examples[0]);
+    }
 }

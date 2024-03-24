@@ -11,7 +11,7 @@ fn test_cases() {
     let res = parse(&commented_tokens).unwrap();
     let expected = vec![
         parser::ast::Expression::Literal(&commented_tokens[0]),
-        parser::ast::Expression::Newline(&commented_tokens[1]),
+        parser::ast::Expression::Whitespace(&commented_tokens[1..2]),
         parser::ast::Expression::EOF(&commented_tokens[3]),
     ];
     assert_eq!(res, expected);

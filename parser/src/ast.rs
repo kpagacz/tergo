@@ -39,6 +39,7 @@ pub enum Expression<'a> {
         Box<Expression<'a>>,
     ),
     Newline(&'a CommentedToken<'a>),
+    Whitespace(&'a [CommentedToken<'a>]),
     EOF(&'a CommentedToken<'a>),
 }
 

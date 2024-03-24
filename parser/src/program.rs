@@ -3,13 +3,14 @@ use nom::{branch::alt, combinator::map, multi::many0, sequence::tuple, IResult};
 use crate::ast::{CommentedToken, Expression};
 use crate::expressions::expr;
 use crate::token_parsers::{eof, newline, semicolon};
+use crate::whitespace::whitespace;
 
 fn statement_or_expr<'a, 'b: 'a>(
     tokens: &'b [CommentedToken<'a>],
 ) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
     alt((
         map(tuple((expr, alt((semicolon, newline)))), |(expr, _)| expr),
-        map(newline, Expression::Newline),
+        map(whitespace, Expression::Whitespace),
         map(eof, Expression::EOF),
     ))(tokens)
 }
@@ -30,14 +31,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_newline() {
+    fn program_parses_newline() {
         let located_tokens = located_tokens![Token::Newline, Token::EOF];
         let tokens = commented_tokens(&located_tokens);
         let res = program(&tokens).unwrap().1;
 
         assert_eq!(
             res,
-            vec![Expression::Newline(&tokens[0]), Expression::EOF(&tokens[1])]
+            vec![
+                Expression::Whitespace(&tokens[..1]),
+                Expression::EOF(&tokens[1])
+            ]
         );
     }
 
@@ -66,7 +70,7 @@ mod tests {
             res,
             vec![
                 Expression::Literal(&tokens[0]),
-                Expression::Newline(&tokens[2]),
+                Expression::Whitespace(&tokens[2..3]),
                 Expression::EOF(&tokens[3]),
             ]
         );

@@ -137,6 +137,7 @@ impl<'a> Code for Expression<'a> {
             ),
             Expression::Newline(_) => (INDENT, Mode::Flat, Rc::new(Doc::Break("\n"))),
             Expression::EOF(_) => (INDENT, Mode::Flat, Rc::new(Doc::Break("\n"))),
+            Expression::Whitespace(_) => (INDENT, Mode::Flat, Rc::new(Doc::Break("\n"))),
         }
     }
 }
