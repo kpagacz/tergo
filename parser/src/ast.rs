@@ -38,6 +38,8 @@ pub enum Expression<'a> {
         Box<Expression<'a>>,
         Box<Expression<'a>>,
     ),
+    Newline(&'a CommentedToken<'a>),
+    EOF(&'a CommentedToken<'a>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

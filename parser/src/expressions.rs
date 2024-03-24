@@ -191,8 +191,12 @@ pub(crate) fn expr<'a, 'b: 'a>(
     tokens: &'b [CommentedToken<'a>],
 ) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
     let (tokens, term) = term_expr(tokens)?;
-    let parser = ExprParser(0);
-    parser.parse(term, tokens)
+    if !tokens.is_empty() {
+        let parser = ExprParser(0);
+        parser.parse(term, tokens)
+    } else {
+        Ok((tokens, term))
+    }
 }
 
 #[cfg(test)]

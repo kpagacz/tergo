@@ -4,10 +4,15 @@ use tokenizer::tokens::Token;
 #[test]
 fn symbols() {
     let examples = [
-        ("TRUE", vec![Token::Symbol("TRUE")]),
+        ("TRUE", vec![Token::Symbol("TRUE"), Token::EOF]),
         (
             "TRUE\nTRUE",
-            vec![Token::Symbol("TRUE"), Token::Newline, Token::Symbol("TRUE")],
+            vec![
+                Token::Symbol("TRUE"),
+                Token::Newline,
+                Token::Symbol("TRUE"),
+                Token::EOF,
+            ],
         ),
     ];
     for (example, expected_tokens) in examples {
@@ -26,11 +31,15 @@ fn comments() {
     let examples = [
         (
             "# Comment\n",
-            vec![Token::Comment("# Comment"), Token::Newline],
+            vec![Token::Comment("# Comment"), Token::Newline, Token::EOF],
         ),
         (
             "TRUE#Comment",
-            vec![Token::Symbol("TRUE"), Token::InlineComment("#Comment")],
+            vec![
+                Token::Symbol("TRUE"),
+                Token::InlineComment("#Comment"),
+                Token::EOF,
+            ],
         ),
     ];
     for (example, expected) in examples {
@@ -56,6 +65,7 @@ fn ifs() {
             Token::Symbol("TRUE"),
             Token::Else,
             Token::Symbol("FALSE"),
+            Token::EOF,
         ],
     )];
     for (example, expected) in examples {
@@ -72,14 +82,17 @@ fn ifs() {
 #[test]
 fn number_literals() {
     let examples = [
-        ("123", vec![Token::Literal("123")]),
-        ("123.0", vec![Token::Literal("123.0")]),
-        (".42e42", vec![Token::Literal(".42e42")]),
-        ("1e-10", vec![Token::Literal("1e-10")]),
-        ("1e+10", vec![Token::Literal("1e+10")]),
-        ("1e10", vec![Token::Literal("1e10")]),
-        ("0xabcdef", vec![Token::Literal("0xabcdef")]),
-        ("0xabcdef.1P28", vec![Token::Literal("0xabcdef.1P28")]),
+        ("123", vec![Token::Literal("123"), Token::EOF]),
+        ("123.0", vec![Token::Literal("123.0"), Token::EOF]),
+        (".42e42", vec![Token::Literal(".42e42"), Token::EOF]),
+        ("1e-10", vec![Token::Literal("1e-10"), Token::EOF]),
+        ("1e+10", vec![Token::Literal("1e+10"), Token::EOF]),
+        ("1e10", vec![Token::Literal("1e10"), Token::EOF]),
+        ("0xabcdef", vec![Token::Literal("0xabcdef"), Token::EOF]),
+        (
+            "0xabcdef.1P28",
+            vec![Token::Literal("0xabcdef.1P28"), Token::EOF],
+        ),
     ];
     for (example, expected) in examples {
         let mut tokenizer = Tokenizer::new(example);
@@ -97,7 +110,12 @@ fn binary_ops() {
     let examples = [
         (
             "1+1",
-            vec![Token::Literal("1"), Token::Plus, Token::Literal("1")],
+            vec![
+                Token::Literal("1"),
+                Token::Plus,
+                Token::Literal("1"),
+                Token::EOF,
+            ],
         ),
         (
             "1+1-1",
@@ -107,6 +125,7 @@ fn binary_ops() {
                 Token::Literal("1"),
                 Token::Minus,
                 Token::Literal("1"),
+                Token::EOF,
             ],
         ),
         (
@@ -117,6 +136,7 @@ fn binary_ops() {
                 Token::Literal("1"),
                 Token::Multiply,
                 Token::Literal("1"),
+                Token::EOF,
             ],
         ),
         (
@@ -127,6 +147,7 @@ fn binary_ops() {
                 Token::Literal("1"),
                 Token::Divide,
                 Token::Literal("1"),
+                Token::EOF,
             ],
         ),
         (
@@ -137,6 +158,7 @@ fn binary_ops() {
                 Token::Literal("1"),
                 Token::Power,
                 Token::Literal("1"),
+                Token::EOF,
             ],
         ),
         (
@@ -147,6 +169,7 @@ fn binary_ops() {
                 Token::Literal("1"),
                 Token::Modulo,
                 Token::Literal("1"),
+                Token::EOF,
             ],
         ),
     ];
@@ -171,6 +194,7 @@ fn function_definitions() {
                 Token::LParen,
                 Token::RParen,
                 Token::Symbol("TRUE"),
+                Token::EOF,
             ],
         ),
         (
@@ -181,6 +205,7 @@ fn function_definitions() {
                 Token::Symbol("x"),
                 Token::RParen,
                 Token::Symbol("TRUE"),
+                Token::EOF,
             ],
         ),
         (
@@ -193,6 +218,7 @@ fn function_definitions() {
                 Token::Symbol("y"),
                 Token::RParen,
                 Token::Symbol("TRUE"),
+                Token::EOF,
             ],
         ),
         (
@@ -207,6 +233,7 @@ fn function_definitions() {
                 Token::Symbol("z"),
                 Token::RParen,
                 Token::Symbol("TRUE"),
+                Token::EOF,
             ],
         ),
         (
@@ -223,6 +250,7 @@ fn function_definitions() {
                 Token::Symbol("..."),
                 Token::RParen,
                 Token::Symbol("TRUE"),
+                Token::EOF,
             ],
         ),
     ];
@@ -250,6 +278,7 @@ fn function_definitions() {
                 Token::RParen,
                 Token::LBrace,
                 Token::RBrace,
+                Token::EOF,
             ],
         ),
         (
@@ -267,6 +296,7 @@ fn function_definitions() {
                 Token::RParen,
                 Token::LBrace,
                 Token::RBrace,
+                Token::EOF,
             ],
         ),
     ];

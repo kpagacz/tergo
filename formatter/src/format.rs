@@ -1,4 +1,5 @@
 // Implementing Wadler and https://lindig.github.io/papers/strictly-pretty-2000.pdf
+use std::collections::VecDeque;
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -8,7 +9,7 @@ pub(crate) enum Doc {
     Text(Rc<str>),
     Nest(i32, Rc<Doc>),
     Break(&'static str),
-    Group(Vec<Triple>),
+    Group(VecDeque<Triple>),
 }
 
 #[derive(Debug, Clone)]
@@ -39,21 +40,21 @@ pub(crate) enum Mode {
 
 pub(crate) type Triple = (i32, Mode, Rc<Doc>);
 
-fn fits(current_width: i32, docs: &mut Vec<Triple>) -> bool {
+fn fits(current_width: i32, docs: &mut VecDeque<Triple>) -> bool {
     if current_width < 0 {
         false
     } else {
-        match docs.pop() {
+        match docs.pop_front() {
             None => true,
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
                 (_, _, Doc::Nil) => fits(current_width, docs),
                 (i, m, Doc::Cons(first, second)) => {
-                    docs.push((i, m, Rc::clone(second)));
-                    docs.push((i, m, Rc::clone(first)));
+                    docs.push_front((i, m, Rc::clone(first)));
+                    docs.push_front((i, m, Rc::clone(second)));
                     fits(current_width, docs)
                 }
                 (i, m, Doc::Nest(step, doc)) => {
-                    docs.push((i + step, m, Rc::clone(doc)));
+                    docs.push_front((i + step, m, Rc::clone(doc)));
                     fits(current_width, docs)
                 }
                 (_, _, Doc::Text(s)) => fits(current_width - s.len() as i32, docs),
@@ -61,8 +62,8 @@ fn fits(current_width: i32, docs: &mut Vec<Triple>) -> bool {
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
                 (_, _, Doc::Group(groupped_docs)) => {
                     groupped_docs
-                        .into_iter()
-                        .for_each(|doc| docs.push(doc.clone()));
+                        .iter()
+                        .for_each(|doc| docs.push_front(doc.clone()));
                     fits(current_width, docs)
                 }
             },
@@ -72,20 +73,20 @@ fn fits(current_width: i32, docs: &mut Vec<Triple>) -> bool {
 
 // TODO: fix this so this is not a dumb clone, even if it just clones pointers
 const LINE_LENGTH: i32 = 120;
-pub(crate) fn format_to_sdoc(consumed: i32, docs: &mut Vec<Triple>) -> SimpleDoc {
-    match docs.pop() {
+pub(crate) fn format_to_sdoc(consumed: i32, docs: &mut VecDeque<Triple>) -> SimpleDoc {
+    match docs.pop_front() {
         None => SimpleDoc::Nil,
         Some(doc) => {
             let (indent, mode, doc) = doc;
             match (indent, mode, &*doc) {
                 (_, _, Doc::Nil) => format_to_sdoc(consumed, docs),
                 (i, m, Doc::Cons(first, second)) => {
-                    docs.push((i, m, Rc::clone(second)));
-                    docs.push((i, m, Rc::clone(first)));
+                    docs.push_front((i, m, Rc::clone(first)));
+                    docs.push_front((i, m, Rc::clone(second)));
                     format_to_sdoc(consumed, docs)
                 }
                 (i, m, Doc::Nest(step, doc)) => {
-                    docs.push((i + step, m, Rc::clone(doc)));
+                    docs.push_front((i + step, m, Rc::clone(doc)));
                     format_to_sdoc(consumed, docs)
                 }
                 (_, _, Doc::Text(s)) => {
@@ -111,15 +112,17 @@ pub(crate) fn format_to_sdoc(consumed: i32, docs: &mut Vec<Triple>) -> SimpleDoc
                     docs_clone.append(&mut groupped_clone);
                     if fits(LINE_LENGTH - consumed, &mut docs_clone) {
                         groupped_docs
-                            .into_iter()
+                            .iter()
                             .map(|(i, _, doc)| (*i, Mode::Flat, Rc::clone(doc)))
-                            .for_each(|doc| docs.push(doc));
+                            .rev()
+                            .for_each(|doc| docs.push_front(doc));
                         format_to_sdoc(consumed, docs)
                     } else {
                         groupped_docs
-                            .into_iter()
+                            .iter()
                             .map(|(i, _, doc)| (*i, Mode::Break, Rc::clone(doc)))
-                            .for_each(|doc| docs.push(doc));
+                            .rev()
+                            .for_each(|doc| docs.push_front(doc));
                         format_to_sdoc(consumed, docs)
                     }
                 }

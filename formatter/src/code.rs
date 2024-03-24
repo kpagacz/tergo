@@ -10,6 +10,7 @@ use tokenizer::LocatedToken;
 
 use crate::format::Doc;
 use crate::format::Mode;
+use std::collections::VecDeque;
 use std::rc::Rc;
 use tokenizer::Token;
 const INDENT: i32 = 2;
@@ -83,16 +84,16 @@ impl Code for LocatedToken<'_> {
 
 impl Code for CommentedToken<'_> {
     fn to_docs(&self) -> Triple {
-        let mut docs = vec![];
+        let mut docs = VecDeque::new();
         for comment in self.leading_comments {
-            docs.push(comment.to_docs());
+            docs.push_back(comment.to_docs());
             // TODO: check if this works
             // Force a new line (I am not sure if the code already does it somewhere else)
-            docs.push((INDENT, Mode::Flat, Rc::new(Doc::Text(Rc::from("\n")))));
+            docs.push_back((INDENT, Mode::Flat, Rc::new(Doc::Text(Rc::from("\n")))));
         }
-        docs.push(self.token.to_docs());
+        docs.push_back(self.token.to_docs());
         if let Some(inline) = &self.inline_comment {
-            docs.push(inline.to_docs());
+            docs.push_back(inline.to_docs());
         }
 
         (INDENT, Mode::Flat, Rc::new(Doc::Group(docs)))
@@ -111,29 +112,31 @@ impl<'a> Code for Expression<'a> {
                     &term_expr.term,
                     &term_expr.post_delimiters,
                 );
-                let mut docs = vec![];
+                let mut docs = VecDeque::new();
                 if let Some(pre) = pre {
-                    docs.push(pre.to_docs());
-                    docs.push((INDENT, Mode::Flat, Rc::new(Doc::Break(""))));
+                    docs.push_back(pre.to_docs());
+                    docs.push_back((INDENT, Mode::Flat, Rc::new(Doc::Break(""))));
                 }
-                docs.push(term.to_docs());
+                docs.push_back(term.to_docs());
                 if let Some(post) = post {
-                    docs.push((INDENT, Mode::Flat, Rc::new(Doc::Break(""))));
-                    docs.push(post.to_docs());
+                    docs.push_back((INDENT, Mode::Flat, Rc::new(Doc::Break(""))));
+                    docs.push_back(post.to_docs());
                 }
                 (INDENT, Mode::Flat, Rc::new(Doc::Group(docs)))
             }
             Expression::Bop(op, lhs, rhs) => (
                 INDENT,
                 Mode::Flat,
-                Rc::new(Doc::Group(vec![
+                Rc::new(Doc::Group(VecDeque::from([
                     lhs.to_docs(),
                     (INDENT, Mode::Flat, Rc::new(Doc::Break(" "))),
                     op.to_docs(),
                     (INDENT, Mode::Flat, Rc::new(Doc::Break(" "))),
                     rhs.to_docs(),
-                ])),
+                ]))),
             ),
+            Expression::Newline(_) => (INDENT, Mode::Flat, Rc::new(Doc::Break("\n"))),
+            Expression::EOF(_) => (INDENT, Mode::Flat, Rc::new(Doc::Break("\n"))),
         }
     }
 }

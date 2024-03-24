@@ -9,5 +9,5 @@ license = "MIT"
 
 [dependencies]
 tokenizer = { path = "../tokenizer" }
-parser = { path = "../parser-better" }
+parser = { path = "../parser" }
 formatter = { path = "../formatter" }

@@ -1,0 +1,74 @@
+use nom::{branch::alt, combinator::map, multi::many0, sequence::tuple, IResult};
+
+use crate::ast::{CommentedToken, Expression};
+use crate::expressions::expr;
+use crate::token_parsers::{eof, newline, semicolon};
+
+fn statement_or_expr<'a, 'b: 'a>(
+    tokens: &'b [CommentedToken<'a>],
+) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
+    alt((
+        map(tuple((expr, alt((semicolon, newline)))), |(expr, _)| expr),
+        map(newline, Expression::Newline),
+        map(eof, Expression::EOF),
+    ))(tokens)
+}
+
+pub(crate) fn program<'a, 'b: 'a>(
+    tokens: &'b [CommentedToken<'a>],
+) -> IResult<&'b [CommentedToken<'a>], Vec<Expression<'a>>> {
+    many0(statement_or_expr)(tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use tokenizer::LocatedToken;
+    use tokenizer::Token;
+
+    use crate::{helpers::commented_tokens, located_tokens};
+
+    use super::*;
+
+    #[test]
+    fn parses_newline() {
+        let located_tokens = located_tokens![Token::Newline, Token::EOF];
+        let tokens = commented_tokens(&located_tokens);
+        let res = program(&tokens).unwrap().1;
+
+        assert_eq!(
+            res,
+            vec![Expression::Newline(&tokens[0]), Expression::EOF(&tokens[1])]
+        );
+    }
+
+    #[test]
+    fn parses_literal_ending_with_a_newline() {
+        let located_tokens = located_tokens![Token::Literal("7"), Token::Newline, Token::EOF];
+        let tokens = commented_tokens(&located_tokens);
+        let res = program(&tokens).unwrap().1;
+        assert_eq!(
+            res,
+            vec![Expression::Literal(&tokens[0]), Expression::EOF(&tokens[2])]
+        );
+    }
+
+    #[test]
+    fn parses_literal_ending_with_2_newlines() {
+        let located_tokens = located_tokens![
+            Token::Literal("a"),
+            Token::Newline,
+            Token::Newline,
+            Token::EOF
+        ];
+        let tokens = commented_tokens(&located_tokens);
+        let res = program(&tokens).unwrap().1;
+        assert_eq!(
+            res,
+            vec![
+                Expression::Literal(&tokens[0]),
+                Expression::Newline(&tokens[2]),
+                Expression::EOF(&tokens[3]),
+            ]
+        );
+    }
+}
