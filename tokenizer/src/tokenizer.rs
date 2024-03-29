@@ -1,5 +1,5 @@
 use crate::tokens::{
-    LocatedToken,
+    CommentedToken,
     Token::{self, *},
 };
 
@@ -7,7 +7,6 @@ use crate::tokens::{
 ///
 /// Transforms an R program into an array of language tokens.
 pub struct Tokenizer<'a> {
-    pub tokens: Vec<LocatedToken<'a>>,
     line: u32,
     offset: usize,
     it: usize,
@@ -42,7 +41,6 @@ impl<'a> Tokenizer<'a> {
     ///
     pub fn new(input: &'a str) -> Self {
         Self {
-            tokens: vec![],
             line: 0,
             offset: 0,
             it: 0,
@@ -67,7 +65,8 @@ impl<'a> Tokenizer<'a> {
     /// println!("{tokens:?}");
     /// ```
     ///
-    pub fn tokenize(&mut self) -> Vec<LocatedToken> {
+    pub fn tokenize(&mut self) -> Vec<CommentedToken> {
+        let mut tokens = vec![];
         while self.it < self.source.len() {
             match self.source[self.it] {
                 ' ' | '\t' => {
@@ -75,47 +74,47 @@ impl<'a> Tokenizer<'a> {
                 }
                 '\r' => {
                     self.next();
-                    self.push_token(Newline);
+                    self.push_token(Newline, &mut tokens);
                     self.next();
                 }
                 '\n' => {
-                    self.push_token(Newline);
+                    self.push_token(Newline, &mut tokens);
                     self.next_line();
                 }
                 ';' => {
-                    self.push_token(Semicolon);
+                    self.push_token(Semicolon, &mut tokens);
                     self.next();
                 }
                 ',' => {
-                    self.push_token(Comma);
+                    self.push_token(Comma, &mut tokens);
                     self.next();
                 }
                 '(' => {
-                    self.push_token(LParen);
+                    self.push_token(LParen, &mut tokens);
                     self.next();
                 }
                 ')' => {
-                    self.push_token(RParen);
+                    self.push_token(RParen, &mut tokens);
                     self.next();
                 }
                 '{' => {
-                    self.push_token(LBrace);
+                    self.push_token(LBrace, &mut tokens);
                     self.next();
                 }
                 '}' => {
-                    self.push_token(RBrace);
+                    self.push_token(RBrace, &mut tokens);
                     self.next();
                 }
                 '[' => {
-                    self.push_token(LSubscript);
+                    self.push_token(LSubscript, &mut tokens);
                     self.next();
                 }
                 ']' => {
-                    self.push_token(RSubscript);
+                    self.push_token(RSubscript, &mut tokens);
                     self.next();
                 }
                 '\'' | '\"' => {
-                    self.string_literal();
+                    self.string_literal(&mut tokens);
                     self.next();
                 }
                 '*' => {
@@ -123,41 +122,41 @@ impl<'a> Tokenizer<'a> {
                     match next_char {
                         // That's undocumented, but it actually works...
                         '*' => {
-                            self.push_token(Power);
+                            self.push_token(Power, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(Multiply),
+                        _ => self.push_token(Multiply, &mut tokens),
                     }
                     self.next();
                 }
                 '/' => {
-                    self.push_token(Divide);
+                    self.push_token(Divide, &mut tokens);
                     self.next();
                 }
                 '^' => {
-                    self.push_token(Power);
+                    self.push_token(Power, &mut tokens);
                     self.next();
                 }
                 '+' => {
-                    self.push_token(Plus);
+                    self.push_token(Plus, &mut tokens);
                     self.next();
                 }
                 '?' => {
-                    self.push_token(Help);
+                    self.push_token(Help, &mut tokens);
                     self.next();
                 }
                 '<' => {
                     let next_char = self.lookahead().expect("Script does not end on '<'");
                     match next_char {
                         '-' => {
-                            self.push_token(LAssign);
+                            self.push_token(LAssign, &mut tokens);
                             self.next();
                         }
                         '=' => {
-                            self.push_token(LowerEqual);
+                            self.push_token(LowerEqual, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(LowerThan),
+                        _ => self.push_token(LowerThan, &mut tokens),
                     }
                     self.next();
                 }
@@ -165,11 +164,11 @@ impl<'a> Tokenizer<'a> {
                     let next_char = self.lookahead().expect("Script does not end on '>'");
                     match next_char {
                         '=' => {
-                            self.push_token(GreaterEqual);
+                            self.push_token(GreaterEqual, &mut tokens);
                             self.next();
                         }
                         _ => {
-                            self.push_token(GreaterThan);
+                            self.push_token(GreaterThan, &mut tokens);
                         }
                     }
                     self.next();
@@ -178,14 +177,14 @@ impl<'a> Tokenizer<'a> {
                     let next_char = self.lookahead().expect("Script does not end on '|'");
                     match next_char {
                         '|' => {
-                            self.push_token(VectorizedOr);
+                            self.push_token(VectorizedOr, &mut tokens);
                             self.next();
                         }
                         '>' => {
-                            self.push_token(Pipe);
+                            self.push_token(Pipe, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(Or),
+                        _ => self.push_token(Or, &mut tokens),
                     }
                     self.next();
                 }
@@ -193,10 +192,10 @@ impl<'a> Tokenizer<'a> {
                     let next_char = self.lookahead().expect("Script does not end on '&'");
                     match next_char {
                         '&' => {
-                            self.push_token(VectorizedAnd);
+                            self.push_token(VectorizedAnd, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(And),
+                        _ => self.push_token(And, &mut tokens),
                     }
                     self.next();
                 }
@@ -204,25 +203,25 @@ impl<'a> Tokenizer<'a> {
                     let next_char = self.lookahead().expect("Script does not end on '='");
                     match next_char {
                         '=' => {
-                            self.push_token(Equal);
+                            self.push_token(Equal, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(OldAssign),
+                        _ => self.push_token(OldAssign, &mut tokens),
                     }
                     self.next();
                 }
                 '$' => {
-                    self.push_token(Dollar);
+                    self.push_token(Dollar, &mut tokens);
                     self.next();
                 }
                 '-' => {
                     let next_char = self.lookahead().expect("Script does not end on '-'");
                     match next_char {
                         '>' => {
-                            self.push_token(RAssign);
+                            self.push_token(RAssign, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(Minus),
+                        _ => self.push_token(Minus, &mut tokens),
                     }
                     self.next();
                 }
@@ -230,93 +229,91 @@ impl<'a> Tokenizer<'a> {
                     self.next();
                     match self.source[self.it..] {
                         ['=', ..] => {
-                            self.push_token(NotEqual);
+                            self.push_token(NotEqual, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(UnaryNot),
+                        _ => self.push_token(UnaryNot, &mut tokens),
                     }
                 }
                 '.' => {
                     let next_char = self.lookahead().expect("Script does not end on '.'");
                     match next_char {
                         'a'..='z' | 'A'..='Z' => {
-                            self.identifier();
+                            self.identifier(&mut tokens);
                         }
                         '0'..='9' => {
-                            self.number_literal();
+                            self.number_literal(&mut tokens);
                         }
                         _ => {
                             eprintln!(
                                 "Found not alphabetic and non-numeric character after a dot. Treating it as an identifier."
                             );
-                            self.identifier();
+                            self.identifier(&mut tokens);
                         }
                     }
                 }
                 '`' | '_' => {
-                    self.identifier();
+                    self.identifier(&mut tokens);
                 }
                 '%' => {
                     let next_char = self.lookahead().expect("Script does not end on '%'");
                     match next_char {
                         '%' => {
-                            self.push_token(Modulo);
+                            self.push_token(Modulo, &mut tokens);
                             self.next();
                             self.next();
                         }
-                        _ => self.identifier(),
+                        _ => self.identifier(&mut tokens),
                     }
                 }
                 'a'..='z' | 'A'..='Z' => {
-                    self.identifier_or_reserved();
+                    self.identifier_or_reserved(&mut tokens);
                 }
                 '0'..='9' => {
-                    self.number_literal();
+                    self.number_literal(&mut tokens);
                 }
                 '\\' => {
-                    self.push_token(Lambda);
+                    self.push_token(Lambda, &mut tokens);
                     self.next();
                 }
                 '#' => {
-                    self.comment();
+                    self.comment(&mut tokens);
                 }
                 '~' => {
-                    self.push_token(Tilde);
+                    self.push_token(Tilde, &mut tokens);
                     self.next();
                 }
                 '@' => {
-                    self.push_token(Slot);
+                    self.push_token(Slot, &mut tokens);
                     self.next();
                 }
                 ':' => {
                     self.next();
                     match self.source[self.it..] {
                         [':', ':', ..] => {
-                            self.push_token(NsGetInt);
+                            self.push_token(NsGetInt, &mut tokens);
                             self.next();
                             self.next();
                         }
                         [':', ..] => {
-                            self.push_token(NsGet);
+                            self.push_token(NsGet, &mut tokens);
                             self.next()
                         }
-                        _ => self.push_token(Colon),
+                        _ => self.push_token(Colon, &mut tokens),
                     }
                 }
                 _ => unreachable!(),
             }
         }
-        self.tokens
-            .push(LocatedToken::new(EOF, self.line, self.offset));
-        self.tokens.clone()
+        tokens.push(CommentedToken::new(EOF, self.line, self.offset));
+        tokens
     }
 
-    fn push_token(&mut self, token: Token<'a>) {
-        self.tokens
-            .push(LocatedToken::new(token, self.line, self.offset));
+    fn push_token(&mut self, token: Token<'a>, tokens: &mut Vec<CommentedToken<'a>>) {
+        tokens.push(CommentedToken::new(token, self.line, self.offset));
     }
 
-    fn string_literal(&mut self) {
+    fn string_literal(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let delimiter = self.source[self.it];
         let (start_line, start_offset) = (self.line, self.offset);
         let start_it = self.it;
@@ -328,7 +325,7 @@ impl<'a> Tokenizer<'a> {
                 self.next();
             }
         }
-        self.tokens.push(LocatedToken::new(
+        tokens.push(CommentedToken::new(
             Literal(&self.raw_source[start_it..=self.it]),
             start_line,
             start_offset,
@@ -347,7 +344,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn number_literal(&mut self) {
+    fn number_literal(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.offset;
         match self.source[self.it..] {
             // Hexadecimal
@@ -400,10 +397,10 @@ impl<'a> Tokenizer<'a> {
                 }
             }
         }
-        self.push_token(Literal(&self.raw_source[start_it..self.it]));
+        self.push_token(Literal(&self.raw_source[start_it..self.it]), tokens);
     }
 
-    fn identifier(&mut self) {
+    fn identifier(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
         while self.it < self.source.len() && self.source[self.it].is_alphabetic()
             || self.source[self.it] == '.'
@@ -411,43 +408,45 @@ impl<'a> Tokenizer<'a> {
         {
             self.next();
         }
-        self.push_token(Symbol(&self.raw_source[start_it..self.it]));
+        self.push_token(Symbol(&self.raw_source[start_it..self.it]), tokens);
     }
 
-    fn identifier_or_reserved(&mut self) {
+    fn identifier_or_reserved(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
         while self.it < self.source.len() && !SYMBOL_ENDING.contains(&self.source[self.it]) {
             self.next();
         }
 
         match &self.raw_source[start_it..self.it] {
-            "continue" => self.push_token(Continue),
-            "break" => self.push_token(Break),
-            "for" => self.push_token(For),
-            "if" => self.push_token(If),
-            "else" => self.push_token(Else),
-            "in" => self.push_token(In),
-            "while" => self.push_token(While),
-            "repeat" => self.push_token(Repeat),
-            "function" => self.push_token(Function),
-            _ => self.push_token(Symbol(&self.raw_source[start_it..self.it])),
+            "continue" => self.push_token(Continue, tokens),
+            "break" => self.push_token(Break, tokens),
+            "for" => self.push_token(For, tokens),
+            "if" => self.push_token(If, tokens),
+            "else" => self.push_token(Else, tokens),
+            "in" => self.push_token(In, tokens),
+            "while" => self.push_token(While, tokens),
+            "repeat" => self.push_token(Repeat, tokens),
+            "function" => self.push_token(Function, tokens),
+            _ => self.push_token(Symbol(&self.raw_source[start_it..self.it]), tokens),
         }
     }
 
-    fn comment(&mut self) {
+    fn comment(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
         while self.it < self.source.len() && self.source[self.it] != '\n' {
             self.next();
         }
 
-        match self.tokens.last() {
-            Some(LocatedToken {
+        match tokens.last() {
+            Some(CommentedToken {
                 token: Newline,
                 line: _,
                 offset: _,
-            }) => self.push_token(Comment(&self.raw_source[start_it..self.it])),
-            Some(_) => self.push_token(InlineComment(&self.raw_source[start_it..self.it])),
-            None => self.push_token(Comment(&self.raw_source[start_it..self.it])),
+                leading_comments: _,
+                inline_comment: _,
+            }) => self.push_token(Comment(&self.raw_source[start_it..self.it]), tokens),
+            Some(_) => self.push_token(InlineComment(&self.raw_source[start_it..self.it]), tokens),
+            None => self.push_token(Comment(&self.raw_source[start_it..self.it]), tokens),
         }
     }
 

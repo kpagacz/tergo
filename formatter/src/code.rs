@@ -4,9 +4,8 @@ pub(crate) trait Code {
     fn to_docs(&self) -> Triple;
 }
 
-use parser::ast::CommentedToken;
 use parser::ast::Expression;
-use tokenizer::LocatedToken;
+use tokenizer::tokens::CommentedToken;
 
 use crate::format::Doc;
 use crate::format::Mode;
@@ -76,12 +75,6 @@ impl<'a> Code for Token<'a> {
     }
 }
 
-impl Code for LocatedToken<'_> {
-    fn to_docs(&self) -> Triple {
-        self.token.to_docs()
-    }
-}
-
 impl Code for CommentedToken<'_> {
     fn to_docs(&self) -> Triple {
         let mut docs = VecDeque::new();
@@ -148,14 +141,11 @@ mod tests {
 
     use parser::ast::Expression;
     use parser::helpers::commented_tokens;
-    use parser::located_tokens;
-    use tokenizer::LocatedToken;
     use tokenizer::Token;
 
     #[test]
     fn test_symbol() {
-        let located_tokens = located_tokens!(Token::Symbol("test"));
-        let commented_tokens = commented_tokens(&located_tokens);
+        let commented_tokens = commented_tokens!(Token::Symbol("test"));
         let expression = Expression::Symbol(&commented_tokens[0]);
         let docs = expression.to_docs();
 
@@ -175,8 +165,7 @@ mod tests {
 
     #[test]
     fn test_literal() {
-        let located_tokens = located_tokens!(Token::Literal("123592035"));
-        let commented_tokens = commented_tokens(&located_tokens);
+        let commented_tokens = commented_tokens!(Token::Literal("123592035"));
         let expression = Expression::Literal(&commented_tokens[0]);
         let docs = expression.to_docs();
         assert_eq!(docs.0, INDENT);

@@ -1,12 +1,11 @@
-use parser::{ast::CommentedToken, parse};
+use parser::parse;
 use tokenizer::Tokenizer;
 
 #[test]
 fn test_cases() {
     let code = include_str!("./test_cases/001.R");
     let mut tokenizer = Tokenizer::new(code);
-    let tokens = tokenizer.tokenize();
-    let commented_tokens = tokens.iter().map(CommentedToken::from).collect::<Vec<_>>();
+    let commented_tokens = tokenizer.tokenize();
 
     let res = parse(&commented_tokens).unwrap();
     let expected = vec![

@@ -1,35 +1,27 @@
-use crate::ast::CommentedToken;
-use tokenizer::LocatedToken;
+use tokenizer::tokens::CommentedToken;
 
 #[macro_export]
-macro_rules! located_tokens {
+macro_rules! commented_tokens {
     ($($args:expr),*) => {{
         vec![
         $(
-            LocatedToken::new($args, 0, 0),
+            CommentedToken::new($args, 0, 0),
         )*
         ]
     }}
 }
-pub use located_tokens;
-
-pub fn commented_tokens<'a>(located_tokens: &'a [LocatedToken<'a>]) -> Vec<CommentedToken<'a>> {
-    located_tokens
-        .iter()
-        .map(|token| CommentedToken::new(token, &[], None))
-        .collect()
-}
+pub use commented_tokens;
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use tokenizer::Token::*;
+
     #[test]
     fn commented_tokens_macro() {
-        let located_tokens = located_tokens![Symbol("a"), InlineComment("# Comment")];
-        let tokens = commented_tokens(&located_tokens);
+        let tokens = commented_tokens![Symbol("a"), InlineComment("# Comment")];
         assert_eq!(tokens.len(), 2);
-        assert_eq!(tokens[0].token.token, Symbol("a"));
-        assert_eq!(tokens[1].token.token, InlineComment("# Comment"));
+        assert_eq!(tokens[0].token, Symbol("a"));
+        assert_eq!(tokens[1].token, InlineComment("# Comment"));
     }
 }

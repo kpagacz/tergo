@@ -1,30 +1,37 @@
 /// Representation of a token.
 ///
 /// This represents a single token in an R program along with the line on which it occurs
-/// and the column offset.
+/// and the column offset. Additionally, it store the comments that are associated
+/// with the token.
 #[derive(Debug, Clone)]
-pub struct LocatedToken<'a> {
+pub struct CommentedToken<'a> {
     /// The actual token stored in this struct.
     pub token: Token<'a>,
     /// The line of the start of this token.
     pub line: u32,
     /// The column offset of the start of this token.
     pub offset: usize,
+    /// Preceding comments
+    pub leading_comments: &'a [CommentedToken<'a>],
+    /// Trailing inline comment
+    pub inline_comment: Option<&'a CommentedToken<'a>>,
 }
 
-impl<'a> LocatedToken<'a> {
+impl<'a> CommentedToken<'a> {
     pub fn new(token: Token<'a>, line: u32, offset: usize) -> Self {
         Self {
             token,
             line,
             offset,
+            leading_comments: &[],
+            inline_comment: None,
         }
     }
 }
 
 /// When comparing two tokens, only the token itself is compared.
 /// The line and offset are ignored.
-impl<'a> PartialEq for LocatedToken<'a> {
+impl<'a> PartialEq for CommentedToken<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.token == other.token
     }

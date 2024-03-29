@@ -4,9 +4,9 @@ use nom::multi::many0;
 use nom::sequence::delimited;
 use nom::sequence::tuple;
 use nom::IResult;
+use tokenizer::tokens::CommentedToken;
 use tokenizer::Token::*;
 
-use crate::ast::CommentedToken;
 use crate::ast::Expression;
 use crate::ast::TermExpr;
 use crate::token_parsers::*;
@@ -84,7 +84,7 @@ enum Associativity {
 }
 
 fn associativity(token: &CommentedToken) -> Associativity {
-    match &token.token.token {
+    match &token.token {
         Help | RAssign | Tilde | Or | VectorizedOr | And | VectorizedAnd | NotEqual | Plus
         | Minus | Multiply | Divide | Colon | Dollar | Slot | NsGet | NsGetInt => {
             Associativity::Left
@@ -96,7 +96,7 @@ fn associativity(token: &CommentedToken) -> Associativity {
 }
 
 fn precedence(token: &CommentedToken) -> u8 {
-    match &token.token.token {
+    match &token.token {
         Help => 0,
         LAssign => 4,
         OldAssign => 5,
@@ -118,7 +118,7 @@ fn precedence(token: &CommentedToken) -> u8 {
 
 fn is_binary_operator(token: &CommentedToken) -> bool {
     matches!(
-        &token.token.token,
+        &token.token,
         Help | RAssign
             | Tilde
             | Or
@@ -202,13 +202,9 @@ pub(crate) fn expr<'a, 'b: 'a>(
 #[cfg(test)]
 mod tests {
     use crate::helpers::commented_tokens;
-    use crate::helpers::located_tokens;
 
     use super::*;
-    use tokenizer::{
-        LocatedToken,
-        Token::{self},
-    };
+    use tokenizer::Token::{self};
 
     fn binary_op_tokens() -> Vec<Token<'static>> {
         vec![
@@ -244,16 +240,14 @@ mod tests {
 
     #[test]
     fn symbol_exprs() {
-        let located_tokens = located_tokens!(Symbol("a"));
-        let tokens = commented_tokens(&located_tokens);
+        let tokens = commented_tokens!(Symbol("a"));
         let res = symbol_expr(&tokens).unwrap().1;
         assert_eq!(res, Expression::Symbol(&tokens[0]));
     }
 
     #[test]
     fn literal_exprs() {
-        let located_tokens = located_tokens!(Literal("1"));
-        let tokens = commented_tokens(&located_tokens);
+        let tokens = commented_tokens!(Literal("1"));
         let res = literal_expr(&tokens).unwrap().1;
         assert_eq!(res, Expression::Literal(&tokens[0]));
     }
@@ -261,8 +255,7 @@ mod tests {
     #[test]
     fn expressions() {
         for token in binary_op_tokens() {
-            let located_tokens = located_tokens!(Literal("1"), token, Literal("1"), EOF);
-            let tokens = commented_tokens(&located_tokens);
+            let tokens = commented_tokens!(Literal("1"), token, Literal("1"), EOF);
             let res = expr(&tokens).unwrap().1;
             assert_eq!(
                 res,
@@ -277,9 +270,7 @@ mod tests {
 
     #[test]
     fn right_associative_bop() {
-        let located_tokens =
-            located_tokens!(Literal("1"), Power, Literal("2"), Power, Literal("3"), EOF);
-        let tokens = commented_tokens(&located_tokens);
+        let tokens = commented_tokens!(Literal("1"), Power, Literal("2"), Power, Literal("3"), EOF);
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,
@@ -297,9 +288,7 @@ mod tests {
 
     #[test]
     fn left_associative_bop() {
-        let located_tokens =
-            located_tokens!(Literal("1"), Plus, Literal("2"), Plus, Literal("3"), EOF);
-        let tokens = commented_tokens(&located_tokens);
+        let tokens = commented_tokens!(Literal("1"), Plus, Literal("2"), Plus, Literal("3"), EOF);
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,
@@ -317,7 +306,7 @@ mod tests {
 
     #[test]
     fn bop_precedence() {
-        let located_tokens = located_tokens!(
+        let tokens = commented_tokens!(
             Literal("1"),
             Multiply,
             Literal("2"),
@@ -325,7 +314,6 @@ mod tests {
             Literal("3"),
             EOF
         );
-        let tokens = commented_tokens(&located_tokens);
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,

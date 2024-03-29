@@ -1,31 +1,4 @@
-use tokenizer::LocatedToken;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct CommentedToken<'a> {
-    pub token: &'a LocatedToken<'a>,
-    pub leading_comments: &'a [LocatedToken<'a>],
-    pub inline_comment: Option<LocatedToken<'a>>,
-}
-
-impl<'a> CommentedToken<'a> {
-    pub fn new(
-        token: &'a LocatedToken<'a>,
-        leading_comments: &'a [LocatedToken<'a>],
-        inline_comment: Option<LocatedToken<'a>>,
-    ) -> Self {
-        Self {
-            token,
-            leading_comments,
-            inline_comment,
-        }
-    }
-}
-
-impl<'a> From<&'a LocatedToken<'a>> for CommentedToken<'a> {
-    fn from(token: &'a LocatedToken<'a>) -> Self {
-        Self::new(token, &[], None)
-    }
-}
+use tokenizer::tokens::CommentedToken;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression<'a> {

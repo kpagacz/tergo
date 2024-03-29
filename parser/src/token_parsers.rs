@@ -1,6 +1,6 @@
-use crate::ast::CommentedToken;
 use nom::IResult;
-use tokenizer::{LocatedToken, Token::*};
+use tokenizer::tokens::CommentedToken;
+use tokenizer::Token::*;
 
 macro_rules! token_parser {
     ($name:ident, $token:pat) => {
@@ -8,10 +8,7 @@ macro_rules! token_parser {
             input: &'b [CommentedToken<'a>],
         ) -> IResult<&'b [CommentedToken<'a>], &'b CommentedToken<'a>> {
             match input {
-                [token @ CommentedToken {
-                    token: LocatedToken { token: $token, .. },
-                    ..
-                }, rest @ ..] => Ok((rest, token)),
+                [token @ CommentedToken { token: $token, .. }, rest @ ..] => Ok((rest, token)),
                 _ => Err(nom::Err::Error(nom::error::Error::new(
                     input,
                     nom::error::ErrorKind::Tag,
@@ -86,14 +83,12 @@ token_parser!(eof, EOF);
 #[cfg(test)]
 mod tests {
     use crate::helpers::commented_tokens;
-    use crate::helpers::located_tokens;
 
     use super::*;
 
     #[test]
     fn symbols() {
-        let located_examples = located_tokens!(Symbol("a"));
-        let examples = [commented_tokens(&located_examples)];
+        let examples = [commented_tokens!(Symbol("a"))];
 
         for tokens in examples {
             let res = symbol(&tokens).unwrap().1;
@@ -103,8 +98,7 @@ mod tests {
 
     #[test]
     fn literals() {
-        let located_examples = located_tokens!(Literal("a"));
-        let examples = [commented_tokens(&located_examples)];
+        let examples = [commented_tokens!(Literal("a"))];
 
         for tokens in examples {
             let res = literal(&tokens).unwrap().1;
@@ -114,8 +108,7 @@ mod tests {
 
     #[test]
     fn test_eof() {
-        let located_examples = located_tokens!(EOF);
-        let examples = commented_tokens(&located_examples);
+        let examples = commented_tokens!(EOF);
         let res = eof(&examples).unwrap().1;
         assert_eq!(res, &examples[0]);
     }

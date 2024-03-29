@@ -1,6 +1,7 @@
 use nom::{branch::alt, combinator::map, multi::many0, sequence::tuple, IResult};
+use tokenizer::tokens::CommentedToken;
 
-use crate::ast::{CommentedToken, Expression};
+use crate::ast::Expression;
 use crate::expressions::expr;
 use crate::token_parsers::{eof, newline, semicolon};
 use crate::whitespace::whitespace_or_comment;
@@ -23,17 +24,15 @@ pub(crate) fn program<'a, 'b: 'a>(
 
 #[cfg(test)]
 mod tests {
-    use tokenizer::LocatedToken;
     use tokenizer::Token;
 
-    use crate::{helpers::commented_tokens, located_tokens};
+    use crate::helpers::commented_tokens;
 
     use super::*;
 
     #[test]
     fn program_parses_newline() {
-        let located_tokens = located_tokens![Token::Newline, Token::EOF];
-        let tokens = commented_tokens(&located_tokens);
+        let tokens = commented_tokens![Token::Newline, Token::EOF];
         let res = program(&tokens).unwrap().1;
 
         assert_eq!(
@@ -47,8 +46,7 @@ mod tests {
 
     #[test]
     fn parses_literal_ending_with_a_newline() {
-        let located_tokens = located_tokens![Token::Literal("7"), Token::Newline, Token::EOF];
-        let tokens = commented_tokens(&located_tokens);
+        let tokens = commented_tokens![Token::Literal("7"), Token::Newline, Token::EOF];
         let res = program(&tokens).unwrap().1;
         assert_eq!(
             res,
@@ -58,13 +56,12 @@ mod tests {
 
     #[test]
     fn parses_literal_ending_with_2_newlines() {
-        let located_tokens = located_tokens![
+        let tokens = commented_tokens![
             Token::Literal("a"),
             Token::Newline,
             Token::Newline,
             Token::EOF
         ];
-        let tokens = commented_tokens(&located_tokens);
         let res = program(&tokens).unwrap().1;
         assert_eq!(
             res,
