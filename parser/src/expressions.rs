@@ -257,9 +257,9 @@ mod tests {
             assert_eq!(
                 res,
                 Expression::Bop(
-                    &tokens[1],
-                    Box::new(Expression::Literal(&tokens[0])),
-                    Box::new(Expression::Literal(&tokens[2]))
+                    tokens[1],
+                    Box::new(Expression::Literal(tokens[0])),
+                    Box::new(Expression::Literal(tokens[2]))
                 )
             );
         }
@@ -274,12 +274,12 @@ mod tests {
         assert_eq!(
             res,
             Expression::Bop(
-                &tokens[1],
-                Box::new(Expression::Literal(&tokens[0])),
+                tokens[1],
+                Box::new(Expression::Literal(tokens[0])),
                 Box::new(Expression::Bop(
-                    &tokens[3],
-                    Box::new(Expression::Literal(&tokens[2])),
-                    Box::new(Expression::Literal(&tokens[4]))
+                    tokens[3],
+                    Box::new(Expression::Literal(tokens[2])),
+                    Box::new(Expression::Literal(tokens[4]))
                 ))
             )
         );
@@ -293,13 +293,13 @@ mod tests {
         assert_eq!(
             res,
             Expression::Bop(
-                &tokens[3],
+                tokens[3],
                 Box::new(Expression::Bop(
-                    &tokens[1],
-                    Box::new(Expression::Literal(&tokens[0])),
-                    Box::new(Expression::Literal(&tokens[2]))
+                    tokens[1],
+                    Box::new(Expression::Literal(tokens[0])),
+                    Box::new(Expression::Literal(tokens[2]))
                 )),
-                Box::new(Expression::Literal(&tokens[4]))
+                Box::new(Expression::Literal(tokens[4]))
             )
         );
     }
@@ -319,13 +319,13 @@ mod tests {
         assert_eq!(
             res,
             Expression::Bop(
-                &tokens[3],
+                tokens[3],
                 Box::new(Expression::Bop(
-                    &tokens[1],
-                    Box::new(Expression::Literal(&tokens[0])),
-                    Box::new(Expression::Literal(&tokens[2]))
+                    tokens[1],
+                    Box::new(Expression::Literal(tokens[0])),
+                    Box::new(Expression::Literal(tokens[2]))
                 )),
-                Box::new(Expression::Literal(&tokens[4]))
+                Box::new(Expression::Literal(tokens[4]))
             )
         )
     }
