@@ -1,3 +1,4 @@
+use crate::Input;
 use nom::IResult;
 use tokenizer::tokens::CommentedToken;
 use tokenizer::Token::*;
@@ -5,8 +6,8 @@ use tokenizer::Token::*;
 macro_rules! token_parser {
     ($name:ident, $token:pat) => {
         pub(crate) fn $name<'a, 'b: 'a>(
-            input: &'b [CommentedToken<'a>],
-        ) -> IResult<&'b [CommentedToken<'a>], &'b CommentedToken<'a>> {
+            input: Input<'a, 'b>,
+        ) -> IResult<Input<'a, 'b>, &'b CommentedToken<'a>> {
             match input {
                 [token @ CommentedToken { token: $token, .. }, rest @ ..] => Ok((rest, token)),
                 _ => Err(nom::Err::Error(nom::error::Error::new(
@@ -82,7 +83,7 @@ token_parser!(eof, EOF);
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::commented_tokens;
+    use tokenizer::tokens::commented_tokens;
 
     use super::*;
 
@@ -90,9 +91,10 @@ mod tests {
     fn symbols() {
         let examples = [commented_tokens!(Symbol("a"))];
 
-        for tokens in examples {
+        for tokens in &examples {
+            let tokens: Vec<_> = tokens.iter().collect();
             let res = symbol(&tokens).unwrap().1;
-            assert_eq!(res, &tokens[0]);
+            assert_eq!(res, tokens[0]);
         }
     }
 
@@ -100,16 +102,18 @@ mod tests {
     fn literals() {
         let examples = [commented_tokens!(Literal("a"))];
 
-        for tokens in examples {
+        for tokens in &examples {
+            let tokens: Vec<_> = tokens.iter().collect();
             let res = literal(&tokens).unwrap().1;
-            assert_eq!(res, &tokens[0]);
+            assert_eq!(res, tokens[0]);
         }
     }
 
     #[test]
     fn test_eof() {
-        let examples = commented_tokens!(EOF);
+        let examples_ = commented_tokens!(EOF);
+        let examples: Vec<_> = examples_.iter().collect();
         let res = eof(&examples).unwrap().1;
-        assert_eq!(res, &examples[0]);
+        assert_eq!(res, examples[0]);
     }
 }

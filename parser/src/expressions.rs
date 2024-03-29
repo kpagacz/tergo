@@ -1,6 +1,7 @@
 use nom::branch::alt;
 use nom::combinator::map;
 use nom::multi::many0;
+use nom::multi::many1;
 use nom::sequence::delimited;
 use nom::sequence::tuple;
 use nom::IResult;
@@ -10,29 +11,24 @@ use tokenizer::Token::*;
 use crate::ast::Expression;
 use crate::ast::TermExpr;
 use crate::token_parsers::*;
+use crate::Input;
 
-fn symbol_expr<'a, 'b: 'a>(
-    tokens: &'b [CommentedToken<'a>],
-) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
+fn symbol_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(symbol, Expression::Symbol)(tokens)
 }
 
-fn literal_expr<'a, 'b: 'a>(
-    tokens: &'b [CommentedToken<'a>],
-) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
+fn literal_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(literal, Expression::Literal)(tokens)
 }
 
-fn term_expr<'a, 'b: 'a>(
-    tokens: &'b [CommentedToken<'a>],
-) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
+fn term_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     alt((
         map(symbol_expr, |symbol| symbol),
         map(literal_expr, |literal| literal),
         map(
             tuple((
                 lparen,
-                delimited(many0(newline), term_expr, many0(newline)),
+                delimited(many1(newline), term_expr, many0(newline)),
                 rparen,
             )),
             |(lparen, term, rparen)| {
@@ -42,7 +38,7 @@ fn term_expr<'a, 'b: 'a>(
         map(
             tuple((
                 lbrace,
-                delimited(many0(newline), term_expr, many0(newline)),
+                delimited(many1(newline), term_expr, many0(newline)),
                 rbrace,
             )),
             |(lbrace, term, rbrace)| {
@@ -62,8 +58,8 @@ fn term_expr<'a, 'b: 'a>(
 // %right		EQ_ASSIGN
 // %left		RIGHT_ASSIGN
 // %left		'~' TILDE
-// %left		OR OR2
-// %left		AND AND2
+// %left		OR OR3
+// %left		AND AND3
 // %left		UNOT NOT
 // %nonassoc   	GT GE LT LE EQ NE
 // %left		'+' '-'
@@ -97,21 +93,21 @@ fn associativity(token: &CommentedToken) -> Associativity {
 
 fn precedence(token: &CommentedToken) -> u8 {
     match &token.token {
-        Help => 0,
-        LAssign => 4,
-        OldAssign => 5,
-        RAssign => 6,
-        Tilde => 7,
-        Or | VectorizedOr => 8,
-        And | VectorizedAnd => 9,
-        GreaterThan | GreaterEqual | LowerThan | LowerEqual | Equal | NotEqual => 11,
-        Plus | Minus => 12,
-        Multiply | Divide => 13,
-        Special(_) => 14,
-        Colon => 15,
-        Power => 17,
-        Dollar | Slot => 18,
-        NsGet | NsGetInt => 19,
+        Help => 1,
+        LAssign => 5,
+        OldAssign => 6,
+        RAssign => 7,
+        Tilde => 8,
+        Or | VectorizedOr => 9,
+        And | VectorizedAnd => 10,
+        GreaterThan | GreaterEqual | LowerThan | LowerEqual | Equal | NotEqual => 12,
+        Plus | Minus => 13,
+        Multiply | Divide => 14,
+        Special(_) => 15,
+        Colon => 16,
+        Power => 18,
+        Dollar | Slot => 19,
+        NsGet | NsGetInt => 20,
         _ => panic!("{token:?} is not a binary operator"),
     }
 }
@@ -155,8 +151,8 @@ impl ExprParser {
     fn parse<'a, 'b: 'a>(
         &self,
         mut lhs: Expression<'a>,
-        mut tokens: &'b [CommentedToken<'a>],
-    ) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
+        mut tokens: Input<'a, 'b>,
+    ) -> IResult<Input<'a, 'b>, Expression<'a>> {
         let mut lookahead = &tokens[0];
         while is_binary_operator(lookahead) && precedence(lookahead) >= self.0 {
             let op = lookahead;
@@ -187,9 +183,7 @@ impl ExprParser {
     }
 }
 
-pub(crate) fn expr<'a, 'b: 'a>(
-    tokens: &'b [CommentedToken<'a>],
-) -> IResult<&'b [CommentedToken<'a>], Expression<'a>> {
+pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     let (tokens, term) = term_expr(tokens)?;
     if !tokens.is_empty() {
         let parser = ExprParser(0);
@@ -201,7 +195,7 @@ pub(crate) fn expr<'a, 'b: 'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::commented_tokens;
+    use tokenizer::tokens::commented_tokens;
 
     use super::*;
     use tokenizer::Token::{self};
@@ -240,22 +234,25 @@ mod tests {
 
     #[test]
     fn symbol_exprs() {
-        let tokens = commented_tokens!(Symbol("a"));
+        let tokens_ = commented_tokens!(Symbol("a"));
+        let tokens: Vec<_> = tokens_.iter().collect();
         let res = symbol_expr(&tokens).unwrap().1;
-        assert_eq!(res, Expression::Symbol(&tokens[0]));
+        assert_eq!(res, Expression::Symbol(tokens[0]));
     }
 
     #[test]
     fn literal_exprs() {
-        let tokens = commented_tokens!(Literal("1"));
+        let tokens_ = commented_tokens!(Literal("1"));
+        let tokens: Vec<_> = tokens_.iter().collect();
         let res = literal_expr(&tokens).unwrap().1;
-        assert_eq!(res, Expression::Literal(&tokens[0]));
+        assert_eq!(res, Expression::Literal(tokens[0]));
     }
 
     #[test]
     fn expressions() {
         for token in binary_op_tokens() {
-            let tokens = commented_tokens!(Literal("1"), token, Literal("1"), EOF);
+            let tokens_ = commented_tokens!(Literal("1"), token, Literal("1"), EOF);
+            let tokens: Vec<_> = tokens_.iter().collect();
             let res = expr(&tokens).unwrap().1;
             assert_eq!(
                 res,
@@ -270,7 +267,9 @@ mod tests {
 
     #[test]
     fn right_associative_bop() {
-        let tokens = commented_tokens!(Literal("1"), Power, Literal("2"), Power, Literal("3"), EOF);
+        let tokens_ =
+            commented_tokens!(Literal("1"), Power, Literal("2"), Power, Literal("3"), EOF);
+        let tokens: Vec<_> = tokens_.iter().collect();
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,
@@ -288,7 +287,8 @@ mod tests {
 
     #[test]
     fn left_associative_bop() {
-        let tokens = commented_tokens!(Literal("1"), Plus, Literal("2"), Plus, Literal("3"), EOF);
+        let tokens_ = commented_tokens!(Literal("1"), Plus, Literal("2"), Plus, Literal("3"), EOF);
+        let tokens: Vec<_> = tokens_.iter().collect();
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn bop_precedence() {
-        let tokens = commented_tokens!(
+        let tokens_ = commented_tokens!(
             Literal("1"),
             Multiply,
             Literal("2"),
@@ -314,6 +314,7 @@ mod tests {
             Literal("3"),
             EOF
         );
+        let tokens: Vec<_> = tokens_.iter().collect();
         let res = expr(&tokens).unwrap().1;
         assert_eq!(
             res,

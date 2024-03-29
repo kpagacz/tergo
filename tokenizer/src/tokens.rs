@@ -11,10 +11,11 @@ pub struct CommentedToken<'a> {
     pub line: u32,
     /// The column offset of the start of this token.
     pub offset: usize,
-    /// Preceding comments
-    pub leading_comments: &'a [CommentedToken<'a>],
-    /// Trailing inline comment
-    pub inline_comment: Option<&'a CommentedToken<'a>>,
+    /// Preceding comments. The tuple contains the start and end offset (exclusive) of the comment
+    /// in the array of tokens.
+    pub leading_comments: Option<(usize, usize)>,
+    /// Trailing inline comment. The offset is the index of the comment in the array of tokens.
+    pub inline_comment: Option<usize>,
 }
 
 impl<'a> CommentedToken<'a> {
@@ -23,9 +24,40 @@ impl<'a> CommentedToken<'a> {
             token,
             line,
             offset,
-            leading_comments: &[],
+            leading_comments: None,
             inline_comment: None,
         }
+    }
+
+    pub fn with_comments(
+        token: Token<'a>,
+        line: u32,
+        offset: usize,
+        leading_comments: Option<(usize, usize)>,
+        inline_comment: Option<usize>,
+    ) -> Self {
+        Self {
+            token,
+            line,
+            offset,
+            leading_comments,
+            inline_comment,
+        }
+    }
+
+    pub fn get_preceding_comments(
+        &'a self,
+        tokens: &'a [CommentedToken],
+    ) -> Option<&'a [CommentedToken]> {
+        self.leading_comments
+            .map(|(start, end)| &tokens[start..end])
+    }
+
+    pub fn get_inline_comment(
+        &'a self,
+        tokens: &'a [CommentedToken],
+    ) -> Option<&'a CommentedToken> {
+        self.inline_comment.map(|idx| &tokens[idx])
     }
 }
 
@@ -106,4 +138,30 @@ pub enum Token<'a> {
 
     // EOF
     EOF,
+}
+
+#[macro_export]
+macro_rules! commented_tokens {
+    ($($args:expr),*) => {{
+        vec![
+        $(
+            CommentedToken::new($args, 0, 0),
+        )*
+        ]
+    }}
+}
+pub use commented_tokens;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Token::*;
+
+    #[test]
+    fn commented_tokens_macro() {
+        let tokens = commented_tokens![Symbol("a"), InlineComment("# Comment")];
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].token, Symbol("a"));
+        assert_eq!(tokens[1].token, InlineComment("# Comment"));
+    }
 }

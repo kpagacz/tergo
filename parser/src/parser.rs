@@ -2,7 +2,9 @@ use tokenizer::tokens::CommentedToken;
 
 use crate::ast::Expression;
 
-pub fn parse<'a, 'b: 'a>(tokens: &'b [CommentedToken<'a>]) -> Result<Vec<Expression<'a>>, String> {
+pub fn parse<'a, 'b: 'a>(
+    tokens: &'b [&'a CommentedToken<'a>],
+) -> Result<Vec<Expression<'a>>, String> {
     let mut expressions = vec![];
     let mut remaining_tokens = tokens;
 

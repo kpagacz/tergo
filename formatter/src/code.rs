@@ -78,16 +78,16 @@ impl<'a> Code for Token<'a> {
 impl Code for CommentedToken<'_> {
     fn to_docs(&self) -> Triple {
         let mut docs = VecDeque::new();
-        for comment in self.leading_comments {
-            docs.push_back(comment.to_docs());
-            // TODO: check if this works
-            // Force a new line (I am not sure if the code already does it somewhere else)
-            docs.push_back((INDENT, Mode::Flat, Rc::new(Doc::Text(Rc::from("\n")))));
-        }
+        // for comment in self.leading_comments {
+        //     docs.push_back(comment.to_docs());
+        //     // TODO: check if this works
+        //     // Force a new line (I am not sure if the code already does it somewhere else)
+        //     docs.push_back((INDENT, Mode::Flat, Rc::new(Doc::Text(Rc::from("\n")))));
+        // }
         docs.push_back(self.token.to_docs());
-        if let Some(inline) = &self.inline_comment {
-            docs.push_back(inline.to_docs());
-        }
+        // if let Some(inline) = &self.inline_comment {
+        //     docs.push_back(inline.to_docs());
+        // }
 
         (INDENT, Mode::Flat, Rc::new(Doc::Group(docs)))
     }
@@ -140,7 +140,7 @@ mod tests {
     use super::*;
 
     use parser::ast::Expression;
-    use parser::helpers::commented_tokens;
+    use tokenizer::tokens::commented_tokens;
     use tokenizer::Token;
 
     #[test]
