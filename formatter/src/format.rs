@@ -2,6 +2,8 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
+use crate::config::FormattingConfig;
+
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Doc {
     Nil,
@@ -9,7 +11,7 @@ pub(crate) enum Doc {
     Text(Rc<str>),
     Nest(i32, Rc<Doc>),
     Break(&'static str),
-    Group(VecDeque<Triple>),
+    Group(Rc<Doc>),
 }
 
 #[derive(Debug, Clone)]
@@ -40,90 +42,84 @@ pub(crate) enum Mode {
 
 pub(crate) type Triple = (i32, Mode, Rc<Doc>);
 
-fn fits(current_width: i32, docs: &mut VecDeque<Triple>) -> bool {
-    if current_width < 0 {
+fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
+    if remaining_width < 0 {
         false
     } else {
         match docs.pop_front() {
             None => true,
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
-                (_, _, Doc::Nil) => fits(current_width, docs),
+                (_, _, Doc::Nil) => fits(remaining_width, docs),
                 (i, m, Doc::Cons(first, second)) => {
-                    docs.push_front((i, m, Rc::clone(first)));
                     docs.push_front((i, m, Rc::clone(second)));
-                    fits(current_width, docs)
+                    docs.push_front((i, m, Rc::clone(first)));
+                    fits(remaining_width, docs)
                 }
                 (i, m, Doc::Nest(step, doc)) => {
                     docs.push_front((i + step, m, Rc::clone(doc)));
-                    fits(current_width, docs)
+                    fits(remaining_width, docs)
                 }
-                (_, _, Doc::Text(s)) => fits(current_width - s.len() as i32, docs),
-                (_, Mode::Flat, Doc::Break(s)) => fits(current_width - s.len() as i32, docs),
+                (_, _, Doc::Text(s)) => fits(remaining_width - s.len() as i32, docs),
+                (_, Mode::Flat, Doc::Break(s)) => fits(remaining_width - s.len() as i32, docs),
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
-                (_, _, Doc::Group(groupped_docs)) => {
-                    groupped_docs
-                        .iter()
-                        .for_each(|doc| docs.push_front(doc.clone()));
-                    fits(current_width, docs)
+                (i, _, Doc::Group(groupped_doc)) => {
+                    docs.push_front((i, Mode::Flat, Rc::clone(groupped_doc)));
+                    fits(remaining_width, docs)
                 }
             },
         }
     }
 }
 
-// TODO: fix this so this is not a dumb clone, even if it just clones pointers
-const LINE_LENGTH: i32 = 120;
-pub(crate) fn format_to_sdoc(consumed: i32, docs: &mut VecDeque<Triple>) -> SimpleDoc {
+pub(crate) fn format_to_sdoc(
+    consumed: i32,
+    docs: &mut VecDeque<Triple>,
+    config: &impl FormattingConfig,
+) -> SimpleDoc {
+    let line_length = config.line_length();
     match docs.pop_front() {
         None => SimpleDoc::Nil,
         Some(doc) => {
             let (indent, mode, doc) = doc;
             match (indent, mode, &*doc) {
-                (_, _, Doc::Nil) => format_to_sdoc(consumed, docs),
+                (_, _, Doc::Nil) => format_to_sdoc(consumed, docs, config),
                 (i, m, Doc::Cons(first, second)) => {
-                    docs.push_front((i, m, Rc::clone(first)));
                     docs.push_front((i, m, Rc::clone(second)));
-                    format_to_sdoc(consumed, docs)
+                    docs.push_front((i, m, Rc::clone(first)));
+                    format_to_sdoc(consumed, docs, config)
                 }
                 (i, m, Doc::Nest(step, doc)) => {
                     docs.push_front((i + step, m, Rc::clone(doc)));
-                    format_to_sdoc(consumed, docs)
+                    format_to_sdoc(consumed, docs, config)
                 }
                 (_, _, Doc::Text(s)) => {
                     let length = s.len() as i32;
                     SimpleDoc::Text(
                         Rc::clone(s),
-                        Rc::new(format_to_sdoc(consumed + length, docs)),
+                        Rc::new(format_to_sdoc(consumed + length, docs, config)),
                     )
                 }
                 (_, Mode::Flat, Doc::Break(s)) => {
                     let length = s.len() as i32;
                     SimpleDoc::Text(
                         Rc::from(*s),
-                        Rc::new(format_to_sdoc(consumed + length, docs)),
+                        Rc::new(format_to_sdoc(consumed + length, docs, config)),
                     )
                 }
-                (_, Mode::Break, Doc::Break(_)) => {
-                    SimpleDoc::Line(indent as usize, Rc::new(format_to_sdoc(indent, docs)))
+                (i, Mode::Break, Doc::Break(_)) => {
+                    SimpleDoc::Line(i as usize, Rc::new(format_to_sdoc(i, docs, config)))
                 }
-                (_, _, Doc::Group(groupped_docs)) => {
-                    let mut docs_clone = docs.clone();
-                    let mut groupped_clone = groupped_docs.clone();
-                    docs_clone.append(&mut groupped_clone);
-                    if fits(LINE_LENGTH - consumed, &mut docs_clone) {
-                        groupped_docs
-                            .iter()
-                            .map(|(i, _, doc)| (*i, Mode::Flat, Rc::clone(doc)))
-                            .rev()
-                            .for_each(|doc| docs.push_front(doc));
-                        format_to_sdoc(consumed, docs)
+                (i, _, Doc::Group(groupped_doc)) => {
+                    let mut cloned_docs = docs.clone();
+                    cloned_docs.push_front((i, Mode::Flat, Rc::clone(groupped_doc)));
+                    if fits(line_length - consumed, &mut cloned_docs) {
+                        docs.pop_front();
+                        docs.push_front((i, Mode::Flat, Rc::clone(groupped_doc)));
+                        format_to_sdoc(consumed, docs, config)
                     } else {
-                        groupped_docs
-                            .iter()
-                            .map(|(i, _, doc)| (*i, Mode::Break, Rc::clone(doc)))
-                            .rev()
-                            .for_each(|doc| docs.push_front(doc));
-                        format_to_sdoc(consumed, docs)
+                        docs.pop_front();
+                        docs.push_front((i, Mode::Break, Rc::clone(groupped_doc)));
+                        format_to_sdoc(consumed, docs, config)
                     }
                 }
             }
