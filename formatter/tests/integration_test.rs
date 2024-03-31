@@ -1,4 +1,3 @@
-use formatter;
 use parser::ast::Expression;
 use tokenizer::{commented_tokens, tokens::CommentedToken, Token};
 
