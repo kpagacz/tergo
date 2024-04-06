@@ -42,3 +42,27 @@ fn literal_with_parentheses() {
     ];
     assert_eq!(res, expected);
 }
+
+#[test]
+fn bop_with_parentheses() {
+    log_init();
+    let code = include_str!("./test_cases/003.R");
+    let mut tokenizer = Tokenizer::new(code);
+    let mut commented_tokens = tokenizer.tokenize();
+
+    let tokens = pre_parse(&mut commented_tokens);
+    let res = parse(&tokens).unwrap();
+    let expected = vec![
+        Expression::Term(Box::new(TermExpr {
+            pre_delimiters: Some(tokens[0]),
+            term: Expression::Bop(
+                tokens[2],
+                Box::new(Expression::Literal(tokens[1])),
+                Box::new(Expression::Literal(tokens[3])),
+            ),
+            post_delimiters: Some(tokens[4]),
+        })),
+        Expression::EOF(tokens[6]),
+    ];
+    assert_eq!(res, expected);
+}

@@ -80,3 +80,11 @@ fn range_bop_one_line() {
     let expected = include_str!(concat!("./test_cases/008.expected"));
     assert_eq!(format(input, None).unwrap(), expected);
 }
+
+#[test]
+fn parenthesized_bop_one_line() {
+    log_init();
+    let input = include_str!(concat!("./test_cases/009.R"));
+    let expected = include_str!(concat!("./test_cases/009.expected"));
+    assert_eq!(format(input, None).unwrap(), expected);
+}

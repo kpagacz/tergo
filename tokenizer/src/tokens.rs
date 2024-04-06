@@ -69,6 +69,12 @@ impl<'a> PartialEq for CommentedToken<'a> {
     }
 }
 
+impl<'a> std::fmt::Display for CommentedToken<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{:?}", self.token))
+    }
+}
+
 /// This represents all the different token types encountered
 /// in an R program.
 #[derive(Debug, Clone, PartialEq)]
@@ -163,5 +169,12 @@ mod tests {
         assert_eq!(tokens.len(), 2);
         assert_eq!(tokens[0].token, Symbol("a"));
         assert_eq!(tokens[1].token, InlineComment("# Comment"));
+    }
+
+    #[test]
+    fn test_display() {
+        let token = CommentedToken::new(Token::Symbol("a"), 0, 0);
+        let displayed = format!("{}", token);
+        assert_eq!("Symbol(\"a\")", displayed);
     }
 }

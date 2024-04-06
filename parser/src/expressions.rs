@@ -7,6 +7,7 @@ use nom::sequence::delimited;
 use nom::sequence::tuple;
 use nom::IResult;
 use tokenizer::tokens::CommentedToken;
+use tokenizer::tokens_buffer::TokensBuffer;
 use tokenizer::Token::*;
 
 use crate::ast::Expression;
@@ -23,14 +24,14 @@ fn literal_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Exp
 }
 
 fn term_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("term_expr: {tokens:?}");
+    trace!("term_expr: {}", TokensBuffer(tokens));
     alt((
         map(symbol_expr, |symbol| symbol),
         map(literal_expr, |literal| literal),
         map(
             tuple((
                 lparen,
-                delimited(many0(newline), term_expr, many0(newline)),
+                delimited(many0(newline), expr, many0(newline)),
                 rparen,
             )),
             |(lparen, term, rparen)| {

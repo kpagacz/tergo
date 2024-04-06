@@ -217,7 +217,7 @@ impl<'a> Code for Expression<'a> {
                 _ => panic!("Got a not a binary operator token inside a binary expression when formatting. Token: {:?}", &op.token)
             },
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
-            Expression::EOF(_) => Rc::new(Doc::Break("\n")),
+            Expression::EOF(_) => Rc::new(Doc::Nil),
             Expression::Whitespace(_) => Rc::new(Doc::Break("\n")),
         }
     }
