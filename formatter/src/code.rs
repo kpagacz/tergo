@@ -63,8 +63,12 @@ macro_rules! delimited_doc {
 }
 
 // TODO: Make this a macro
-pub(crate) fn with_optional_break(first_doc: Rc<Doc>, second_doc: Rc<Doc>) -> Rc<Doc> {
-    cons!(cons!(first_doc, nl!(" ")), second_doc)
+pub(crate) fn with_optional_break(
+    first_doc: Rc<Doc>,
+    second_doc: Rc<Doc>,
+    break_text: &'static str,
+) -> Rc<Doc> {
+    cons!(cons!(first_doc, nl!(break_text)), second_doc)
 }
 
 impl<'a> Code for Token<'a> {
@@ -169,14 +173,49 @@ impl<'a> Code for Expression<'a> {
                     _ => panic!("A term without matching delimiteres encountered"),
                 }
             }
-            Expression::Bop(op, lhs, rhs) => group!(nest!(
-                indent,
-                with_optional_break(
-                    cons!(cons!(lhs.to_docs(config), text!(" ")), op.to_docs(config)),
-                    rhs.to_docs(config)
-                )
-            )),
-
+            Expression::Bop(op, lhs, rhs) => match op.token {
+                Token::LAssign
+                | Token::RAssign
+                | Token::OldAssign
+                | Token::Equal
+                | Token::NotEqual
+                | Token::LowerThan
+                | Token::GreaterThan
+                | Token::LowerEqual
+                | Token::GreaterEqual
+                | Token::Power
+                | Token::Divide
+                | Token::Multiply
+                | Token::Minus
+                | Token::Plus
+                | Token::Help
+                | Token::And
+                | Token::VectorizedAnd
+                | Token::Or
+                | Token::VectorizedOr
+                | Token::Pipe
+                | Token::Modulo
+                | Token::Tilde
+                | Token::Special(_) => group!(nest!(
+                    indent,
+                    with_optional_break(
+                        cons!(cons!(lhs.to_docs(config), text!(" ")), op.to_docs(config)),
+                        rhs.to_docs(config),
+                        " "
+                    )
+                )),
+                Token::Dollar | Token::NsGet | Token::NsGetInt | Token::Colon | Token::Slot => {
+                    group!(nest!(
+                        indent,
+                        with_optional_break(
+                            cons!(cons!(lhs.to_docs(config), text!("")), op.to_docs(config)),
+                            rhs.to_docs(config),
+                            ""
+                        )
+                    ))
+                },
+                _ => panic!("Got a not a binary operator token inside a binary expression when formatting. Token: {:?}", &op.token)
+            },
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
             Expression::EOF(_) => Rc::new(Doc::Break("\n")),
             Expression::Whitespace(_) => Rc::new(Doc::Break("\n")),

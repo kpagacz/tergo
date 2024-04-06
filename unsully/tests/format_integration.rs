@@ -72,3 +72,11 @@ fn simple_bop_forced_to_break_and_indent() {
     let config = Config::new(2, 2);
     assert_eq!(format(input, Some(config)).unwrap(), expected);
 }
+
+#[test]
+fn range_bop_one_line() {
+    log_init();
+    let input = include_str!(concat!("./test_cases/008.R"));
+    let expected = include_str!(concat!("./test_cases/008.expected"));
+    assert_eq!(format(input, None).unwrap(), expected);
+}

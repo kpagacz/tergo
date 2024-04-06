@@ -71,6 +71,7 @@ token_parser!(pipe, Pipe);
 token_parser!(modulo, Modulo);
 token_parser!(ns_get, NsGet);
 token_parser!(ns_get_int, NsGetInt);
+token_parser!(colon, Colon);
 
 // Unary operators
 token_parser!(unary_not, UnaryNot);
