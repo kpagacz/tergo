@@ -11,12 +11,60 @@ pub(crate) trait Code {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc>;
 }
 
+// Macro that creates a Doc::Group
+macro_rules! group {
+    ($doc:expr) => {
+        Rc::new(Doc::Group($doc))
+    };
+}
+
+// Macro that creates a Doc::Nest
+macro_rules! nest {
+    ($indent:expr, $doc:expr) => {
+        Rc::new(Doc::Nest($indent, $doc))
+    };
+}
+
+// Macro that creates a Doc::Cons
+macro_rules! cons {
+    ($first:expr, $second:expr) => {
+        Rc::new(Doc::Cons($first, $second))
+    };
+}
+
+// Macro that creates a Doc::Break
+macro_rules! nl {
+    ($txt:expr) => {
+        Rc::new(Doc::Break($txt))
+    };
+}
+
+// Macro that creates a Doc::Text
+macro_rules! text {
+    ($txt: expr) => {
+        Rc::new(Doc::Text(Rc::from($txt)))
+    };
+}
+
+// Macro that surrounds a doc with parentheses
+macro_rules! delimited_doc {
+    ($doc:expr, $ldelim: expr, $rdelim: expr) => {
+        Rc::new(Doc::Group(Rc::new(Doc::Cons(
+            $ldelim,
+            Rc::new(Doc::Cons(
+                Rc::new(Doc::Break("")),
+                Rc::new(Doc::Cons(
+                    $doc,
+                    Rc::new(Doc::Cons(Rc::new(Doc::Break("")), $rdelim)),
+                )),
+            )),
+        ))))
+    };
+}
+
 // TODO: Make this a macro
 pub(crate) fn with_optional_break(first_doc: Rc<Doc>, second_doc: Rc<Doc>) -> Rc<Doc> {
-    Rc::new(Doc::Cons(
-        Rc::new(Doc::Cons(first_doc, Rc::new(Doc::Break(" ")))),
-        second_doc,
-    ))
+    cons!(cons!(first_doc, nl!(" ")), second_doc)
 }
 
 impl<'a> Code for Token<'a> {
@@ -111,20 +159,23 @@ impl<'a> Code for Expression<'a> {
                     &term_expr.post_delimiters,
                 );
                 match (pre, term, post) {
-                    (Some(pre), term, Some(post)) => with_optional_break(
-                        with_optional_break(pre.to_docs(config), term.to_docs(config)),
-                        post.to_docs(config),
-                    ),
+                    (Some(pre), term, Some(post)) => {
+                        delimited_doc!(
+                            term.to_docs(config),
+                            pre.to_docs(config),
+                            post.to_docs(config)
+                        )
+                    }
                     _ => panic!("A term without matching delimiteres encountered"),
                 }
             }
-            Expression::Bop(op, lhs, rhs) => Rc::new(Doc::Group(Rc::new(Doc::Nest(
+            Expression::Bop(op, lhs, rhs) => group!(nest!(
                 indent,
-                Rc::new(Doc::Group(with_optional_break(
-                    with_optional_break(lhs.to_docs(config), op.to_docs(config)),
-                    rhs.to_docs(config),
-                ))),
-            )))),
+                with_optional_break(
+                    cons!(cons!(lhs.to_docs(config), text!(" ")), op.to_docs(config)),
+                    rhs.to_docs(config)
+                )
+            )),
 
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
             Expression::EOF(_) => Rc::new(Doc::Break("\n")),

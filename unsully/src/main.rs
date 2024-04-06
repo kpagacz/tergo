@@ -1,3 +1,6 @@
+use log::trace;
+
 fn main() {
-    println!("Hello, world!");
+    env_logger::init();
+    trace!("Starting up...");
 }

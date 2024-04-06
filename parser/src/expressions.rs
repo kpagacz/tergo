@@ -1,3 +1,4 @@
+use log::trace;
 use nom::branch::alt;
 use nom::combinator::map;
 use nom::multi::many0;
@@ -22,13 +23,14 @@ fn literal_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Exp
 }
 
 fn term_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("term_expr: {tokens:?}");
     alt((
         map(symbol_expr, |symbol| symbol),
         map(literal_expr, |literal| literal),
         map(
             tuple((
                 lparen,
-                delimited(many1(newline), term_expr, many0(newline)),
+                delimited(many0(newline), term_expr, many0(newline)),
                 rparen,
             )),
             |(lparen, term, rparen)| {

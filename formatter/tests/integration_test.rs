@@ -15,13 +15,21 @@ impl formatter::config::FormattingConfig for FormatingConfigMock {
     }
 }
 
-const CONFIG: FormatingConfigMock = FormatingConfigMock {
-    line_length: 0,
-    indent: 0,
-};
+impl std::fmt::Display for FormatingConfigMock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "Line length: {}, Indent: {}",
+            self.line_length, self.indent
+        ))
+    }
+}
 
 #[test]
 fn test_format_simple_bop() {
+    let config: FormatingConfigMock = FormatingConfigMock {
+        line_length: 0,
+        indent: 0,
+    };
     let commented_tokens = commented_tokens!(Token::Plus, Token::Literal("1"), Token::Literal("2"));
     let expressions = [Expression::Bop(
         &commented_tokens[0],
@@ -29,6 +37,6 @@ fn test_format_simple_bop() {
         Box::new(Expression::Literal(&commented_tokens[2])),
     )];
 
-    let formatted = formatter::format_code(&expressions, &CONFIG);
-    assert_eq!(formatted, "1\n+\n2\n");
+    let formatted = formatter::format_code(&expressions, &config);
+    assert_eq!(formatted, "1 +\n2\n");
 }
