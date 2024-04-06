@@ -1,8 +1,8 @@
 use log::trace;
 use nom::branch::alt;
 use nom::combinator::map;
+use nom::combinator::opt;
 use nom::multi::many0;
-use nom::multi::many1;
 use nom::sequence::delimited;
 use nom::sequence::tuple;
 use nom::IResult;
@@ -12,6 +12,7 @@ use tokenizer::Token::*;
 
 use crate::ast::Expression;
 use crate::ast::TermExpr;
+use crate::compound::function_def;
 use crate::token_parsers::*;
 use crate::Input;
 
@@ -26,12 +27,13 @@ fn literal_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Exp
 fn term_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     trace!("term_expr: {}", TokensBuffer(tokens));
     alt((
+        function_def,
         map(symbol_expr, |symbol| symbol),
         map(literal_expr, |literal| literal),
         map(
             tuple((
                 lparen,
-                delimited(many0(newline), expr, many0(newline)),
+                delimited(many0(newline), opt(expr), many0(newline)),
                 rparen,
             )),
             |(lparen, term, rparen)| {
@@ -41,7 +43,7 @@ fn term_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expres
         map(
             tuple((
                 lbrace,
-                delimited(many1(newline), term_expr, many0(newline)),
+                delimited(many0(newline), opt(expr), many0(newline)),
                 rbrace,
             )),
             |(lbrace, term, rbrace)| {
@@ -187,6 +189,7 @@ impl ExprParser {
 }
 
 pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("expr: {}", TokensBuffer(tokens));
     let (tokens, term) = term_expr(tokens)?;
     if !tokens.is_empty() {
         let parser = ExprParser(0);

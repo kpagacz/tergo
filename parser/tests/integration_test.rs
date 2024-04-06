@@ -35,7 +35,7 @@ fn literal_with_parentheses() {
     let expected = vec![
         Expression::Term(Box::new(TermExpr {
             pre_delimiters: Some(tokens[0]),
-            term: Expression::Literal(tokens[1]),
+            term: Some(Expression::Literal(tokens[1])),
             post_delimiters: Some(tokens[2]),
         })),
         Expression::EOF(tokens[4]),
@@ -55,11 +55,11 @@ fn bop_with_parentheses() {
     let expected = vec![
         Expression::Term(Box::new(TermExpr {
             pre_delimiters: Some(tokens[0]),
-            term: Expression::Bop(
+            term: Some(Expression::Bop(
                 tokens[2],
                 Box::new(Expression::Literal(tokens[1])),
                 Box::new(Expression::Literal(tokens[3])),
-            ),
+            )),
             post_delimiters: Some(tokens[4]),
         })),
         Expression::EOF(tokens[6]),

@@ -1,152 +1,117 @@
-// use nom::character::complete::multispace0;
-// use nom::combinator::map;
-// use nom::sequence::{delimited, separated_pair};
-// use nom::{
-//     bytes::complete::tag,
-//     sequence::{preceded, tuple},
-//     IResult,
-// };
-//
-// use crate::ast::{AstNode, CompoundStatement};
-// use crate::expression::{condition, identifier};
-// use crate::helpers::CodeSpan;
-// use crate::{ast::Expression, expression::expr};
-//
-// pub fn repeat(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
-//     map(
-//         preceded(tuple((tag("repeat"), multispace0)), expr),
-//         |repeat_expr| {
-//             AstNode::new(
-//                 Box::new(Expression::Compound(CompoundStatement::Repeat(repeat_expr))),
-//                 input.location_line(),
-//                 input.location_offset(),
-//             )
-//         },
-//     )(input)
-// }
-//
-// pub fn while_stmt(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
-//     map(
-//         tuple((preceded(tag("while"), condition), expr)),
-//         |(cond, while_expr)| {
-//             AstNode::new(
-//                 Box::new(Expression::Compound(CompoundStatement::While(
-//                     cond, while_expr,
-//                 ))),
-//                 input.location_line(),
-//                 input.location_offset(),
-//             )
-//         },
-//     )(input)
-// }
-//
-// pub fn for_stmt(input: CodeSpan) -> IResult<CodeSpan, AstNode> {
-//     fn for_cond(input: CodeSpan) -> IResult<CodeSpan, (AstNode, AstNode)> {
-//         delimited(
-//             tuple((
-//                 multispace0,
-//                 nom::character::complete::char('('),
-//                 multispace0,
-//             )),
-//             separated_pair(
-//                 identifier,
-//                 tuple((multispace0, tag("in"), multispace0)),
-//                 expr,
-//             ),
-//             tuple((
-//                 multispace0,
-//                 nom::character::complete::char(')'),
-//                 multispace0,
-//             )),
-//         )(input)
-//     }
-//
-//     map(
-//         tuple((tag("for"), for_cond, expr)),
-//         |(_, (symbol, cond_expr), for_expr)| {
-//             AstNode::new(
-//                 Box::new(Expression::Compound(CompoundStatement::For(
-//                     symbol, cond_expr, for_expr,
-//                 ))),
-//                 input.location_line(),
-//                 input.location_offset(),
-//             )
-//         },
-//     )(input)
-// }
-//
-// #[cfg(test)]
-// mod tests {
-//     use crate::ast::Literal;
-//
-//     use super::*;
-//
-//     #[test]
-//     fn test_repeat() {
-//         let tests = [
-//             (
-//                 "repeat TRUE",
-//                 Box::new(Expression::Compound(CompoundStatement::Repeat(
-//                     AstNode::new(Box::new(Expression::Literal(Literal::True)), 0, 0),
-//                 ))),
-//             ),
-//             (
-//                 r#"repeat
-//         {}"#,
-//                 Box::new(Expression::Compound(CompoundStatement::Repeat(
-//                     AstNode::new(Box::new(Expression::Expressions(vec![])), 0, 0),
-//                 ))),
-//             ),
-//         ];
-//         for (input, expected) in tests {
-//             let input = CodeSpan::new(input);
-//             assert_eq!(repeat(input).unwrap().1.expr, expected);
-//         }
-//     }
-//
-//     #[test]
-//     fn test_while() {
-//         let tests = [(
-//             "while(TRUE)FALSE",
-//             Box::new(Expression::Compound(CompoundStatement::While(
-//                 AstNode::new(Box::new(Expression::Literal(Literal::True)), 0, 0),
-//                 AstNode::new(Box::new(Expression::Literal(Literal::False)), 0, 0),
-//             ))),
-//         )];
-//         for (input, expected) in tests.clone() {
-//             let input = CodeSpan::new(input);
-//             assert_eq!(while_stmt(input).unwrap().1.expr, expected);
-//         }
-//
-//         let input_with_nl = r#"while
-//         (TRUE)
-//         FALSE"#;
-//         assert_eq!(
-//             while_stmt(CodeSpan::new(tests[0].0)).unwrap().1,
-//             while_stmt(CodeSpan::new(input_with_nl)).unwrap().1
-//         );
-//     }
-//
-//     #[test]
-//     fn test_for() {
-//         let input = "for(a in TRUE) TRUE";
-//         let expected = Box::new(Expression::Compound(CompoundStatement::For(
-//             AstNode::new(Box::new(Expression::Identifier("a".to_string())), 0, 0),
-//             AstNode::new(Box::new(Expression::Literal(Literal::True)), 0, 0),
-//             AstNode::new(Box::new(Expression::Literal(Literal::True)), 0, 0),
-//         )));
-//         assert_eq!(for_stmt(CodeSpan::new(input)).unwrap().1.expr, expected);
-//
-//         let input_with_nl = r#"for
-//         (
-//         a
-//         in
-//         TRUE
-//         )
-//         TRUE"#;
-//         assert_eq!(
-//             for_stmt(CodeSpan::new(input)).unwrap().1,
-//             for_stmt(CodeSpan::new(input_with_nl)).unwrap().1
-//         );
-//     }
-// }
+use log::trace;
+use nom::{
+    combinator::{map, opt},
+    multi::many0,
+    sequence::tuple,
+    IResult,
+};
+use tokenizer::tokens_buffer::TokensBuffer;
+
+use crate::{
+    ast::{Arg, Args, Expression, FunctionDefinition},
+    expressions::expr,
+    program::program,
+    token_parsers::*,
+    Input,
+};
+
+pub(crate) fn function_def<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    map(
+        tuple((
+            function,
+            many0(newline),
+            par_delimited_comma_sep_exprs,
+            many0(newline),
+            function_body,
+        )),
+        |(_, _, args, _, body)| Expression::FunctionDef(FunctionDefinition::new(args, body)),
+    )(tokens)
+}
+
+fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Args<'a>> {
+    map(
+        tuple((
+            lparen,
+            many0(newline),
+            opt(expr),
+            many0(tuple((
+                tuple((comma, many0(newline))),
+                tuple((expr, many0(newline))),
+            ))),
+            many0(newline),
+            rparen,
+        )),
+        |(lpar, _, first_arg, comma_delimited_args, _, rpar)| match first_arg {
+            Some(xpr) => {
+                let comma_delimited_args = comma_delimited_args
+                    .into_iter()
+                    .flat_map(|((sep, _), (xpr, _))| [Expression::Literal(sep), xpr]);
+                let mut comma_delimited_args = std::iter::once(xpr).chain(comma_delimited_args);
+                let mut args = vec![];
+                while let Some(xpr) = comma_delimited_args.next() {
+                    args.push(Arg(xpr, comma_delimited_args.next()));
+                }
+                Args::new(
+                    Box::new(Expression::Literal(lpar)),
+                    args,
+                    Box::new(Expression::Literal(rpar)),
+                )
+            }
+            None => Args::new(
+                Box::new(Expression::Literal(lpar)),
+                vec![],
+                Box::new(Expression::Literal(rpar)),
+            ),
+        },
+    )(tokens)
+}
+
+fn function_body<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Vec<Expression<'a>>> {
+    trace!("function_body: {}", TokensBuffer(tokens));
+    program(tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use tokenizer::tokens::commented_tokens;
+    use tokenizer::tokens::CommentedToken;
+
+    use crate::ast::TermExpr;
+
+    use super::*;
+    use tokenizer::Token::*;
+
+    fn log_init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
+
+    #[test]
+    fn no_args_no_body_function_def() {
+        log_init();
+        let tokens_ = commented_tokens![Function, LParen, RParen, LBrace, RBrace, EOF];
+        let tokens: Vec<_> = tokens_.iter().collect();
+        let parsed = expr(&tokens).unwrap();
+        let res = parsed.1;
+        assert_eq!(
+            res,
+            Expression::FunctionDef(FunctionDefinition::new(
+                Args::new(
+                    Box::new(Expression::Literal(tokens[1])),
+                    vec![],
+                    Box::new(Expression::Literal(tokens[2]))
+                ),
+                vec![Expression::Term(Box::new(TermExpr::new(
+                    Some(tokens[3]),
+                    None,
+                    Some(tokens[4])
+                )))]
+            ))
+        );
+
+        assert_eq!(parsed.0.len(), 0);
+    }
+}

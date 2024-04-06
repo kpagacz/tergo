@@ -8,7 +8,12 @@ use crate::Input;
 
 fn statement_or_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     alt((
-        map(tuple((expr, alt((semicolon, newline)))), |(expr, _)| expr),
+        map(
+            // TODO: This colon might have a trailing comment attached to it...
+            // or a normal comment...
+            tuple((expr, alt((semicolon, newline, eof)))),
+            |(expr, _)| expr,
+        ),
         map(whitespace_or_comment, Expression::Whitespace),
         map(eof, Expression::EOF),
     ))(tokens)

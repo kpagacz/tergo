@@ -165,7 +165,7 @@ impl<'a> Code for Expression<'a> {
                 match (pre, term, post) {
                     (Some(pre), term, Some(post)) => {
                         delimited_doc!(
-                            term.to_docs(config),
+                            term.as_ref().map(|t| t.to_docs(config)).unwrap_or(Rc::new(Doc::Nil)),
                             pre.to_docs(config),
                             post.to_docs(config)
                         )
@@ -219,6 +219,7 @@ impl<'a> Code for Expression<'a> {
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
             Expression::EOF(_) => Rc::new(Doc::Nil),
             Expression::Whitespace(_) => Rc::new(Doc::Break("\n")),
+            Expression::FunctionDef(function_def) => todo!(),
         }
     }
 }

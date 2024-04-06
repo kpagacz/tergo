@@ -8,7 +8,7 @@ macro_rules! token_parser {
         pub(crate) fn $name<'a, 'b: 'a>(
             input: Input<'a, 'b>,
         ) -> IResult<Input<'a, 'b>, &'b CommentedToken<'a>> {
-            log::trace!("Parsing token: {}", stringify!($name));
+            log::trace!("Trying to parse: {}", stringify!($name));
             match input {
                 [token @ CommentedToken { token: $token, .. }, rest @ ..] => Ok((rest, token)),
                 _ => Err(nom::Err::Error(nom::error::Error::new(
