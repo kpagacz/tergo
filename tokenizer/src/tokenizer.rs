@@ -1,3 +1,5 @@
+use log::trace;
+
 use crate::tokens::{
     CommentedToken,
     Token::{self, *},
@@ -75,7 +77,7 @@ impl<'a> Tokenizer<'a> {
                 '\r' => {
                     self.next();
                     self.push_token(Newline, &mut tokens);
-                    self.next();
+                    self.next_line();
                 }
                 '\n' => {
                     self.push_token(Newline, &mut tokens);
@@ -306,6 +308,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
         tokens.push(CommentedToken::new(EOF, self.line, self.offset));
+        trace!("Tokenized: {:?}", tokens);
         tokens
     }
 
@@ -345,7 +348,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn number_literal(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
-        let start_it = self.offset;
+        let start_it = self.it;
         match self.source[self.it..] {
             // Hexadecimal
             ['0', 'x', ..] | ['0', 'X', ..] => {

@@ -10,7 +10,7 @@ use tokenizer::tokens_buffer::TokensBuffer;
 use crate::{
     ast::{Arg, Args, Expression, FunctionDefinition},
     expressions::expr,
-    program::program,
+    program::statement_or_expr,
     token_parsers::*,
     Input,
 };
@@ -26,7 +26,9 @@ pub(crate) fn function_def<'a, 'b: 'a>(
             many0(newline),
             function_body,
         )),
-        |(_, _, args, _, body)| Expression::FunctionDef(FunctionDefinition::new(args, body)),
+        |(keyword, _, args, _, body)| {
+            Expression::FunctionDef(FunctionDefinition::new(keyword, args, body))
+        },
     )(tokens)
 }
 
@@ -72,7 +74,7 @@ fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
 
 fn function_body<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Vec<Expression<'a>>> {
     trace!("function_body: {}", TokensBuffer(tokens));
-    program(tokens)
+    many0(statement_or_expr)(tokens)
 }
 
 #[cfg(test)]
@@ -99,6 +101,7 @@ mod tests {
         assert_eq!(
             res,
             Expression::FunctionDef(FunctionDefinition::new(
+                tokens[0],
                 Args::new(
                     Box::new(Expression::Literal(tokens[1])),
                     vec![],
@@ -106,12 +109,13 @@ mod tests {
                 ),
                 vec![Expression::Term(Box::new(TermExpr::new(
                     Some(tokens[3]),
-                    None,
+                    vec![],
                     Some(tokens[4])
                 )))]
             ))
         );
 
-        assert_eq!(parsed.0.len(), 0);
+        // Because the eof is left
+        assert_eq!(parsed.0.len(), 1);
     }
 }

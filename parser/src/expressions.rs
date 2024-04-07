@@ -13,6 +13,7 @@ use tokenizer::Token::*;
 use crate::ast::Expression;
 use crate::ast::TermExpr;
 use crate::compound::function_def;
+use crate::program::statement_or_expr;
 use crate::token_parsers::*;
 use crate::Input;
 
@@ -37,13 +38,17 @@ fn term_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expres
                 rparen,
             )),
             |(lparen, term, rparen)| {
-                Expression::Term(Box::new(TermExpr::new(Some(lparen), term, Some(rparen))))
+                Expression::Term(Box::new(TermExpr::new(
+                    Some(lparen),
+                    term.map(|t| vec![t]).unwrap_or(vec![]),
+                    Some(rparen),
+                )))
             },
         ),
         map(
             tuple((
                 lbrace,
-                delimited(many0(newline), opt(expr), many0(newline)),
+                delimited(many0(newline), many0(statement_or_expr), many0(newline)),
                 rbrace,
             )),
             |(lbrace, term, rbrace)| {

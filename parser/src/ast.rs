@@ -1,4 +1,4 @@
-use tokenizer::tokens::CommentedToken;
+use tokenizer::{tokens::CommentedToken, tokens_buffer::TokensBuffer};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression<'a> {
@@ -17,18 +17,53 @@ pub enum Expression<'a> {
     FunctionDef(FunctionDefinition<'a>),
 }
 
+impl std::fmt::Display for Expression<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expression::Symbol(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
+            Expression::Literal(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
+            Expression::Comment(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
+            Expression::Term(term) => f.write_fmt(format_args!("{}", term)),
+            Expression::Bop(op, left, right) => {
+                f.write_fmt(format_args!("{} {} {}", left, TokensBuffer(&[op]), right))
+            }
+            Expression::Newline(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
+            Expression::Whitespace(tokens) => f.write_fmt(format_args!("{}", TokensBuffer(tokens))),
+            Expression::EOF(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
+            Expression::FunctionDef(func_def) => f.write_fmt(format_args!("{}", func_def)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExpressionsBuffer<'a>(pub &'a [Expression<'a>]);
+impl std::fmt::Display for ExpressionsBuffer<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Expressions: [")?;
+        f.write_fmt(format_args!(
+            "{}",
+            self.0
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join("\n")
+        ))?;
+        f.write_str("]\n")
+    }
+}
+
 // Term
 #[derive(Debug, Clone, PartialEq)]
 pub struct TermExpr<'a> {
     pub pre_delimiters: Option<&'a CommentedToken<'a>>,
-    pub term: Option<Expression<'a>>,
+    pub term: Vec<Expression<'a>>,
     pub post_delimiters: Option<&'a CommentedToken<'a>>,
 }
 
 impl<'a> TermExpr<'a> {
     pub fn new(
         pre_delimiters: Option<&'a CommentedToken<'a>>,
-        term: Option<Expression<'a>>,
+        term: Vec<Expression<'a>>,
         post_delimiters: Option<&'a CommentedToken<'a>>,
     ) -> Self {
         Self {
@@ -41,7 +76,30 @@ impl<'a> TermExpr<'a> {
 
 impl<'a> From<Expression<'a>> for TermExpr<'a> {
     fn from(expr: Expression<'a>) -> Self {
-        Self::new(None, Some(expr), None)
+        Self::new(None, vec![expr], None)
+    }
+}
+
+impl std::fmt::Display for TermExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "(TermExpr: {} {} {})",
+            if let Some(pre_delim) = self.pre_delimiters {
+                pre_delim.to_string()
+            } else {
+                "".to_string()
+            },
+            self.term
+                .iter()
+                .map(|e| format!("(expr: {})", e))
+                .collect::<Vec<_>>()
+                .join(" "),
+            if let Some(post_delim) = self.post_delimiters {
+                post_delim.to_string()
+            } else {
+                "".to_string()
+            },
+        ))
     }
 }
 
@@ -51,6 +109,16 @@ impl<'a> From<Expression<'a>> for TermExpr<'a> {
 // the comma token
 #[derive(Debug, Clone, PartialEq)]
 pub struct Arg<'a>(pub Expression<'a>, pub Option<Expression<'a>>); // Argument, comma
+
+impl std::fmt::Display for Arg<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))?;
+        if let Some(comma) = &self.1 {
+            f.write_fmt(format_args!("comma:{}", comma))?;
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Args<'a> {
@@ -73,14 +141,53 @@ impl<'a> Args<'a> {
     }
 }
 
+impl std::fmt::Display for Args<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "(Args: {} {} {})",
+            self.left_delimeter,
+            self.args
+                .iter()
+                .map(|arg| arg.to_string())
+                .collect::<Vec<String>>()
+                .join(" "),
+            self.right_delimeter,
+        ))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionDefinition<'a> {
+    pub keyword: &'a CommentedToken<'a>,
     pub arguments: Args<'a>,
     pub body: Vec<Expression<'a>>,
 }
 
 impl<'a> FunctionDefinition<'a> {
-    pub fn new(arguments: Args<'a>, body: Vec<Expression<'a>>) -> Self {
-        Self { arguments, body }
+    pub fn new(
+        keyword: &'a CommentedToken<'a>,
+        arguments: Args<'a>,
+        body: Vec<Expression<'a>>,
+    ) -> Self {
+        Self {
+            keyword,
+            arguments,
+            body,
+        }
+    }
+}
+
+impl std::fmt::Display for FunctionDefinition<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "{} {} {}",
+            self.keyword,
+            self.arguments,
+            self.body
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(" ")
+        ))
     }
 }

@@ -17,6 +17,7 @@ pub fn parse<'a, 'b: 'a>(
         let (new_remaining_tokens, mut expr) = crate::program::program(remaining_tokens)
             .map_err(|err| format!("Could not parse: {:?}", err))?;
         expressions.append(&mut expr);
+        trace!("New remaining tokens: {}", TokensBuffer(remaining_tokens));
         remaining_tokens = new_remaining_tokens;
     }
 

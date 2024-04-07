@@ -7,13 +7,22 @@ use log::trace;
 use crate::config::FormattingConfig;
 
 #[derive(Debug, Clone, PartialEq)]
+pub(crate) enum ShouldBreak {
+    Yes,
+    No,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct GroupDocProperties(pub(crate) Rc<Doc>, pub(crate) ShouldBreak); // (doc, should it break?)
+
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Doc {
     Nil,
     Cons(Rc<Doc>, Rc<Doc>),
     Text(Rc<str>),
     Nest(i32, Rc<Doc>),
     Break(&'static str),
-    Group(Rc<Doc>),
+    Group(GroupDocProperties),
 }
 
 #[derive(Debug, Clone)]
@@ -65,7 +74,7 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                 (_, Mode::Flat, Doc::Break(s)) => fits(remaining_width - s.len() as i32, docs),
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
                 (i, _, Doc::Group(groupped_doc)) => {
-                    docs.push_front((i, Mode::Flat, Rc::clone(groupped_doc)));
+                    docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
                     fits(remaining_width, docs)
                 }
             },
@@ -117,18 +126,49 @@ pub(crate) fn format_to_sdoc(
                     trace!(
                         "Formatting a group: {groupped_doc:?} with i: {i} and consumed: {consumed}"
                     );
-                    let mut group_docs = VecDeque::from([(i, Mode::Flat, Rc::clone(groupped_doc))]);
+                    let mut group_docs =
+                        VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
                     if fits(line_length - consumed, &mut group_docs) {
                         trace!("The group fits");
-                        docs.push_front((i, Mode::Flat, Rc::clone(groupped_doc)));
+                        docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
                         format_to_sdoc(consumed, docs, config)
                     } else {
                         trace!("The group does not fit");
-                        docs.push_front((i, Mode::Break, Rc::clone(groupped_doc)));
+                        docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));
                         format_to_sdoc(consumed, docs, config)
                     }
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct MockConfig;
+
+    impl FormattingConfig for MockConfig {
+        fn line_length(&self) -> i32 {
+            120
+        }
+        fn indent(&self) -> i32 {
+            0
+        }
+    }
+    impl std::fmt::Display for MockConfig {
+        fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn printing_text_doc() {
+        let mut doc = VecDeque::from([(0i32, Mode::Flat, Rc::new(Doc::Text(Rc::from("Test"))))]);
+        let mock_config = MockConfig {};
+        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
+
+        assert_eq!(simple_doc_to_string(sdoc), "Test")
     }
 }

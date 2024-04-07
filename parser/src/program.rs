@@ -1,4 +1,7 @@
+use log::trace;
+use nom::combinator::opt;
 use nom::{branch::alt, combinator::map, multi::many0, sequence::tuple, IResult};
+use tokenizer::tokens_buffer::TokensBuffer;
 
 use crate::ast::Expression;
 use crate::expressions::expr;
@@ -6,23 +9,29 @@ use crate::token_parsers::{eof, newline, semicolon};
 use crate::whitespace::whitespace_or_comment;
 use crate::Input;
 
-fn statement_or_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
+pub(crate) fn statement_or_expr<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("statement_or_expr: {}", TokensBuffer(tokens));
     alt((
         map(
             // TODO: This colon might have a trailing comment attached to it...
             // or a normal comment...
-            tuple((expr, alt((semicolon, newline, eof)))),
+            tuple((expr, opt(alt((semicolon, newline))))),
             |(expr, _)| expr,
         ),
         map(whitespace_or_comment, Expression::Whitespace),
-        map(eof, Expression::EOF),
     ))(tokens)
 }
 
 pub(crate) fn program<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Vec<Expression<'a>>> {
-    many0(statement_or_expr)(tokens)
+    trace!("program: {}", TokensBuffer(tokens));
+    map(tuple((many0(statement_or_expr), eof)), |(mut xprs, eof)| {
+        xprs.push(Expression::EOF(eof));
+        xprs
+    })(tokens)
 }
 
 #[cfg(test)]

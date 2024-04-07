@@ -3,7 +3,7 @@ use crate::config::FormattingConfig;
 use parser::ast::Expression;
 use tokenizer::tokens::CommentedToken;
 
-use crate::format::Doc;
+use crate::format::{Doc, GroupDocProperties, ShouldBreak};
 use std::rc::Rc;
 use tokenizer::Token;
 
@@ -14,7 +14,7 @@ pub(crate) trait Code {
 // Macro that creates a Doc::Group
 macro_rules! group {
     ($doc:expr) => {
-        Rc::new(Doc::Group($doc))
+        Rc::new(Doc::Group(GroupDocProperties($doc, ShouldBreak::No)))
     };
 }
 
@@ -49,16 +49,19 @@ macro_rules! text {
 // Macro that surrounds a doc with parentheses
 macro_rules! delimited_doc {
     ($doc:expr, $ldelim: expr, $rdelim: expr) => {
-        Rc::new(Doc::Group(Rc::new(Doc::Cons(
-            $ldelim,
+        Rc::new(Doc::Group(GroupDocProperties(
             Rc::new(Doc::Cons(
-                Rc::new(Doc::Break("")),
+                $ldelim,
                 Rc::new(Doc::Cons(
-                    $doc,
-                    Rc::new(Doc::Cons(Rc::new(Doc::Break("")), $rdelim)),
+                    Rc::new(Doc::Break("")),
+                    Rc::new(Doc::Cons(
+                        $doc,
+                        Rc::new(Doc::Cons(Rc::new(Doc::Break("")), $rdelim)),
+                    )),
                 )),
             )),
-        ))))
+            ShouldBreak::No,
+        )))
     };
 }
 
@@ -148,6 +151,27 @@ impl Code for CommentedToken<'_> {
     }
 }
 
+fn join_docs_using_newlines<I, F>(docs: I, _config: &F) -> Rc<Doc>
+where
+    I: IntoIterator<Item = Rc<Doc>>,
+    F: FormattingConfig,
+{
+    let mut docs = docs.into_iter();
+    let mut res = Rc::new(Doc::Nil);
+
+    if let Some(first_doc) = docs.next() {
+        res = Rc::new(Doc::Cons(first_doc, res));
+    }
+
+    for next_doc in docs {
+        res = Rc::new(Doc::Cons(res, Rc::new(Doc::Break("\n"))));
+        res = Rc::new(Doc::Cons(res, next_doc));
+    }
+
+    res = Rc::new(Doc::Group(GroupDocProperties(res, ShouldBreak::Yes)));
+    res
+}
+
 impl<'a> Code for Expression<'a> {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
         let indent = config.indent();
@@ -163,9 +187,9 @@ impl<'a> Code for Expression<'a> {
                     &term_expr.post_delimiters,
                 );
                 match (pre, term, post) {
-                    (Some(pre), term, Some(post)) => {
+                    (Some(pre), xprs, Some(post)) => {
                         delimited_doc!(
-                            term.as_ref().map(|t| t.to_docs(config)).unwrap_or(Rc::new(Doc::Nil)),
+                            join_docs_using_newlines(xprs.iter().map(|t| t.to_docs(config)), config),
                             pre.to_docs(config),
                             post.to_docs(config)
                         )
@@ -219,7 +243,58 @@ impl<'a> Code for Expression<'a> {
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
             Expression::EOF(_) => Rc::new(Doc::Nil),
             Expression::Whitespace(_) => Rc::new(Doc::Break("\n")),
-            Expression::FunctionDef(function_def) => todo!(),
+            Expression::FunctionDef(_) => todo!(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::format::{format_to_sdoc, simple_doc_to_string, Mode};
+
+    use super::*;
+
+    struct MockConfig;
+
+    impl FormattingConfig for MockConfig {
+        fn line_length(&self) -> i32 {
+            120
+        }
+        fn indent(&self) -> i32 {
+            0
+        }
+    }
+    impl std::fmt::Display for MockConfig {
+        fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            unimplemented!()
+        }
+    }
+    use std::collections::VecDeque;
+
+    #[test]
+    fn joining_docs_with_newlines_produces_newlines() {
+        let docs = [
+            Rc::new(Doc::Text(Rc::from("test"))),
+            Rc::new(Doc::Text(Rc::from("test2"))),
+        ];
+        let mock_config = MockConfig {};
+        let mut doc =
+            VecDeque::from([(0, Mode::Flat, join_docs_using_newlines(docs, &mock_config))]);
+
+        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
+
+        assert_eq!(simple_doc_to_string(sdoc), "test\ntest2")
+    }
+
+    #[test]
+    fn joinin_docs_with_newlines_does_nothing_for_just_one_doc() {
+        let docs = [Rc::new(Doc::Text(Rc::from("test")))];
+        let mock_config = MockConfig {};
+        let mut doc =
+            VecDeque::from([(0, Mode::Flat, join_docs_using_newlines(docs, &mock_config))]);
+
+        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
+
+        assert_eq!(simple_doc_to_string(sdoc), "test")
     }
 }

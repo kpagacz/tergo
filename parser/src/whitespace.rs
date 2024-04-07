@@ -1,8 +1,9 @@
+use log::trace;
 use nom::{
     error::{make_error, ErrorKind},
     IResult,
 };
-use tokenizer::{tokens::CommentedToken, Token};
+use tokenizer::{tokens::CommentedToken, tokens_buffer::TokensBuffer, Token};
 
 use crate::Input;
 
@@ -13,6 +14,7 @@ fn is_comment_or_newline(token: &CommentedToken) -> bool {
 pub(crate) fn whitespace_or_comment<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Input<'a, 'b>> {
+    trace!("whitespace_or_comment: {}", TokensBuffer(tokens));
     if tokens.is_empty() {
         return Err(nom::Err::Error(make_error(tokens, ErrorKind::Tag)));
     }
