@@ -160,14 +160,14 @@ impl std::fmt::Display for Args<'_> {
 pub struct FunctionDefinition<'a> {
     pub keyword: &'a CommentedToken<'a>,
     pub arguments: Args<'a>,
-    pub body: Vec<Expression<'a>>,
+    pub body: Box<Expression<'a>>,
 }
 
 impl<'a> FunctionDefinition<'a> {
     pub fn new(
         keyword: &'a CommentedToken<'a>,
         arguments: Args<'a>,
-        body: Vec<Expression<'a>>,
+        body: Box<Expression<'a>>,
     ) -> Self {
         Self {
             keyword,
@@ -181,13 +181,7 @@ impl std::fmt::Display for FunctionDefinition<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "{} {} {}",
-            self.keyword,
-            self.arguments,
-            self.body
-                .iter()
-                .map(|x| x.to_string())
-                .collect::<Vec<String>>()
-                .join(" ")
+            self.keyword, self.arguments, self.body
         ))
     }
 }

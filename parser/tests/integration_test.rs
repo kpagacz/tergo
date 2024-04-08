@@ -84,11 +84,11 @@ fn empty_function_definition() {
                 vec![],
                 Box::new(Expression::Literal(tokens[2])),
             ),
-            vec![Expression::Term(Box::new(TermExpr::new(
+            Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[3]),
                 vec![],
                 Some(tokens[4]),
-            )))],
+            )))),
         )),
         Expression::EOF(tokens[6]),
     ];
@@ -113,11 +113,11 @@ fn function_def_with_one_arg() {
                 vec![Arg(Expression::Symbol(tokens[2]), None)],
                 Box::new(Expression::Literal(tokens[3])),
             ),
-            vec![Expression::Term(Box::new(TermExpr::new(
+            Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[4]),
                 vec![],
                 Some(tokens[5]),
-            )))],
+            )))),
         )),
         Expression::EOF(tokens[7]),
     ];
@@ -155,11 +155,11 @@ fn function_def_with_one_arg_with_default_value() {
                 )],
                 Box::new(Expression::Literal(tokens[5])),
             ),
-            vec![Expression::Term(Box::new(TermExpr::new(
+            Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[6]),
                 vec![],
                 Some(tokens[7]),
-            )))],
+            )))),
         )),
         Expression::EOF(tokens[9]),
     ];
@@ -196,11 +196,11 @@ fn function_def_with_two_args() {
                 ],
                 Box::new(Expression::Literal(tokens[5])),
             ),
-            vec![Expression::Term(Box::new(TermExpr::new(
+            Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[6]),
                 vec![],
                 Some(tokens[7]),
-            )))],
+            )))),
         )),
         Expression::EOF(tokens[9]),
     ];
@@ -231,7 +231,7 @@ fn function_inline_body() {
                 vec![],
                 Box::new(Expression::Literal(tokens[2])),
             ),
-            vec![Expression::Literal(tokens[3])],
+            Box::new(Expression::Literal(tokens[3])),
         )),
         Expression::EOF(tokens[5]),
     ];
@@ -262,14 +262,14 @@ fn function_multiline_body() {
                 vec![],
                 Box::new(Expression::Literal(tokens[2])),
             ),
-            vec![Expression::Term(Box::new(TermExpr::new(
+            Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[3]),
                 vec![
                     Expression::Literal(tokens[5]),
                     Expression::Literal(tokens[7]),
                 ],
                 Some(tokens[9]),
-            )))],
+            )))),
         )),
         Expression::EOF(tokens[11]),
     ];

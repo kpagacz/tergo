@@ -9,3 +9,6 @@ edition = "2021"
 tokenizer = { path = "../tokenizer" }
 parser = { path = "../parser" }
 log = "0.4.21"
+
+[dev-dependencies]
+env_logger = "0.11.3"

@@ -12,6 +12,7 @@ pub(crate) enum ShouldBreak {
     No,
 }
 
+/// ShouldBreak is a linebreak that propagates to the parents
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct GroupDocProperties(pub(crate) Rc<Doc>, pub(crate) ShouldBreak); // (doc, should it break?)
 
@@ -74,6 +75,9 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                 (_, Mode::Flat, Doc::Break(s)) => fits(remaining_width - s.len() as i32, docs),
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
                 (i, _, Doc::Group(groupped_doc)) => {
+                    if groupped_doc.1 == ShouldBreak::Yes {
+                        return false;
+                    }
                     docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
                     fits(remaining_width, docs)
                 }
@@ -128,13 +132,15 @@ pub(crate) fn format_to_sdoc(
                     );
                     let mut group_docs =
                         VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
-                    if fits(line_length - consumed, &mut group_docs) {
-                        trace!("The group fits");
-                        docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
-                        format_to_sdoc(consumed, docs, config)
-                    } else {
+                    if groupped_doc.1 == ShouldBreak::Yes
+                        || !fits(line_length - consumed, &mut group_docs)
+                    {
                         trace!("The group does not fit");
                         docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));
+                        format_to_sdoc(consumed, docs, config)
+                    } else {
+                        trace!("The group fits");
+                        docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
                         format_to_sdoc(consumed, docs, config)
                     }
                 }
@@ -146,6 +152,10 @@ pub(crate) fn format_to_sdoc(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn log_init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
 
     struct MockConfig;
 
@@ -165,10 +175,60 @@ mod tests {
 
     #[test]
     fn printing_text_doc() {
+        log_init();
         let mut doc = VecDeque::from([(0i32, Mode::Flat, Rc::new(Doc::Text(Rc::from("Test"))))]);
         let mock_config = MockConfig {};
         let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
 
         assert_eq!(simple_doc_to_string(sdoc), "Test")
+    }
+
+    #[test]
+    fn should_break_breaks_even_when_fits_the_line() {
+        log_init();
+        let mut doc = VecDeque::from([(
+            0i32,
+            Mode::Flat,
+            Rc::new(Doc::Group(GroupDocProperties(
+                Rc::new(Doc::Cons(
+                    Rc::new(Doc::Text(Rc::from("Test"))),
+                    Rc::new(Doc::Cons(
+                        Rc::new(Doc::Break(" ")),
+                        Rc::new(Doc::Text(Rc::from("Test2"))),
+                    )),
+                )),
+                ShouldBreak::Yes,
+            ))),
+        )]);
+        let mock_config = MockConfig {};
+        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
+
+        assert_eq!(simple_doc_to_string(sdoc), "Test\nTest2")
+    }
+
+    #[test]
+    fn should_break_propagates_to_parents() {
+        log_init();
+        let mut doc = VecDeque::from([(
+            0i32,
+            Mode::Flat,
+            Rc::new(Doc::Group(GroupDocProperties(
+                Rc::new(Doc::Cons(
+                    Rc::new(Doc::Text(Rc::from("Test"))),
+                    Rc::new(Doc::Cons(
+                        Rc::new(Doc::Break(" ")),
+                        Rc::new(Doc::Group(GroupDocProperties(
+                            Rc::new(Doc::Text(Rc::from("Test2"))),
+                            ShouldBreak::Yes,
+                        ))),
+                    )),
+                )),
+                ShouldBreak::No,
+            ))),
+        )]);
+        let mock_config = MockConfig {};
+        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
+
+        assert_eq!(simple_doc_to_string(sdoc), "Test\nTest2")
     }
 }

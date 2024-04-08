@@ -88,3 +88,11 @@ fn parenthesized_bop_one_line() {
     let expected = include_str!(concat!("./test_cases/009.expected"));
     assert_eq!(format(input, None).unwrap(), expected);
 }
+
+#[test]
+fn simple_function_definition() {
+    log_init();
+    let input = include_str!(concat!("./test_cases/010.R"));
+    let expected = include_str!(concat!("./test_cases/010.expected"));
+    assert_eq!(format(input, None).unwrap(), expected);
+}

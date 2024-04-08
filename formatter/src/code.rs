@@ -1,5 +1,6 @@
 use crate::config::FormattingConfig;
 
+use log::trace;
 use parser::ast::Expression;
 use tokenizer::tokens::CommentedToken;
 
@@ -15,6 +16,9 @@ pub(crate) trait Code {
 macro_rules! group {
     ($doc:expr) => {
         Rc::new(Doc::Group(GroupDocProperties($doc, ShouldBreak::No)))
+    };
+    ($doc:expr, $should_break: expr) => {
+        Rc::new(Doc::Group(GroupDocProperties($doc, $should_break)))
     };
 }
 
@@ -151,7 +155,7 @@ impl Code for CommentedToken<'_> {
     }
 }
 
-fn join_docs_using_newlines<I, F>(docs: I, _config: &F) -> Rc<Doc>
+fn join_docs<I, F>(docs: I, should_break: ShouldBreak, _config: &F) -> Rc<Doc>
 where
     I: IntoIterator<Item = Rc<Doc>>,
     F: FormattingConfig,
@@ -160,15 +164,18 @@ where
     let mut res = Rc::new(Doc::Nil);
 
     if let Some(first_doc) = docs.next() {
-        res = Rc::new(Doc::Cons(first_doc, res));
+        if !matches!(*first_doc, Doc::Nil) {
+            res = Rc::new(Doc::Cons(first_doc, res));
+        }
     }
 
     for next_doc in docs {
-        res = Rc::new(Doc::Cons(res, Rc::new(Doc::Break("\n"))));
+        res = Rc::new(Doc::Cons(res, Rc::new(Doc::Break(""))));
         res = Rc::new(Doc::Cons(res, next_doc));
     }
 
-    res = Rc::new(Doc::Group(GroupDocProperties(res, ShouldBreak::Yes)));
+    res = Rc::new(Doc::Group(GroupDocProperties(res, should_break)));
+    trace!("joined_docs to: {res:?}");
     res
 }
 
@@ -187,9 +194,21 @@ impl<'a> Code for Expression<'a> {
                     &term_expr.post_delimiters,
                 );
                 match (pre, term, post) {
+                    (Some(pre), xprs, Some(post)) if matches!(pre.token, Token::LBrace) => {
+                        // Brace-delimited terms - always break
+                        trace!("to_docs for the term with curly brace expressions: {xprs:?}");
+                        let body_doc = join_docs(xprs.iter().map(|t| t.to_docs(config)), ShouldBreak::Yes, config);
+                        match body_doc.as_ref() {
+                            Doc::Group(inner_doc) if matches!(*inner_doc.0, Doc::Nil) => {
+                                group!(cons!(pre.to_docs(config), cons!(nl!(""), post.to_docs(config))), ShouldBreak::Yes)
+                            },
+                            _ => group!(delimited_doc!(body_doc, pre.to_docs(config), post.to_docs(config)))
+                        }
+                    }
                     (Some(pre), xprs, Some(post)) => {
+                        // Do not break automatically for the others
                         delimited_doc!(
-                            join_docs_using_newlines(xprs.iter().map(|t| t.to_docs(config)), config),
+                            join_docs(xprs.iter().map(|t| t.to_docs(config)),ShouldBreak::No, config),
                             pre.to_docs(config),
                             post.to_docs(config)
                         )
@@ -243,7 +262,17 @@ impl<'a> Code for Expression<'a> {
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
             Expression::EOF(_) => Rc::new(Doc::Nil),
             Expression::Whitespace(_) => Rc::new(Doc::Break("\n")),
-            Expression::FunctionDef(_) => todo!(),
+            Expression::FunctionDef(function_def) =>  {
+                // function(<potential_break>args) {<hard_break>body<hard_break>}
+               let (_, args, body) = (function_def.keyword, &function_def.arguments, &function_def.body) ;
+                let keyword = cons!(text!("function"), args.left_delimeter.to_docs(config));
+                let args_doc = join_docs(args.args.iter().map(|arg| cons!(arg.0.to_docs(config), text!(","))), ShouldBreak::No, config);
+                let args_with_delimiter = delimited_doc!(args_doc, Rc::new(Doc::Nil), cons!(args.right_delimeter.to_docs(config), cons!(text!(" "), nl!(""))));
+                let body_doc = body.to_docs(config);
+
+                let keyword_plus_args_part = group!(cons!(keyword, args_with_delimiter));
+                group!(cons!(keyword_plus_args_part, body_doc), ShouldBreak::Yes)
+            },
         }
     }
 }
@@ -278,8 +307,11 @@ mod tests {
             Rc::new(Doc::Text(Rc::from("test2"))),
         ];
         let mock_config = MockConfig {};
-        let mut doc =
-            VecDeque::from([(0, Mode::Flat, join_docs_using_newlines(docs, &mock_config))]);
+        let mut doc = VecDeque::from([(
+            0,
+            Mode::Flat,
+            join_docs(docs, ShouldBreak::Yes, &mock_config),
+        )]);
 
         let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
 
@@ -290,8 +322,11 @@ mod tests {
     fn joinin_docs_with_newlines_does_nothing_for_just_one_doc() {
         let docs = [Rc::new(Doc::Text(Rc::from("test")))];
         let mock_config = MockConfig {};
-        let mut doc =
-            VecDeque::from([(0, Mode::Flat, join_docs_using_newlines(docs, &mock_config))]);
+        let mut doc = VecDeque::from([(
+            0,
+            Mode::Flat,
+            join_docs(docs, ShouldBreak::No, &mock_config),
+        )]);
 
         let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
 

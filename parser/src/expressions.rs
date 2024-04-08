@@ -25,7 +25,9 @@ fn literal_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Exp
     map(literal, Expression::Literal)(tokens)
 }
 
-fn term_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
+pub(crate) fn term_expr<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
     trace!("term_expr: {}", TokensBuffer(tokens));
     alt((
         function_def,

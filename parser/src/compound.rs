@@ -9,7 +9,7 @@ use tokenizer::tokens_buffer::TokensBuffer;
 
 use crate::{
     ast::{Arg, Args, Expression, FunctionDefinition},
-    expressions::expr,
+    expressions::{expr, term_expr},
     program::statement_or_expr,
     token_parsers::*,
     Input,
@@ -24,10 +24,10 @@ pub(crate) fn function_def<'a, 'b: 'a>(
             many0(newline),
             par_delimited_comma_sep_exprs,
             many0(newline),
-            function_body,
+            term_expr,
         )),
         |(keyword, _, args, _, body)| {
-            Expression::FunctionDef(FunctionDefinition::new(keyword, args, body))
+            Expression::FunctionDef(FunctionDefinition::new(keyword, args, Box::new(body)))
         },
     )(tokens)
 }
@@ -72,11 +72,6 @@ fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
     )(tokens)
 }
 
-fn function_body<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Vec<Expression<'a>>> {
-    trace!("function_body: {}", TokensBuffer(tokens));
-    many0(statement_or_expr)(tokens)
-}
-
 #[cfg(test)]
 mod tests {
     use tokenizer::tokens::commented_tokens;
@@ -107,11 +102,11 @@ mod tests {
                     vec![],
                     Box::new(Expression::Literal(tokens[2]))
                 ),
-                vec![Expression::Term(Box::new(TermExpr::new(
+                Box::new(Expression::Term(Box::new(TermExpr::new(
                     Some(tokens[3]),
                     vec![],
                     Some(tokens[4])
-                )))]
+                ))))
             ))
         );
 
