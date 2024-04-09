@@ -4,6 +4,18 @@ fn log_init() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
 
+macro_rules! comparison_test {
+    ($name: ident, $file_number: literal) => {
+        #[test]
+        fn $name() {
+            log_init();
+            let input = include_str!(concat!("test_cases/", $file_number, ".R"));
+            let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
+            assert_eq!(format(input, None).unwrap(), expected);
+        }
+    };
+}
+
 #[test]
 fn adds_a_newline_at_the_end() {
     log_init();
@@ -96,3 +108,16 @@ fn simple_function_definition() {
     let expected = include_str!(concat!("./test_cases/010.expected"));
     assert_eq!(format(input, None).unwrap(), expected);
 }
+
+#[test]
+fn function_definition_no_args_one_expression() {
+    log_init();
+    let input = include_str!(concat!("./test_cases/011.R"));
+    let expected = include_str!(concat!("./test_cases/011.expected"));
+    assert_eq!(format(input, None).unwrap(), expected);
+}
+
+comparison_test!(function_definition_no_args_two_expressions, "012");
+comparison_test!(function_definition_one_arg_no_body, "013");
+comparison_test!(function_definition_tw0_arg_no_body, "014");
+comparison_test!(function_definition_one_default_arg_no_body, "015");

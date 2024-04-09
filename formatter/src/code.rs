@@ -155,7 +155,7 @@ impl Code for CommentedToken<'_> {
     }
 }
 
-fn join_docs<I, F>(docs: I, should_break: ShouldBreak, _config: &F) -> Rc<Doc>
+fn join_docs<I, F>(docs: I, separator: Rc<Doc>, should_break: ShouldBreak, _config: &F) -> Rc<Doc>
 where
     I: IntoIterator<Item = Rc<Doc>>,
     F: FormattingConfig,
@@ -165,12 +165,15 @@ where
 
     if let Some(first_doc) = docs.next() {
         if !matches!(*first_doc, Doc::Nil) {
-            res = Rc::new(Doc::Cons(first_doc, res));
+            res = Rc::new(Doc::Cons(res, first_doc));
         }
     }
 
     for next_doc in docs {
-        res = Rc::new(Doc::Cons(res, Rc::new(Doc::Break(""))));
+        res = Rc::new(Doc::Cons(
+            res,
+            cons!(Rc::clone(&separator), Rc::new(Doc::Break(" "))),
+        ));
         res = Rc::new(Doc::Cons(res, next_doc));
     }
 
@@ -197,7 +200,7 @@ impl<'a> Code for Expression<'a> {
                     (Some(pre), xprs, Some(post)) if matches!(pre.token, Token::LBrace) => {
                         // Brace-delimited terms - always break
                         trace!("to_docs for the term with curly brace expressions: {xprs:?}");
-                        let body_doc = join_docs(xprs.iter().map(|t| t.to_docs(config)), ShouldBreak::Yes, config);
+                        let body_doc = join_docs(xprs.iter().map(|t| t.to_docs(config)), Rc::new(Doc::Nil), ShouldBreak::Yes, config);
                         match body_doc.as_ref() {
                             Doc::Group(inner_doc) if matches!(*inner_doc.0, Doc::Nil) => {
                                 group!(cons!(pre.to_docs(config), cons!(nl!(""), post.to_docs(config))), ShouldBreak::Yes)
@@ -208,7 +211,7 @@ impl<'a> Code for Expression<'a> {
                     (Some(pre), xprs, Some(post)) => {
                         // Do not break automatically for the others
                         delimited_doc!(
-                            join_docs(xprs.iter().map(|t| t.to_docs(config)),ShouldBreak::No, config),
+                            join_docs(xprs.iter().map(|t| t.to_docs(config)), Rc::new(Doc::Nil),  ShouldBreak::No, config),
                             pre.to_docs(config),
                             post.to_docs(config)
                         )
@@ -266,7 +269,12 @@ impl<'a> Code for Expression<'a> {
                 // function(<potential_break>args) {<hard_break>body<hard_break>}
                let (_, args, body) = (function_def.keyword, &function_def.arguments, &function_def.body) ;
                 let keyword = cons!(text!("function"), args.left_delimeter.to_docs(config));
-                let args_doc = join_docs(args.args.iter().map(|arg| cons!(arg.0.to_docs(config), text!(","))), ShouldBreak::No, config);
+                let args_doc = join_docs(
+                    args.args.iter().map(|arg| cons!(arg.0.to_docs(config), arg.1.as_ref().map(|sep| sep.to_docs(config)).unwrap_or(Rc::new(Doc::Nil)))),
+                    Rc::new(Doc::Nil),
+                    ShouldBreak::No,
+                    config
+                );
                 let args_with_delimiter = delimited_doc!(args_doc, Rc::new(Doc::Nil), cons!(args.right_delimeter.to_docs(config), cons!(text!(" "), nl!(""))));
                 let body_doc = body.to_docs(config);
 
@@ -310,7 +318,7 @@ mod tests {
         let mut doc = VecDeque::from([(
             0,
             Mode::Flat,
-            join_docs(docs, ShouldBreak::Yes, &mock_config),
+            join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, &mock_config),
         )]);
 
         let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
@@ -325,7 +333,7 @@ mod tests {
         let mut doc = VecDeque::from([(
             0,
             Mode::Flat,
-            join_docs(docs, ShouldBreak::No, &mock_config),
+            join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::No, &mock_config),
         )]);
 
         let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
