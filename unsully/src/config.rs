@@ -1,5 +1,6 @@
 use formatter::config::FormattingConfig;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Config {
     indent: i32,
     line_length: i32,

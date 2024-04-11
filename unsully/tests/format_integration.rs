@@ -14,27 +14,20 @@ macro_rules! comparison_test {
             assert_eq!(format(input, None).unwrap(), expected);
         }
     };
+    ($name: ident, $file_number: literal, $config: ident) => {
+        #[test]
+        fn $name() {
+            log_init();
+            let input = include_str!(concat!("test_cases/", $file_number, ".R"));
+            let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
+            assert_eq!(format(input, Some($config())).unwrap(), expected);
+        }
+    };
 }
 
-#[test]
-fn adds_a_newline_at_the_end() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/001.R"));
-    let expected = include_str!(concat!("./test_cases/001.expected"));
-    assert_eq!(format(input, None).unwrap(), expected);
-
-    let input = include_str!(concat!("./test_cases/002.R"));
-    let expected = include_str!(concat!("./test_cases/002.expected"));
-    assert_eq!(format(input, None).unwrap(), expected);
-}
-
-#[test]
-fn simple_bops() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/003.R"));
-    let expected = include_str!(concat!("./test_cases/003.expected"));
-    assert_eq!(format(input, None).unwrap(), expected);
-}
+comparison_test!(adds_a_newline_at_the_end, "001");
+comparison_test!(adds_a_newline_at_the_end2, "002");
+comparison_test!(simple_bops, "003");
 
 #[test]
 fn simple_bops_indents_and_new_lines() {
@@ -50,74 +43,32 @@ fn simple_bops_indents_and_new_lines() {
     assert_eq!(format(input, Some(config)).unwrap(), expected);
 }
 
-#[test]
-fn simple_bop_with_parenthesis() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/004.R"));
-    let expected = include_str!(concat!("./test_cases/004.expected"));
-    assert_eq!(format(input, None).unwrap(), expected);
+fn short_line_config() -> Config {
+    Config::new(0, 4)
 }
 
-#[test]
-fn simple_bop_with_parentheses_forced_to_break_line() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/005.R"));
-    let expected = include_str!(concat!("./test_cases/005.expected"));
-    let config = Config::new(0, 4);
-    assert_eq!(format(input, Some(config)).unwrap(), expected);
-}
-
-#[test]
-fn simple_term_with_parentheses_forced_to_break_line() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/006.R"));
-    let expected = include_str!(concat!("./test_cases/006.expected"));
-    let config = Config::new(0, 2);
-    assert_eq!(format(input, Some(config)).unwrap(), expected);
-}
-
-#[test]
-fn simple_bop_forced_to_break_and_indent() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/007.R"));
-    let expected = include_str!(concat!("./test_cases/007.expected"));
-    let config = Config::new(2, 2);
-    assert_eq!(format(input, Some(config)).unwrap(), expected);
-}
-
-#[test]
-fn range_bop_one_line() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/008.R"));
-    let expected = include_str!(concat!("./test_cases/008.expected"));
-    assert_eq!(format(input, None).unwrap(), expected);
-}
-
-#[test]
-fn parenthesized_bop_one_line() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/009.R"));
-    let expected = include_str!(concat!("./test_cases/009.expected"));
-    assert_eq!(format(input, None).unwrap(), expected);
-}
-
-#[test]
-fn simple_function_definition() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/010.R"));
-    let expected = include_str!(concat!("./test_cases/010.expected"));
-    assert_eq!(format(input, None).unwrap(), expected);
-}
-
-#[test]
-fn function_definition_no_args_one_expression() {
-    log_init();
-    let input = include_str!(concat!("./test_cases/011.R"));
-    let expected = include_str!(concat!("./test_cases/011.expected"));
-    assert_eq!(format(input, None).unwrap(), expected);
-}
-
+comparison_test!(simple_bop_with_parenthesis, "004");
+comparison_test!(
+    simple_bop_with_parentheses_forced_to_break_line,
+    "005",
+    short_line_config
+);
+comparison_test!(
+    simple_term_with_parentheses_forced_to_break_line,
+    "006",
+    short_line_config
+);
+comparison_test!(
+    simple_bop_forced_to_break_and_indent,
+    "007",
+    short_line_config
+);
+comparison_test!(range_bop_one_line, "008");
+comparison_test!(parenthesized_bop_one_line, "009");
+comparison_test!(simple_function_definition, "010");
+comparison_test!(function_definition_no_args_one_expression, "011");
 comparison_test!(function_definition_no_args_two_expressions, "012");
 comparison_test!(function_definition_one_arg_no_body, "013");
 comparison_test!(function_definition_tw0_arg_no_body, "014");
 comparison_test!(function_definition_one_default_arg_no_body, "015");
+comparison_test!(function_definition_three_args_multiline_body, "016");
