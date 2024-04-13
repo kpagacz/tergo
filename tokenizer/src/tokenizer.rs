@@ -411,7 +411,11 @@ impl<'a> Tokenizer<'a> {
         {
             self.next();
         }
-        self.push_token(Symbol(&self.raw_source[start_it..self.it]), tokens);
+        match &self.raw_source[start_it..self.it] {
+            "TRUE" | "T" => self.push_token(Literal("TRUE"), tokens),
+            "FALSE" | "F" => self.push_token(Literal("FALSE"), tokens),
+            _ => self.push_token(Symbol(&self.raw_source[start_it..self.it]), tokens),
+        }
     }
 
     fn identifier_or_reserved(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
@@ -430,6 +434,8 @@ impl<'a> Tokenizer<'a> {
             "while" => self.push_token(While, tokens),
             "repeat" => self.push_token(Repeat, tokens),
             "function" => self.push_token(Function, tokens),
+            "TRUE" | "T" => self.push_token(Literal("TRUE"), tokens),
+            "FALSE" | "F" => self.push_token(Literal("FALSE"), tokens),
             _ => self.push_token(Symbol(&self.raw_source[start_it..self.it]), tokens),
         }
     }

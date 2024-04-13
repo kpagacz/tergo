@@ -1,20 +1,21 @@
-use log::trace;
 use nom::{
     combinator::{map, opt},
     multi::many0,
     sequence::tuple,
     IResult,
 };
-use tokenizer::tokens_buffer::TokensBuffer;
 
 use crate::{
-    ast::{Arg, Args, Expression, FunctionDefinition},
+    ast::{
+        Arg, Args, ElseIfConditional, Expression, FunctionDefinition, IfConditional, IfExpression,
+        TrailingElse,
+    },
     expressions::{expr, term_expr},
-    program::statement_or_expr,
     token_parsers::*,
     Input,
 };
 
+// Function definition
 pub(crate) fn function_def<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
@@ -70,6 +71,54 @@ fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
             ),
         },
     )(tokens)
+}
+
+// If expression
+pub(crate) fn if_expression<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    map(
+        tuple((if_conditional, many0(else_if), opt(trailing_else))),
+        |(if_conditional, else_ifs, trailing_else)| {
+            Expression::IfExpression(IfExpression {
+                if_conditional,
+                else_ifs,
+                trailing_else,
+            })
+        },
+    )(tokens)
+}
+
+fn if_conditional<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, IfConditional<'a>> {
+    map(
+        tuple((if_token, lparen, term_expr, rparen, term_expr)),
+        |(keyword, left_delimiter, condition, right_delimiter, body)| IfConditional {
+            keyword,
+            left_delimiter,
+            condition: Box::new(condition),
+            right_delimiter,
+            body: Box::new(body),
+        },
+    )(tokens)
+}
+
+fn else_if<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, ElseIfConditional<'a>> {
+    map(
+        tuple((else_token, if_conditional)),
+        |(else_keyword, if_conditional)| ElseIfConditional {
+            else_keyword,
+            if_conditional,
+        },
+    )(tokens)
+}
+
+fn trailing_else<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, TrailingElse<'a>> {
+    map(tuple((else_token, term_expr)), |(else_keyword, body)| {
+        TrailingElse {
+            else_keyword,
+            body: Box::new(body),
+        }
+    })(tokens)
 }
 
 #[cfg(test)]

@@ -281,6 +281,7 @@ impl<'a> Code for Expression<'a> {
                 let keyword_plus_args_part = group!(cons!(keyword, args_with_delimiter));
                 group!(cons!(keyword_plus_args_part, body_doc), ShouldBreak::Yes)
             },
+            Expression::IfExpression(_) => todo!()
         }
     }
 }

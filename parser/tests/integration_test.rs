@@ -1,4 +1,7 @@
-use parser::ast::{Arg, Args, Expression, ExpressionsBuffer, FunctionDefinition, TermExpr};
+use parser::ast::{
+    Arg, Args, ElseIfConditional, Expression, ExpressionsBuffer, FunctionDefinition, IfConditional,
+    IfExpression, TermExpr, TrailingElse,
+};
 use parser::{parse, pre_parse};
 use tokenizer::Tokenizer;
 
@@ -272,6 +275,147 @@ fn function_multiline_body() {
             )))),
         )),
         Expression::EOF(tokens[11]),
+    ];
+
+    assert_eq!(
+        res,
+        expected,
+        "res: {}\nexpected: {}",
+        ExpressionsBuffer(&res),
+        ExpressionsBuffer(&expected)
+    );
+}
+
+#[test]
+fn if_conditional() {
+    log_init();
+
+    let code = include_str!("./test_cases/010.R");
+    let mut tokenizer = Tokenizer::new(code);
+    let mut commented_tokens = tokenizer.tokenize();
+    let tokens = pre_parse(&mut commented_tokens);
+
+    let res = parse(&tokens).unwrap();
+    let expected = vec![
+        Expression::IfExpression(IfExpression {
+            if_conditional: IfConditional {
+                keyword: tokens[0],
+                left_delimiter: tokens[1],
+                condition: Box::new(Expression::Literal(tokens[2])),
+                right_delimiter: tokens[3],
+                body: Box::new(Expression::Term(Box::new(TermExpr::new(
+                    Some(tokens[4]),
+                    vec![],
+                    Some(tokens[5]),
+                )))),
+            },
+            else_ifs: vec![],
+            trailing_else: None,
+        }),
+        Expression::EOF(tokens[7]),
+    ];
+
+    assert_eq!(
+        res,
+        expected,
+        "res: {}\nexpected: {}",
+        ExpressionsBuffer(&res),
+        ExpressionsBuffer(&expected)
+    );
+}
+
+#[test]
+fn if_with_else() {
+    log_init();
+
+    let code = include_str!("./test_cases/011.R");
+    let mut tokenizer = Tokenizer::new(code);
+    let mut commented_tokens = tokenizer.tokenize();
+    let tokens = pre_parse(&mut commented_tokens);
+
+    let res = parse(&tokens).unwrap();
+    let expected = vec![
+        Expression::IfExpression(IfExpression {
+            if_conditional: IfConditional {
+                keyword: tokens[0],
+                left_delimiter: tokens[1],
+                condition: Box::new(Expression::Literal(tokens[2])),
+                right_delimiter: tokens[3],
+                body: Box::new(Expression::Term(Box::new(TermExpr::new(
+                    Some(tokens[4]),
+                    vec![],
+                    Some(tokens[5]),
+                )))),
+            },
+            else_ifs: vec![],
+            trailing_else: Some(TrailingElse {
+                else_keyword: tokens[6],
+                body: Box::new(Expression::Term(Box::new(TermExpr::new(
+                    Some(tokens[7]),
+                    vec![],
+                    Some(tokens[8]),
+                )))),
+            }),
+        }),
+        Expression::EOF(tokens[10]),
+    ];
+
+    assert_eq!(
+        res,
+        expected,
+        "res: {}\nexpected: {}",
+        ExpressionsBuffer(&res),
+        ExpressionsBuffer(&expected)
+    );
+}
+
+#[test]
+fn if_with_if_else_and_else() {
+    log_init();
+
+    let code = include_str!("./test_cases/012.R");
+    let mut tokenizer = Tokenizer::new(code);
+    let mut commented_tokens = tokenizer.tokenize();
+    let tokens = pre_parse(&mut commented_tokens);
+
+    let res = parse(&tokens).unwrap();
+    let expected = vec![
+        Expression::IfExpression(IfExpression {
+            if_conditional: IfConditional {
+                keyword: tokens[0],
+                left_delimiter: tokens[1],
+                condition: Box::new(Expression::Literal(tokens[2])),
+                right_delimiter: tokens[3],
+                body: Box::new(Expression::Term(Box::new(TermExpr::new(
+                    Some(tokens[4]),
+                    vec![],
+                    Some(tokens[5]),
+                )))),
+            },
+            else_ifs: vec![ElseIfConditional {
+                else_keyword: tokens[6],
+                if_conditional: IfConditional {
+                    keyword: tokens[7],
+                    left_delimiter: tokens[8],
+                    condition: Box::new(Expression::Literal(tokens[9])),
+                    right_delimiter: tokens[10],
+                    body: Box::new(Expression::Term(Box::new(TermExpr::new(
+                        Some(tokens[11]),
+                        vec![],
+                        Some(tokens[12]),
+                    )))),
+                },
+            }],
+            trailing_else: Some(TrailingElse {
+                else_keyword: tokens[13],
+                body: Box::new(Expression::Term(Box::new(TermExpr::new(
+                    Some(tokens[14]),
+                    vec![],
+                    Some(tokens[15]),
+                )))),
+            }),
+        }),
+        Expression::EOF(tokens[17]),
     ];
 
     assert_eq!(

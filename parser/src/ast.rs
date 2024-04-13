@@ -15,6 +15,7 @@ pub enum Expression<'a> {
     Whitespace(&'a [&'a CommentedToken<'a>]),
     EOF(&'a CommentedToken<'a>),
     FunctionDef(FunctionDefinition<'a>),
+    IfExpression(IfExpression<'a>),
 }
 
 impl std::fmt::Display for Expression<'_> {
@@ -31,6 +32,9 @@ impl std::fmt::Display for Expression<'_> {
             Expression::Whitespace(tokens) => f.write_fmt(format_args!("{}", TokensBuffer(tokens))),
             Expression::EOF(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
             Expression::FunctionDef(func_def) => f.write_fmt(format_args!("{}", func_def)),
+            Expression::IfExpression(if_expression) => {
+                f.write_fmt(format_args!("{}", if_expression))
+            }
         }
     }
 }
@@ -183,5 +187,71 @@ impl std::fmt::Display for FunctionDefinition<'_> {
             "{} {} {}",
             self.keyword, self.arguments, self.body
         ))
+    }
+}
+
+// If expression
+#[derive(Debug, Clone, PartialEq)]
+pub struct IfConditional<'a> {
+    pub keyword: &'a CommentedToken<'a>,
+    pub left_delimiter: &'a CommentedToken<'a>,
+    pub condition: Box<Expression<'a>>,
+    pub right_delimiter: &'a CommentedToken<'a>,
+    pub body: Box<Expression<'a>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ElseIfConditional<'a> {
+    pub else_keyword: &'a CommentedToken<'a>,
+    pub if_conditional: IfConditional<'a>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrailingElse<'a> {
+    pub else_keyword: &'a CommentedToken<'a>,
+    pub body: Box<Expression<'a>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IfExpression<'a> {
+    pub if_conditional: IfConditional<'a>,
+    pub else_ifs: Vec<ElseIfConditional<'a>>,
+    pub trailing_else: Option<TrailingElse<'a>>,
+}
+
+impl std::fmt::Display for TrailingElse<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{} {}", self.else_keyword, self.body))
+    }
+}
+
+impl std::fmt::Display for IfConditional<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "{} {} {} {} {}",
+            self.keyword, self.left_delimiter, self.condition, self.right_delimiter, self.body
+        ))
+    }
+}
+
+impl std::fmt::Display for ElseIfConditional<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "{} {}",
+            self.else_keyword, self.if_conditional
+        ))
+    }
+}
+
+impl std::fmt::Display for IfExpression<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_fmt(format_args!("{} ", self.if_conditional))?;
+        for else_if in &self.else_ifs {
+            f.write_fmt(format_args!("{}", else_if))?;
+        }
+        match &self.trailing_else {
+            Some(trailing_else) => f.write_fmt(format_args!("{}", trailing_else)),
+            None => Ok(()),
+        }
     }
 }

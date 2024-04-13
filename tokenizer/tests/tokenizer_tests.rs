@@ -4,13 +4,13 @@ use tokenizer::tokens::Token;
 #[test]
 fn symbols() {
     let examples = [
-        ("TRUE", vec![Token::Symbol("TRUE"), Token::EOF]),
+        ("TRUE", vec![Token::Literal("TRUE"), Token::EOF]),
         (
             "TRUE\nTRUE",
             vec![
-                Token::Symbol("TRUE"),
+                Token::Literal("TRUE"),
                 Token::Newline,
-                Token::Symbol("TRUE"),
+                Token::Literal("TRUE"),
                 Token::EOF,
             ],
         ),
@@ -36,7 +36,7 @@ fn comments() {
         (
             "TRUE#Comment",
             vec![
-                Token::Symbol("TRUE"),
+                Token::Literal("TRUE"),
                 Token::InlineComment("#Comment"),
                 Token::EOF,
             ],
@@ -60,11 +60,11 @@ fn ifs() {
         vec![
             Token::If,
             Token::LParen,
-            Token::Symbol("TRUE"),
+            Token::Literal("TRUE"),
             Token::RParen,
-            Token::Symbol("TRUE"),
+            Token::Literal("TRUE"),
             Token::Else,
-            Token::Symbol("FALSE"),
+            Token::Literal("FALSE"),
             Token::EOF,
         ],
     )];
@@ -193,7 +193,7 @@ fn function_definitions() {
                 Token::Function,
                 Token::LParen,
                 Token::RParen,
-                Token::Symbol("TRUE"),
+                Token::Literal("TRUE"),
                 Token::EOF,
             ],
         ),
@@ -204,7 +204,7 @@ fn function_definitions() {
                 Token::LParen,
                 Token::Symbol("x"),
                 Token::RParen,
-                Token::Symbol("TRUE"),
+                Token::Literal("TRUE"),
                 Token::EOF,
             ],
         ),
@@ -217,7 +217,7 @@ fn function_definitions() {
                 Token::Comma,
                 Token::Symbol("y"),
                 Token::RParen,
-                Token::Symbol("TRUE"),
+                Token::Literal("TRUE"),
                 Token::EOF,
             ],
         ),
@@ -232,7 +232,7 @@ fn function_definitions() {
                 Token::Comma,
                 Token::Symbol("z"),
                 Token::RParen,
-                Token::Symbol("TRUE"),
+                Token::Literal("TRUE"),
                 Token::EOF,
             ],
         ),
@@ -249,7 +249,7 @@ fn function_definitions() {
                 Token::Comma,
                 Token::Symbol("..."),
                 Token::RParen,
-                Token::Symbol("TRUE"),
+                Token::Literal("TRUE"),
                 Token::EOF,
             ],
         ),

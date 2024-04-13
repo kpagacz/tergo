@@ -13,6 +13,7 @@ use tokenizer::Token::*;
 use crate::ast::Expression;
 use crate::ast::TermExpr;
 use crate::compound::function_def;
+use crate::compound::if_expression;
 use crate::program::statement_or_expr;
 use crate::token_parsers::*;
 use crate::Input;
@@ -31,6 +32,7 @@ pub(crate) fn term_expr<'a, 'b: 'a>(
     trace!("term_expr: {}", TokensBuffer(tokens));
     alt((
         function_def,
+        if_expression,
         map(symbol_expr, |symbol| symbol),
         map(literal_expr, |literal| literal),
         map(
