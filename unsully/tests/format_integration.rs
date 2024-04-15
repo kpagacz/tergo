@@ -80,3 +80,9 @@ comparison_test!(conditional_with_one_expr_trailing_else, "021");
 comparison_test!(conditional_with_one_expr_and_one_expr_trailing_else, "022");
 comparison_test!(conditional_with_if_else, "023");
 comparison_test!(conditional_with_if_if_else_and_trailing_else, "024");
+comparison_test!(term_with_braces, "025");
+comparison_test!(
+    conditional_with_if_if_else_and_trailing_else_short_lines,
+    "026",
+    short_line_config
+);

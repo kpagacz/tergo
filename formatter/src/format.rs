@@ -26,6 +26,30 @@ pub(crate) enum Doc {
     Group(GroupDocProperties),
 }
 
+impl std::fmt::Display for Doc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Doc::Nil => f.write_str("Nil"),
+            Doc::Cons(left, right) => f.write_fmt(format_args!("{} + {}", left, right)),
+            Doc::Text(text) => f.write_fmt(format_args!("'{}'", text)),
+            Doc::Nest(indent, body) => f.write_fmt(format_args!("Nest{}({})", indent, body)),
+            Doc::Break(newline) => f.write_fmt(format_args!("NL({})", newline)),
+            Doc::Group(inside) => f.write_fmt(format_args!("SB:{:?}<{}>", inside.1, inside.0)),
+        }
+    }
+}
+
+pub(crate) struct DocBuffer<'a>(pub(crate) &'a VecDeque<(i32, Mode, Rc<Doc>)>);
+
+impl std::fmt::Display for DocBuffer<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for doc in self.0 {
+            f.write_fmt(format_args!("{}, ", doc.2))?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum SimpleDoc {
     Nil,

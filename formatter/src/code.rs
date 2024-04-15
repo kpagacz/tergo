@@ -1,7 +1,7 @@
 use crate::config::FormattingConfig;
 
 use log::trace;
-use parser::ast::{Expression, IfConditional};
+use parser::ast::{Expression, IfConditional, TermExpr};
 use tokenizer::tokens::CommentedToken;
 
 use crate::format::{Doc, GroupDocProperties, ShouldBreak};
@@ -155,6 +155,7 @@ impl Code for CommentedToken<'_> {
     }
 }
 
+/// Returns a Doc::Group
 fn join_docs<I, F>(docs: I, separator: Rc<Doc>, should_break: ShouldBreak, _config: &F) -> Rc<Doc>
 where
     I: IntoIterator<Item = Rc<Doc>>,
@@ -182,6 +183,57 @@ where
     res
 }
 
+/// Returns the docs of the term and the suffix after the last potential line break
+fn term_expression_to_docs_with_prefix<Config>(
+    term: &TermExpr,
+    prefix_docs: Rc<Doc>,
+    should_break: ShouldBreak,
+    config: &Config,
+) -> (Rc<Doc>, Rc<Doc>)
+where
+    Config: FormattingConfig,
+{
+    let (pre_delim, xprs, post_delim) = (term.pre_delimiters, &term.term, term.post_delimiters);
+    let mut suffix = Rc::new(Doc::Nil);
+    let mut docs: Rc<Doc>;
+    match (pre_delim, xprs, post_delim) {
+        (Some(pre), xprs, Some(post)) if xprs.is_empty() => {
+            docs = cons!(pre.to_docs(config), post.to_docs(config));
+            docs = cons!(prefix_docs, docs);
+        }
+        (Some(pre), xprs, Some(post)) if matches!(pre.token, Token::LBrace) => {
+            // Brace-delimited terms - put a space between the delimiters and the body
+            trace!("to_docs for the term with curly brace expressions: {xprs:?}");
+            let body_doc = join_docs(
+                xprs.iter().map(|t| t.to_docs(config)),
+                Rc::new(Doc::Nil),
+                should_break,
+                config,
+            );
+            let pre = cons!(prefix_docs, cons!(pre.to_docs(config), nl!(" ")));
+            docs = cons!(pre, body_doc);
+            suffix = post.to_docs(config);
+        }
+        (Some(pre), xprs, Some(post)) => {
+            // Do not put the space between the delimiters and the body
+            docs = delimited_doc!(
+                join_docs(
+                    xprs.iter().map(|t| t.to_docs(config)),
+                    Rc::new(Doc::Nil),
+                    should_break,
+                    config
+                ),
+                cons!(prefix_docs, pre.to_docs(config)),
+                Rc::new(Doc::Nil)
+            );
+            suffix = post.to_docs(config);
+        }
+        _ => panic!("A term without matching delimiteres encountered"),
+    };
+
+    (docs, suffix)
+}
+
 impl<'a> Code for Expression<'a> {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
         let indent = config.indent();
@@ -191,32 +243,20 @@ impl<'a> Code for Expression<'a> {
                 token.to_docs(config)
             }
             Expression::Term(term_expr) => {
-                let (pre, term, post) = (
-                    &term_expr.pre_delimiters,
-                    &term_expr.term,
-                    &term_expr.post_delimiters,
-                );
-                match (pre, term, post) {
-                    (Some(pre), xprs, Some(post)) if matches!(pre.token, Token::LBrace) => {
-                        // Brace-delimited terms - always break
-                        trace!("to_docs for the term with curly brace expressions: {xprs:?}");
-                        let body_doc = join_docs(xprs.iter().map(|t| t.to_docs(config)), Rc::new(Doc::Nil), ShouldBreak::Yes, config);
-                        match body_doc.as_ref() {
-                            Doc::Group(inner_doc) if matches!(*inner_doc.0, Doc::Nil) => {
-                                group!(cons!(pre.to_docs(config), cons!(nl!(""), post.to_docs(config))), ShouldBreak::Yes)
-                            },
-                            _ => group!(delimited_doc!(body_doc, pre.to_docs(config), post.to_docs(config)))
+                match term_expr.pre_delimiters {
+                    Some(pre_delim) if matches!(pre_delim.token, Token::LBrace) => {
+                        let (body, suffix) = term_expression_to_docs_with_prefix(term_expr, Rc::new(Doc::Nil), ShouldBreak::Yes, config);
+                        if matches!(&*suffix, Doc::Nil) {
+                            group!(body)
+                        } else {
+                            group!(cons!(cons!(body, nl!(" ")), suffix), ShouldBreak::Yes)
                         }
-                    }
-                    (Some(pre), xprs, Some(post)) => {
-                        // Do not break automatically for the others
-                        delimited_doc!(
-                            join_docs(xprs.iter().map(|t| t.to_docs(config)), Rc::new(Doc::Nil),  ShouldBreak::No, config),
-                            pre.to_docs(config),
-                            post.to_docs(config)
-                        )
-                    }
-                    _ => panic!("A term without matching delimiteres encountered"),
+                    },
+                    _ => {
+                        let (body, suffix) = term_expression_to_docs_with_prefix(term_expr, Rc::new(Doc::Nil), ShouldBreak::No, config);
+                        cons!(body, suffix)
+                    },
+
                 }
             }
             Expression::Bop(op, lhs, rhs) => match op.token {
@@ -242,14 +282,16 @@ impl<'a> Code for Expression<'a> {
                 | Token::Pipe
                 | Token::Modulo
                 | Token::Tilde
-                | Token::Special(_) => group!(nest!(
-                    indent,
-                    with_optional_break(
-                        cons!(cons!(lhs.to_docs(config), text!(" ")), op.to_docs(config)),
-                        rhs.to_docs(config),
-                        " "
-                    )
-                )),
+                | Token::Special(_) => {
+                    group!(nest!(
+                        indent,
+                        with_optional_break(
+                            cons!(cons!(lhs.to_docs(config), text!(" ")), op.to_docs(config)),
+                            rhs.to_docs(config),
+                            " "
+                        )
+                    ))
+                },
                 Token::Dollar | Token::NsGet | Token::NsGetInt | Token::Colon | Token::Slot => {
                     group!(nest!(
                         indent,
@@ -299,29 +341,24 @@ impl<'a> Code for Expression<'a> {
                 }
                 if let Some(trailing_else) = trailing_else {
                     match trailing_else.body.as_ref() {
-                        Expression::Term(term_expr) if term_expr.pre_delimiters.is_some() => {
-                            let mut new_group = cons!(cons!(conditional_suffix, text!(" ")), cons!(trailing_else.else_keyword.to_docs(config), text!(" ")));
-                            match (term_expr.pre_delimiters, term_expr.post_delimiters) {
-                                (Some(pre_delim), Some(post_delim)) => {
-                                    if term_expr.term.is_empty() {
-                                        conditional_suffix = cons!(new_group, cons!(pre_delim.to_docs(config), post_delim.to_docs(config)));
-                                    } else {
-                                        new_group = cons!(new_group, pre_delim.to_docs(config));
-                                        new_group = group!(new_group);
-                                        new_group = cons!(new_group, nl!(" "));
-                                        let mut body_doc = join_docs(
-                                            term_expr.term.iter().map(|t| t.to_docs(config)),
-                                            Rc::new(Doc::Nil),
-                                            ShouldBreak::Yes,
-                                            config,
-                                        );
-                                        body_doc = cons!(body_doc, nl!(" "));
-                                        docs = cons!(docs, group!(cons!(new_group, body_doc)));
-                                        conditional_suffix = post_delim.to_docs(config);
-                                    }
-                                }
-                                _ => panic!("One of the delimiters of the term expression is None: {term_expr:?}"),
+                        Expression::Term(term_expr) => {
+                            let trailing_else_prefix = cons!(
+                                cons!(conditional_suffix, text!(" ")),
+                                cons!(trailing_else.else_keyword.to_docs(config), text!(" "))
+                            );
+                            let (body_docs, suffix) = term_expression_to_docs_with_prefix(
+                                term_expr,
+                                trailing_else_prefix,
+                                ShouldBreak::Yes,
+                                config
+                           );
+                            if !matches!(&*suffix, Doc::Nil) {
+                                docs = cons!(docs, group!(cons!(body_docs, nl!(""))));
+                            } else {
+                                docs = cons!(docs, group!(body_docs));
                             }
+
+                            conditional_suffix = suffix;
                         }
                         _ => {
                             conditional_suffix = cons!(conditional_suffix, trailing_else.body.to_docs(config));
@@ -336,13 +373,13 @@ impl<'a> Code for Expression<'a> {
     }
 }
 
+/// Returns the docs of the if conditional and the suffix after the last potential line break
 fn if_conditional_to_docs(
     prefix_docs: Rc<Doc>,
     if_conditional: &IfConditional,
     config: &impl FormattingConfig,
 ) -> (Rc<Doc>, Rc<Doc>) {
-    // docs to append and the suffix doc
-    let mut docs = group!(cons!(
+    let mut docs = cons!(
         cons!(
             if !matches!(prefix_docs.as_ref(), Doc::Nil) {
                 cons!(prefix_docs, text!(" "))
@@ -352,47 +389,34 @@ fn if_conditional_to_docs(
             cons!(if_conditional.keyword.to_docs(config), text!(" "))
         ),
         if_conditional.left_delimiter.to_docs(config)
-    ));
+    );
     docs = cons!(docs, nl!(""));
     docs = cons!(
         docs,
         cons!(if_conditional.condition.to_docs(config), nl!(""))
     );
+    docs = group!(docs);
     let mut next_group = cons!(if_conditional.right_delimiter.to_docs(config), text!(" "));
     let mut suffix = Rc::new(Doc::Nil);
     match if_conditional.body.as_ref() {
-        Expression::Term(term_expr) if term_expr.pre_delimiters.is_some() => {
-            match (term_expr.pre_delimiters, term_expr.post_delimiters) {
-                (Some(pre_delim), Some(post_delim)) => {
-                    if term_expr.term.is_empty() {
-                        next_group = cons!(
-                            next_group,
-                            cons!(pre_delim.to_docs(config), post_delim.to_docs(config))
-                        );
-                    } else {
-                        next_group = cons!(next_group, pre_delim.to_docs(config));
-                        next_group = cons!(next_group, nl!(" "));
-                        let mut body_doc = join_docs(
-                            term_expr.term.iter().map(|t| t.to_docs(config)),
-                            Rc::new(Doc::Nil),
-                            ShouldBreak::Yes,
-                            config,
-                        );
-                        body_doc = cons!(body_doc, nl!(" "));
-
-                        next_group = group!(cons!(next_group, body_doc));
-                        suffix = post_delim.to_docs(config);
-                    }
-                }
-                _ => panic!("One of the delimiters of the term expression is None: {term_expr:?}"),
+        Expression::Term(term_expr) => {
+            let (body, new_suffix) = term_expression_to_docs_with_prefix(
+                term_expr,
+                next_group,
+                ShouldBreak::Yes,
+                config,
+            );
+            next_group = body;
+            if !matches!(&*new_suffix, Doc::Nil) {
+                next_group = cons!(next_group, nl!(""));
             }
+            suffix = new_suffix;
         }
         _ => {
             next_group = cons!(next_group, if_conditional.body.to_docs(config));
         }
     }
-    docs = cons!(docs, next_group);
-    docs = cons!(docs, nl!(""));
+    docs = cons!(docs, group!(next_group));
     (docs, suffix)
 }
 
