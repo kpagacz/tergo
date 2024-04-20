@@ -369,6 +369,12 @@ impl<'a> Code for Expression<'a> {
 
                 docs
             }
+            Expression::WhileExpression(while_expression) => {
+                let (keyword, condition, body) = (&while_expression.while_keyword, &while_expression.condition, &while_expression.body);
+                    group!(cons!(cons!(cons!(
+                        keyword.to_docs(config), condition.to_docs(config)), text!(" ")), body.to_docs(config)
+                    ))
+            }
         }
     }
 }

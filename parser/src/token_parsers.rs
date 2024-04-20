@@ -39,7 +39,7 @@ token_parser!(comma, Comma);
 // Compound
 token_parser!(if_token, If);
 token_parser!(else_token, Else);
-// token_parser!(while_token, While);
+token_parser!(while_token, While);
 // token_parser!(for_token, For);
 // token_parser!(repeat, Repeat);
 // token_parser!(in_token, In);

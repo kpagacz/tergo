@@ -1,0 +1,6 @@
+while (TRUE) 
+
+{
+  FALSE
+  TRUE
+}

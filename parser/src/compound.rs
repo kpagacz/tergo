@@ -8,7 +8,7 @@ use nom::{
 use crate::{
     ast::{
         Arg, Args, ElseIfConditional, Expression, FunctionDefinition, IfConditional, IfExpression,
-        TrailingElse,
+        TrailingElse, WhileExpression,
     },
     expressions::{expr, term_expr},
     token_parsers::*,
@@ -119,6 +119,22 @@ fn trailing_else<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Tr
             body: Box::new(body),
         }
     })(tokens)
+}
+
+// While expression
+pub(crate) fn while_expression<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    map(
+        tuple((while_token, many0(newline), expr, many0(newline), expr)),
+        |(while_keyword, _, condition, _, body)| {
+            Expression::WhileExpression(WhileExpression {
+                while_keyword,
+                condition: Box::new(condition),
+                body: Box::new(body),
+            })
+        },
+    )(tokens)
 }
 
 #[cfg(test)]

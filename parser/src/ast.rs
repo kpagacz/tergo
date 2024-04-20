@@ -16,6 +16,7 @@ pub enum Expression<'a> {
     EOF(&'a CommentedToken<'a>),
     FunctionDef(FunctionDefinition<'a>),
     IfExpression(IfExpression<'a>),
+    WhileExpression(WhileExpression<'a>),
 }
 
 impl std::fmt::Display for Expression<'_> {
@@ -34,6 +35,9 @@ impl std::fmt::Display for Expression<'_> {
             Expression::FunctionDef(func_def) => f.write_fmt(format_args!("{}", func_def)),
             Expression::IfExpression(if_expression) => {
                 f.write_fmt(format_args!("{}", if_expression))
+            }
+            Expression::WhileExpression(while_expression) => {
+                f.write_fmt(format_args!("{}", while_expression))
             }
         }
     }
@@ -253,5 +257,22 @@ impl std::fmt::Display for IfExpression<'_> {
             Some(trailing_else) => f.write_fmt(format_args!("{}", trailing_else)),
             None => Ok(()),
         }
+    }
+}
+
+// While expression
+#[derive(Debug, Clone, PartialEq)]
+pub struct WhileExpression<'a> {
+    pub while_keyword: &'a CommentedToken<'a>,
+    pub condition: Box<Expression<'a>>,
+    pub body: Box<Expression<'a>>,
+}
+
+impl std::fmt::Display for WhileExpression<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "({} {} {})",
+            self.while_keyword, self.condition, self.body
+        ))
     }
 }
