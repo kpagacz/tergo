@@ -10,7 +10,7 @@ use crate::{
         Arg, Args, ElseIfConditional, Expression, FunctionDefinition, IfConditional, IfExpression,
         RepeatExpression, TrailingElse, WhileExpression,
     },
-    expressions::{expr, term_expr},
+    expressions::expr,
     token_parsers::*,
     Input,
 };
@@ -25,7 +25,7 @@ pub(crate) fn function_def<'a, 'b: 'a>(
             many0(newline),
             par_delimited_comma_sep_exprs,
             many0(newline),
-            term_expr,
+            expr,
         )),
         |(keyword, _, args, _, body)| {
             Expression::FunctionDef(FunctionDefinition::new(keyword, args, Box::new(body)))
@@ -33,7 +33,7 @@ pub(crate) fn function_def<'a, 'b: 'a>(
     )(tokens)
 }
 
-fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
+pub(crate) fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Args<'a>> {
     map(
@@ -91,7 +91,7 @@ pub(crate) fn if_expression<'a, 'b: 'a>(
 
 fn if_conditional<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, IfConditional<'a>> {
     map(
-        tuple((if_token, lparen, term_expr, rparen, term_expr)),
+        tuple((if_token, lparen, expr, rparen, expr)),
         |(keyword, left_delimiter, condition, right_delimiter, body)| IfConditional {
             keyword,
             left_delimiter,
@@ -113,7 +113,7 @@ fn else_if<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, ElseIfCo
 }
 
 fn trailing_else<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, TrailingElse<'a>> {
-    map(tuple((else_token, term_expr)), |(else_keyword, body)| {
+    map(tuple((else_token, expr)), |(else_keyword, body)| {
         TrailingElse {
             else_keyword,
             body: Box::new(body),

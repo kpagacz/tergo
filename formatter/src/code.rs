@@ -1,7 +1,7 @@
 use crate::config::FormattingConfig;
 
 use log::trace;
-use parser::ast::{Expression, IfConditional, TermExpr};
+use parser::ast::{Arg, Args, Expression, IfConditional, TermExpr};
 use tokenizer::tokens::CommentedToken;
 
 use crate::format::{Doc, GroupDocProperties, ShouldBreak};
@@ -379,6 +379,10 @@ impl<'a> Code for Expression<'a> {
                 let (keyword, body) = (&repeat_expression.repeat_keyword, &repeat_expression.body);
                 group!(cons!(keyword.to_docs(config), body.to_docs(config)))
             }
+            Expression::FunctionCall(function_call) => {
+                let (function_ref, args) = (&function_call.function_ref, &function_call.args);
+                group!(cons!(function_ref.to_docs(config), args.to_docs(config)))
+            }
         }
     }
 }
@@ -428,6 +432,31 @@ fn if_conditional_to_docs(
     }
     docs = cons!(docs, group!(next_group));
     (docs, suffix)
+}
+
+impl Code for Args<'_> {
+    fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
+        let mut docs = cons!(self.left_delimeter.to_docs(config), nl!(""));
+        let mut it = self.args.iter();
+        if let Some(arg) = it.next() {
+            docs = cons!(docs, arg.to_docs(config));
+        }
+        for arg in it {
+            docs = cons!(docs, nl!(" "));
+            docs = cons!(docs, arg.to_docs(config));
+        }
+        docs = cons!(docs, self.right_delimeter.to_docs(config));
+        group!(docs)
+    }
+}
+impl Code for Arg<'_> {
+    fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
+        if let Some(comma) = &self.1 {
+            cons!(self.0.to_docs(config), comma.to_docs(config))
+        } else {
+            self.0.to_docs(config)
+        }
+    }
 }
 
 #[cfg(test)]

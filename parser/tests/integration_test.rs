@@ -1,6 +1,6 @@
 use parser::ast::{
-    Arg, Args, ElseIfConditional, Expression, ExpressionsBuffer, FunctionDefinition, IfConditional,
-    IfExpression, RepeatExpression, TermExpr, TrailingElse, WhileExpression,
+    Arg, Args, ElseIfConditional, Expression, ExpressionsBuffer, FunctionCall, FunctionDefinition,
+    IfConditional, IfExpression, RepeatExpression, TermExpr, TrailingElse, WhileExpression,
 };
 use parser::{parse, pre_parse};
 use tokenizer::Tokenizer;
@@ -483,6 +483,51 @@ fn repeat_test() {
             )))),
         }),
         Expression::EOF(tokens[5]),
+    ];
+
+    assert_eq!(
+        res,
+        expected,
+        "res: {}\nexpected: {}",
+        ExpressionsBuffer(&res),
+        ExpressionsBuffer(&expected)
+    );
+}
+
+#[test]
+fn function_call_test() {
+    log_init();
+
+    let code = include_str!("./test_cases/015.R");
+    let mut tokenizer = Tokenizer::new(code);
+    let mut commented_tokens = tokenizer.tokenize();
+    let tokens = pre_parse(&mut commented_tokens);
+
+    let res = parse(&tokens).unwrap();
+    let expected = vec![
+        Expression::FunctionCall(FunctionCall {
+            function_ref: Box::new(Expression::FunctionCall(FunctionCall {
+                function_ref: Box::new(Expression::FunctionCall(FunctionCall {
+                    function_ref: Box::new(Expression::Symbol(tokens[0])),
+                    args: Args::new(
+                        Box::new(Expression::Literal(tokens[1])),
+                        vec![],
+                        Box::new(Expression::Literal(tokens[2])),
+                    ),
+                })),
+                args: Args::new(
+                    Box::new(Expression::Literal(tokens[3])),
+                    vec![],
+                    Box::new(Expression::Literal(tokens[4])),
+                ),
+            })),
+            args: Args::new(
+                Box::new(Expression::Literal(tokens[5])),
+                vec![],
+                Box::new(Expression::Literal(tokens[6])),
+            ),
+        }),
+        Expression::EOF(tokens[8]),
     ];
 
     assert_eq!(

@@ -10,10 +10,13 @@ use tokenizer::tokens::CommentedToken;
 use tokenizer::tokens_buffer::TokensBuffer;
 use tokenizer::Token::*;
 
+use crate::ast::Args;
 use crate::ast::Expression;
+use crate::ast::FunctionCall;
 use crate::ast::TermExpr;
 use crate::compound::function_def;
 use crate::compound::if_expression;
+use crate::compound::par_delimited_comma_sep_exprs;
 use crate::compound::repeat_expression;
 use crate::compound::while_expression;
 use crate::program::statement_or_expr;
@@ -64,6 +67,31 @@ pub(crate) fn term_expr<'a, 'b: 'a>(
             },
         ),
     ))(tokens)
+}
+
+enum Tail<'a> {
+    Call(Args<'a>),
+}
+
+pub(crate) fn atomic_term<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    let (mut tokens, lhs) = term_expr(tokens)?;
+    let mut acc = lhs;
+    while let Ok((new_tokens, tail)) =
+        alt((map(par_delimited_comma_sep_exprs, Tail::Call),))(tokens)
+    {
+        match tail {
+            Tail::Call(args) => {
+                acc = Expression::FunctionCall(FunctionCall {
+                    function_ref: Box::new(acc),
+                    args,
+                })
+            }
+        }
+        tokens = new_tokens;
+    }
+    Ok((tokens, acc))
 }
 
 // Precedence table from https://github.com/SurajGupta/r-source/blob/master/src/main/gram.y
@@ -175,7 +203,7 @@ impl ExprParser {
         while is_binary_operator(lookahead) && precedence(lookahead) >= self.0 {
             let op = lookahead;
             tokens = &tokens[1..];
-            let (new_tokens, mut rhs) = term_expr(tokens)?;
+            let (new_tokens, mut rhs) = atomic_term(tokens)?;
             tokens = new_tokens;
             lookahead = &tokens[0];
             while is_binary_operator(lookahead)
@@ -203,7 +231,7 @@ impl ExprParser {
 
 pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     trace!("expr: {}", TokensBuffer(tokens));
-    let (tokens, term) = term_expr(tokens)?;
+    let (tokens, term) = atomic_term(tokens)?;
     if !tokens.is_empty() {
         let parser = ExprParser(0);
         parser.parse(term, tokens)
