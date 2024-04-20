@@ -1,6 +1,6 @@
 use parser::ast::{
     Arg, Args, ElseIfConditional, Expression, ExpressionsBuffer, FunctionDefinition, IfConditional,
-    IfExpression, TermExpr, TrailingElse, WhileExpression,
+    IfExpression, RepeatExpression, TermExpr, TrailingElse, WhileExpression,
 };
 use parser::{parse, pre_parse};
 use tokenizer::Tokenizer;
@@ -452,6 +452,37 @@ fn while_test() {
             )))),
         }),
         Expression::EOF(tokens[7]),
+    ];
+
+    assert_eq!(
+        res,
+        expected,
+        "res: {}\nexpected: {}",
+        ExpressionsBuffer(&res),
+        ExpressionsBuffer(&expected)
+    );
+}
+
+#[test]
+fn repeat_test() {
+    log_init();
+
+    let code = include_str!("./test_cases/014.R");
+    let mut tokenizer = Tokenizer::new(code);
+    let mut commented_tokens = tokenizer.tokenize();
+    let tokens = pre_parse(&mut commented_tokens);
+
+    let res = parse(&tokens).unwrap();
+    let expected = vec![
+        Expression::RepeatExpression(RepeatExpression {
+            repeat_keyword: tokens[0],
+            body: Box::new(Expression::Term(Box::new(TermExpr::new(
+                Some(tokens[1]),
+                vec![Expression::Literal(tokens[2])],
+                Some(tokens[3]),
+            )))),
+        }),
+        Expression::EOF(tokens[5]),
     ];
 
     assert_eq!(

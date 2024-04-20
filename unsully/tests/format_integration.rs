@@ -89,3 +89,4 @@ comparison_test!(
 comparison_test!(while_empty_loop, "027");
 comparison_test!(while_single_expression_loop, "028");
 comparison_test!(while_two_expressions_additional_line_breaks, "029");
+comparison_test!(repeat_loop, "030");

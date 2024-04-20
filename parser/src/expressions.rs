@@ -14,6 +14,7 @@ use crate::ast::Expression;
 use crate::ast::TermExpr;
 use crate::compound::function_def;
 use crate::compound::if_expression;
+use crate::compound::repeat_expression;
 use crate::compound::while_expression;
 use crate::program::statement_or_expr;
 use crate::token_parsers::*;
@@ -33,6 +34,7 @@ pub(crate) fn term_expr<'a, 'b: 'a>(
     trace!("term_expr: {}", TokensBuffer(tokens));
     alt((
         while_expression,
+        repeat_expression,
         function_def,
         if_expression,
         map(symbol_expr, |symbol| symbol),

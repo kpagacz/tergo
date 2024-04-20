@@ -17,6 +17,7 @@ pub enum Expression<'a> {
     FunctionDef(FunctionDefinition<'a>),
     IfExpression(IfExpression<'a>),
     WhileExpression(WhileExpression<'a>),
+    RepeatExpression(RepeatExpression<'a>),
 }
 
 impl std::fmt::Display for Expression<'_> {
@@ -38,6 +39,9 @@ impl std::fmt::Display for Expression<'_> {
             }
             Expression::WhileExpression(while_expression) => {
                 f.write_fmt(format_args!("{}", while_expression))
+            }
+            Expression::RepeatExpression(repeat_expression) => {
+                f.write_fmt(format_args!("{}", repeat_expression))
             }
         }
     }
@@ -274,5 +278,18 @@ impl std::fmt::Display for WhileExpression<'_> {
             "({} {} {})",
             self.while_keyword, self.condition, self.body
         ))
+    }
+}
+
+// Repeat expresssion
+#[derive(Debug, Clone, PartialEq)]
+pub struct RepeatExpression<'a> {
+    pub repeat_keyword: &'a CommentedToken<'a>,
+    pub body: Box<Expression<'a>>,
+}
+
+impl std::fmt::Display for RepeatExpression<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("({} {})", self.repeat_keyword, self.body))
     }
 }

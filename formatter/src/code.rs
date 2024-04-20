@@ -375,6 +375,10 @@ impl<'a> Code for Expression<'a> {
                         keyword.to_docs(config), condition.to_docs(config)), text!(" ")), body.to_docs(config)
                     ))
             }
+            Expression::RepeatExpression(repeat_expression) => {
+                let (keyword, body) = (&repeat_expression.repeat_keyword, &repeat_expression.body);
+                group!(cons!(keyword.to_docs(config), body.to_docs(config)))
+            }
         }
     }
 }

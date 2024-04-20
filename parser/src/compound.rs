@@ -8,7 +8,7 @@ use nom::{
 use crate::{
     ast::{
         Arg, Args, ElseIfConditional, Expression, FunctionDefinition, IfConditional, IfExpression,
-        TrailingElse, WhileExpression,
+        RepeatExpression, TrailingElse, WhileExpression,
     },
     expressions::{expr, term_expr},
     token_parsers::*,
@@ -131,6 +131,21 @@ pub(crate) fn while_expression<'a, 'b: 'a>(
             Expression::WhileExpression(WhileExpression {
                 while_keyword,
                 condition: Box::new(condition),
+                body: Box::new(body),
+            })
+        },
+    )(tokens)
+}
+
+// Repeat expression
+pub(crate) fn repeat_expression<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    map(
+        tuple((repeat, many0(newline), expr)),
+        |(repeat_keyword, _, body)| {
+            Expression::RepeatExpression(RepeatExpression {
+                repeat_keyword,
                 body: Box::new(body),
             })
         },
