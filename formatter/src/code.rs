@@ -1,7 +1,7 @@
 use crate::config::FormattingConfig;
 
 use log::trace;
-use parser::ast::{Arg, Args, Expression, IfConditional, TermExpr};
+use parser::ast::{Arg, Args, Delimiter, Expression, IfConditional, TermExpr};
 use tokenizer::tokens::CommentedToken;
 
 use crate::format::{Doc, GroupDocProperties, ShouldBreak};
@@ -88,8 +88,8 @@ impl<'a> Code for Token<'a> {
             Token::RParen => Rc::new(Doc::Text(Rc::from(")"))),
             Token::LBrace => Rc::new(Doc::Text(Rc::from("{"))),
             Token::RBrace => Rc::new(Doc::Text(Rc::from("}"))),
-            Token::LSubscript => Rc::new(Doc::Text(Rc::from("["))),
-            Token::RSubscript => Rc::new(Doc::Text(Rc::from("]"))),
+            Token::LBracket => Rc::new(Doc::Text(Rc::from("["))),
+            Token::RBracket => Rc::new(Doc::Text(Rc::from("]"))),
             Token::Comma => Rc::new(Doc::Text(Rc::from(","))),
             Token::Continue => Rc::new(Doc::Text(Rc::from("continue"))),
             Token::Break => Rc::new(Doc::Text(Rc::from("break"))),
@@ -152,6 +152,15 @@ impl Code for CommentedToken<'_> {
         // }
 
         self.token.to_docs(config)
+    }
+}
+
+impl Code for Delimiter<'_> {
+    fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
+        match self {
+            Delimiter::Paren(single) | Delimiter::SingleBracket(single) => single.to_docs(config),
+            Delimiter::DoubleBracket((b1, b2)) => cons!(b1.to_docs(config), b2.to_docs(config)),
+        }
     }
 }
 
@@ -371,8 +380,8 @@ impl<'a> Code for Expression<'a> {
             }
             Expression::WhileExpression(while_expression) => {
                 let (keyword, condition, body) = (&while_expression.while_keyword, &while_expression.condition, &while_expression.body);
-                    group!(cons!(cons!(cons!(
-                        keyword.to_docs(config), condition.to_docs(config)), text!(" ")), body.to_docs(config)
+                    group!(cons!(cons!(cons!(cons!(
+                        keyword.to_docs(config), text!(" ")), condition.to_docs(config)), text!(" ")), body.to_docs(config)
                     ))
             }
             Expression::RepeatExpression(repeat_expression) => {
@@ -382,6 +391,10 @@ impl<'a> Code for Expression<'a> {
             Expression::FunctionCall(function_call) => {
                 let (function_ref, args) = (&function_call.function_ref, &function_call.args);
                 group!(cons!(function_ref.to_docs(config), args.to_docs(config)))
+            }
+            Expression::SubsetExpression(subset_expression) => {
+                let (object_ref, args) = (&subset_expression.object_ref, &subset_expression.args);
+                group!(cons!(object_ref.to_docs(config), args.to_docs(config)))
             }
         }
     }

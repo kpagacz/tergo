@@ -5,9 +5,12 @@ use tokenizer::Token::*;
 
 macro_rules! token_parser {
     ($name:ident, $token:pat) => {
-        pub(crate) fn $name<'a, 'b: 'a>(
+        pub(crate) fn $name<'a, 'b>(
             input: Input<'a, 'b>,
-        ) -> IResult<Input<'a, 'b>, &'b CommentedToken<'a>> {
+        ) -> IResult<Input<'a, 'b>, &'b CommentedToken<'a>>
+        where
+            'a: 'b,
+        {
             log::trace!("Trying to parse: {}", stringify!($name));
             match input {
                 [token @ CommentedToken { token: $token, .. }, rest @ ..] => Ok((rest, token)),
@@ -28,8 +31,8 @@ token_parser!(lparen, LParen);
 token_parser!(rparen, RParen);
 token_parser!(lbrace, LBrace);
 token_parser!(rbrace, RBrace);
-// token_parser!(lsubscript, LSubscript);
-// token_parser!(rsubscript, RSubscript);
+token_parser!(lbracket, LBracket);
+token_parser!(rbracket, RBracket);
 token_parser!(comma, Comma);
 
 // Reserved

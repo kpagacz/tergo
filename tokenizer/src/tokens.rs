@@ -87,8 +87,8 @@ pub enum Token<'a> {
     RParen,
     LBrace,
     RBrace,
-    LSubscript,
-    RSubscript,
+    LBracket,
+    RBracket,
     Comma,
 
     // Reserved

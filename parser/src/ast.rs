@@ -19,6 +19,7 @@ pub enum Expression<'a> {
     WhileExpression(WhileExpression<'a>),
     RepeatExpression(RepeatExpression<'a>),
     FunctionCall(FunctionCall<'a>),
+    SubsetExpression(SubsetExpression<'a>),
 }
 
 impl std::fmt::Display for Expression<'_> {
@@ -46,6 +47,9 @@ impl std::fmt::Display for Expression<'_> {
             }
             Expression::FunctionCall(function_call) => {
                 f.write_fmt(format_args!("{}", function_call))
+            }
+            Expression::SubsetExpression(subset_expression) => {
+                f.write_fmt(format_args!("{}", subset_expression))
             }
         }
     }
@@ -137,17 +141,35 @@ impl std::fmt::Display for Arg<'_> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum Delimiter<'a> {
+    Paren(&'a CommentedToken<'a>),
+    SingleBracket(&'a CommentedToken<'a>),
+    DoubleBracket((&'a CommentedToken<'a>, &'a CommentedToken<'a>)),
+}
+
+impl std::fmt::Display for Delimiter<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Delimiter::Paren(single) | Delimiter::SingleBracket(single) => {
+                f.write_fmt(format_args!("{}", single))
+            }
+            Delimiter::DoubleBracket((b1, b2)) => f.write_fmt(format_args!("{}{}", b1, b2)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Args<'a> {
-    pub left_delimeter: Box<Expression<'a>>,
+    pub left_delimeter: Delimiter<'a>,
     pub args: Vec<Arg<'a>>,
-    pub right_delimeter: Box<Expression<'a>>,
+    pub right_delimeter: Delimiter<'a>,
 }
 
 impl<'a> Args<'a> {
     pub fn new(
-        left_delimeter: Box<Expression<'a>>,
+        left_delimeter: Delimiter<'a>,
         args: Vec<Arg<'a>>,
-        right_delimeter: Box<Expression<'a>>,
+        right_delimeter: Delimiter<'a>,
     ) -> Self {
         Self {
             left_delimeter,
@@ -308,5 +330,18 @@ pub struct FunctionCall<'a> {
 impl std::fmt::Display for FunctionCall<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("Call({} {})", self.function_ref, self.args))
+    }
+}
+
+// Subset expression
+#[derive(Debug, Clone, PartialEq)]
+pub struct SubsetExpression<'a> {
+    pub object_ref: Box<Expression<'a>>,
+    pub args: Args<'a>,
+}
+
+impl std::fmt::Display for SubsetExpression<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}{}", self.object_ref, self.args))
     }
 }

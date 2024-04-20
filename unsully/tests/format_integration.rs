@@ -95,3 +95,7 @@ comparison_test!(function_call_one_arg, "032");
 comparison_test!(function_call_multiple_args, "033");
 comparison_test!(function_call_named_args, "034");
 comparison_test!(function_call_multiple_calls, "035");
+comparison_test!(empty_subset, "036");
+comparison_test!(subset_with_three_args, "037");
+comparison_test!(multiple_subset, "038");
+comparison_test!(function_call_plus_subset, "039");

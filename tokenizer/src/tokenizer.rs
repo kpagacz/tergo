@@ -108,11 +108,11 @@ impl<'a> Tokenizer<'a> {
                     self.next();
                 }
                 '[' => {
-                    self.push_token(LSubscript, &mut tokens);
+                    self.push_token(LBracket, &mut tokens);
                     self.next();
                 }
                 ']' => {
-                    self.push_token(RSubscript, &mut tokens);
+                    self.push_token(RBracket, &mut tokens);
                     self.next();
                 }
                 '\'' | '\"' => {

@@ -1,6 +1,7 @@
 use parser::ast::{
-    Arg, Args, ElseIfConditional, Expression, ExpressionsBuffer, FunctionCall, FunctionDefinition,
-    IfConditional, IfExpression, RepeatExpression, TermExpr, TrailingElse, WhileExpression,
+    Arg, Args, Delimiter, ElseIfConditional, Expression, ExpressionsBuffer, FunctionCall,
+    FunctionDefinition, IfConditional, IfExpression, RepeatExpression, TermExpr, TrailingElse,
+    WhileExpression,
 };
 use parser::{parse, pre_parse};
 use tokenizer::Tokenizer;
@@ -83,9 +84,9 @@ fn empty_function_definition() {
         Expression::FunctionDef(FunctionDefinition::new(
             tokens[0],
             Args::new(
-                Box::new(Expression::Literal(tokens[1])),
+                Delimiter::Paren(tokens[1]),
                 vec![],
-                Box::new(Expression::Literal(tokens[2])),
+                Delimiter::Paren(tokens[2]),
             ),
             Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[3]),
@@ -112,9 +113,9 @@ fn function_def_with_one_arg() {
         Expression::FunctionDef(FunctionDefinition::new(
             tokens[0],
             Args::new(
-                Box::new(Expression::Literal(tokens[1])),
+                Delimiter::Paren(tokens[1]),
                 vec![Arg(Expression::Symbol(tokens[2]), None)],
-                Box::new(Expression::Literal(tokens[3])),
+                Delimiter::Paren(tokens[3]),
             ),
             Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[4]),
@@ -147,7 +148,7 @@ fn function_def_with_one_arg_with_default_value() {
         Expression::FunctionDef(FunctionDefinition::new(
             tokens[0],
             Args::new(
-                Box::new(Expression::Literal(tokens[1])),
+                Delimiter::Paren(tokens[1]),
                 vec![Arg(
                     Expression::Bop(
                         tokens[3],
@@ -156,7 +157,7 @@ fn function_def_with_one_arg_with_default_value() {
                     ),
                     None,
                 )],
-                Box::new(Expression::Literal(tokens[5])),
+                Delimiter::Paren(tokens[5]),
             ),
             Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[6]),
@@ -189,7 +190,7 @@ fn function_def_with_two_args() {
         Expression::FunctionDef(FunctionDefinition::new(
             tokens[0],
             Args::new(
-                Box::new(Expression::Literal(tokens[1])),
+                Delimiter::Paren(tokens[1]),
                 vec![
                     Arg(
                         Expression::Symbol(tokens[2]),
@@ -197,7 +198,7 @@ fn function_def_with_two_args() {
                     ),
                     Arg(Expression::Symbol(tokens[4]), None),
                 ],
-                Box::new(Expression::Literal(tokens[5])),
+                Delimiter::Paren(tokens[5]),
             ),
             Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[6]),
@@ -230,9 +231,9 @@ fn function_inline_body() {
         Expression::FunctionDef(FunctionDefinition::new(
             tokens[0],
             Args::new(
-                Box::new(Expression::Literal(tokens[1])),
+                Delimiter::Paren(tokens[1]),
                 vec![],
-                Box::new(Expression::Literal(tokens[2])),
+                Delimiter::Paren(tokens[2]),
             ),
             Box::new(Expression::Literal(tokens[3])),
         )),
@@ -261,9 +262,9 @@ fn function_multiline_body() {
         Expression::FunctionDef(FunctionDefinition::new(
             tokens[0],
             Args::new(
-                Box::new(Expression::Literal(tokens[1])),
+                Delimiter::Paren(tokens[1]),
                 vec![],
-                Box::new(Expression::Literal(tokens[2])),
+                Delimiter::Paren(tokens[2]),
             ),
             Box::new(Expression::Term(Box::new(TermExpr::new(
                 Some(tokens[3]),
@@ -510,21 +511,21 @@ fn function_call_test() {
                 function_ref: Box::new(Expression::FunctionCall(FunctionCall {
                     function_ref: Box::new(Expression::Symbol(tokens[0])),
                     args: Args::new(
-                        Box::new(Expression::Literal(tokens[1])),
+                        Delimiter::Paren(tokens[1]),
                         vec![],
-                        Box::new(Expression::Literal(tokens[2])),
+                        Delimiter::Paren(tokens[2]),
                     ),
                 })),
                 args: Args::new(
-                    Box::new(Expression::Literal(tokens[3])),
+                    Delimiter::Paren(tokens[3]),
                     vec![],
-                    Box::new(Expression::Literal(tokens[4])),
+                    Delimiter::Paren(tokens[4]),
                 ),
             })),
             args: Args::new(
-                Box::new(Expression::Literal(tokens[5])),
+                Delimiter::Paren(tokens[5]),
                 vec![],
-                Box::new(Expression::Literal(tokens[6])),
+                Delimiter::Paren(tokens[6]),
             ),
         }),
         Expression::EOF(tokens[8]),

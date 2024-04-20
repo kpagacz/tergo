@@ -1,14 +1,15 @@
 use nom::{
     combinator::{map, opt},
+    error::Error,
     multi::many0,
     sequence::tuple,
-    IResult,
+    IResult, Parser,
 };
 
 use crate::{
     ast::{
-        Arg, Args, ElseIfConditional, Expression, FunctionDefinition, IfConditional, IfExpression,
-        RepeatExpression, TrailingElse, WhileExpression,
+        Arg, Args, Delimiter, ElseIfConditional, Expression, FunctionDefinition, IfConditional,
+        IfExpression, RepeatExpression, TrailingElse, WhileExpression,
     },
     expressions::expr,
     token_parsers::*,
@@ -23,7 +24,7 @@ pub(crate) fn function_def<'a, 'b: 'a>(
         tuple((
             function,
             many0(newline),
-            par_delimited_comma_sep_exprs,
+            delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
             many0(newline),
             expr,
         )),
@@ -33,12 +34,17 @@ pub(crate) fn function_def<'a, 'b: 'a>(
     )(tokens)
 }
 
-pub(crate) fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
-    tokens: Input<'a, 'b>,
-) -> IResult<Input<'a, 'b>, Args<'a>> {
+pub(crate) fn delimited_comma_sep_exprs<'a, P1, P2>(
+    left_delimiter: P1,
+    right_delimiter: P2,
+) -> impl Parser<Input<'a, 'a>, Args<'a>, Error<Input<'a, 'a>>>
+where
+    P1: Parser<Input<'a, 'a>, Delimiter<'a>, Error<Input<'a, 'a>>>,
+    P2: Parser<Input<'a, 'a>, Delimiter<'a>, Error<Input<'a, 'a>>>,
+{
     map(
         tuple((
-            lparen,
+            left_delimiter,
             many0(newline),
             opt(expr),
             many0(tuple((
@@ -46,9 +52,9 @@ pub(crate) fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
                 tuple((expr, many0(newline))),
             ))),
             many0(newline),
-            rparen,
+            right_delimiter,
         )),
-        |(lpar, _, first_arg, comma_delimited_args, _, rpar)| match first_arg {
+        |(ldelim, _, first_arg, comma_delimited_args, _, rdelim)| match first_arg {
             Some(xpr) => {
                 let comma_delimited_args = comma_delimited_args
                     .into_iter()
@@ -58,19 +64,11 @@ pub(crate) fn par_delimited_comma_sep_exprs<'a, 'b: 'a>(
                 while let Some(xpr) = comma_delimited_args.next() {
                     args.push(Arg(xpr, comma_delimited_args.next()));
                 }
-                Args::new(
-                    Box::new(Expression::Literal(lpar)),
-                    args,
-                    Box::new(Expression::Literal(rpar)),
-                )
+                Args::new(ldelim, args, rdelim)
             }
-            None => Args::new(
-                Box::new(Expression::Literal(lpar)),
-                vec![],
-                Box::new(Expression::Literal(rpar)),
-            ),
+            None => Args::new(ldelim, vec![], rdelim),
         },
-    )(tokens)
+    )
 }
 
 // If expression
@@ -178,9 +176,9 @@ mod tests {
             Expression::FunctionDef(FunctionDefinition::new(
                 tokens[0],
                 Args::new(
-                    Box::new(Expression::Literal(tokens[1])),
+                    Delimiter::Paren(tokens[1]),
                     vec![],
-                    Box::new(Expression::Literal(tokens[2]))
+                    Delimiter::Paren(tokens[2])
                 ),
                 Box::new(Expression::Term(Box::new(TermExpr::new(
                     Some(tokens[3]),

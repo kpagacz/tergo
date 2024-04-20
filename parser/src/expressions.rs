@@ -11,12 +11,13 @@ use tokenizer::tokens_buffer::TokensBuffer;
 use tokenizer::Token::*;
 
 use crate::ast::Args;
+use crate::ast::Delimiter;
 use crate::ast::Expression;
 use crate::ast::FunctionCall;
 use crate::ast::TermExpr;
+use crate::compound::delimited_comma_sep_exprs;
 use crate::compound::function_def;
 use crate::compound::if_expression;
-use crate::compound::par_delimited_comma_sep_exprs;
 use crate::compound::repeat_expression;
 use crate::compound::while_expression;
 use crate::program::statement_or_expr;
@@ -71,6 +72,8 @@ pub(crate) fn term_expr<'a, 'b: 'a>(
 
 enum Tail<'a> {
     Call(Args<'a>),
+    DoubleSubset(Args<'a>),
+    SingleSubset(Args<'a>),
 }
 
 pub(crate) fn atomic_term<'a, 'b: 'a>(
@@ -78,13 +81,37 @@ pub(crate) fn atomic_term<'a, 'b: 'a>(
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     let (mut tokens, lhs) = term_expr(tokens)?;
     let mut acc = lhs;
-    while let Ok((new_tokens, tail)) =
-        alt((map(par_delimited_comma_sep_exprs, Tail::Call),))(tokens)
+    while let Ok((new_tokens, tail)) = alt((
+        map(
+            delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
+            Tail::Call,
+        ),
+        map(
+            delimited_comma_sep_exprs(
+                map(tuple((lbracket, lbracket)), Delimiter::DoubleBracket),
+                map(tuple((rbracket, rbracket)), Delimiter::DoubleBracket),
+            ),
+            Tail::DoubleSubset,
+        ),
+        map(
+            delimited_comma_sep_exprs(
+                map(lbracket, Delimiter::SingleBracket),
+                map(rbracket, Delimiter::SingleBracket),
+            ),
+            Tail::SingleSubset,
+        ),
+    ))(tokens)
     {
         match tail {
             Tail::Call(args) => {
                 acc = Expression::FunctionCall(FunctionCall {
                     function_ref: Box::new(acc),
+                    args,
+                })
+            }
+            Tail::DoubleSubset(args) | Tail::SingleSubset(args) => {
+                acc = Expression::SubsetExpression(crate::ast::SubsetExpression {
+                    object_ref: Box::new(acc),
                     args,
                 })
             }
