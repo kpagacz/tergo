@@ -16,8 +16,10 @@ use crate::ast::Expression;
 use crate::ast::FunctionCall;
 use crate::ast::TermExpr;
 use crate::compound::delimited_comma_sep_exprs;
+use crate::compound::for_loop_expression;
 use crate::compound::function_def;
 use crate::compound::if_expression;
+use crate::compound::lambda_function;
 use crate::compound::repeat_expression;
 use crate::compound::while_expression;
 use crate::program::statement_or_expr;
@@ -35,12 +37,15 @@ fn literal_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Exp
 pub(crate) fn term_expr<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("term_expr: {}", TokensBuffer(tokens));
     alt((
+        for_loop_expression,
         while_expression,
         repeat_expression,
         function_def,
+        lambda_function,
         if_expression,
+        map(break_token, Expression::Break),
+        map(continue_token, Expression::Continue),
         map(symbol_expr, |symbol| symbol),
         map(literal_expr, |literal| literal),
         map(

@@ -31,12 +31,12 @@ fn test_format_simple_bop() {
         indent: 0,
     };
     let commented_tokens = commented_tokens!(Token::Plus, Token::Literal("1"), Token::Literal("2"));
-    let expressions = [Expression::Bop(
+    let expression = Expression::Bop(
         &commented_tokens[0],
         Box::new(Expression::Literal(&commented_tokens[1])),
         Box::new(Expression::Literal(&commented_tokens[2])),
-    )];
+    );
 
-    let formatted = formatter::format_code(&expressions, &config);
-    assert_eq!(formatted, "1 +\n2\n");
+    let formatted = formatter::format_code(expression, &config);
+    assert_eq!(formatted, "1 +\n2");
 }

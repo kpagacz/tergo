@@ -11,7 +11,17 @@ macro_rules! comparison_test {
             log_init();
             let input = include_str!(concat!("test_cases/", $file_number, ".R"));
             let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
-            assert_eq!(format(input, None).unwrap(), expected);
+            assert_eq!(
+                format(
+                    input,
+                    Some(Config {
+                        indent: 0,
+                        line_length: 120
+                    })
+                )
+                .unwrap(),
+                expected
+            );
         }
     };
     ($name: ident, $file_number: literal, $config: ident) => {
@@ -99,3 +109,7 @@ comparison_test!(empty_subset, "036");
 comparison_test!(subset_with_three_args, "037");
 comparison_test!(multiple_subset, "038");
 comparison_test!(function_call_plus_subset, "039");
+comparison_test!(simple_for_loop, "040");
+comparison_test!(for_loop_with_multiline_body, "041");
+comparison_test!(break_continue, "042");
+comparison_test!(lambda_function_test, "043");

@@ -15,11 +15,15 @@ pub enum Expression<'a> {
     Whitespace(&'a [&'a CommentedToken<'a>]),
     EOF(&'a CommentedToken<'a>),
     FunctionDef(FunctionDefinition<'a>),
+    LambdaFunction(Lambda<'a>),
     IfExpression(IfExpression<'a>),
     WhileExpression(WhileExpression<'a>),
     RepeatExpression(RepeatExpression<'a>),
     FunctionCall(FunctionCall<'a>),
     SubsetExpression(SubsetExpression<'a>),
+    ForLoopExpression(ForLoop<'a>),
+    Break(&'a CommentedToken<'a>),
+    Continue(&'a CommentedToken<'a>),
 }
 
 impl std::fmt::Display for Expression<'_> {
@@ -51,6 +55,11 @@ impl std::fmt::Display for Expression<'_> {
             Expression::SubsetExpression(subset_expression) => {
                 f.write_fmt(format_args!("{}", subset_expression))
             }
+            Expression::ForLoopExpression(for_loop) => f.write_fmt(format_args!("{}", for_loop)),
+            Expression::Break(token) | Expression::Continue(token) => {
+                f.write_fmt(format_args!("{}", TokensBuffer(&[token])))
+            }
+            Expression::LambdaFunction(lambda) => f.write_fmt(format_args!("{}", lambda)),
         }
     }
 }
@@ -343,5 +352,46 @@ pub struct SubsetExpression<'a> {
 impl std::fmt::Display for SubsetExpression<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{}{}", self.object_ref, self.args))
+    }
+}
+
+// For loop
+#[derive(Debug, Clone, PartialEq)]
+pub struct ForLoop<'a> {
+    pub keyword: &'a CommentedToken<'a>,
+    pub left_delim: Delimiter<'a>,
+    pub identifier: Box<Expression<'a>>,
+    pub in_keyword: &'a CommentedToken<'a>,
+    pub collection: Box<Expression<'a>>,
+    pub right_delim: Delimiter<'a>,
+    pub body: Box<Expression<'a>>,
+}
+
+impl std::fmt::Display for ForLoop<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "<{} {} {} {} {} {} {}>",
+            self.keyword,
+            self.left_delim,
+            self.identifier,
+            self.in_keyword,
+            self.collection,
+            self.right_delim,
+            self.body
+        ))
+    }
+}
+
+// Lambda
+#[derive(Debug, Clone, PartialEq)]
+pub struct Lambda<'a> {
+    pub keyword: &'a CommentedToken<'a>,
+    pub args: Args<'a>,
+    pub body: Box<Expression<'a>>,
+}
+
+impl std::fmt::Display for Lambda<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{} {} {}", self.keyword, self.args, self.body))
     }
 }

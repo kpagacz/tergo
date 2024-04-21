@@ -1,4 +1,4 @@
-use crate::config::FormattingConfig;
+use crate::{config::FormattingConfig, format::DocAlgebra};
 
 use log::trace;
 use parser::ast::{Arg, Args, Delimiter, Expression, IfConditional, TermExpr};
@@ -188,7 +188,6 @@ where
     }
 
     res = Rc::new(Doc::Group(GroupDocProperties(res, should_break)));
-    trace!("joined_docs to: {res:?}");
     res
 }
 
@@ -248,7 +247,7 @@ impl<'a> Code for Expression<'a> {
         let indent = config.indent();
 
         match self {
-            Expression::Symbol(token) | Expression::Literal(token) | Expression::Comment(token) => {
+            Expression::Symbol(token) | Expression::Literal(token) | Expression::Comment(token) | Expression::Continue(token) | Expression::Break(token) => {
                 token.to_docs(config)
             }
             Expression::Term(term_expr) => {
@@ -261,6 +260,10 @@ impl<'a> Code for Expression<'a> {
                             group!(cons!(cons!(body, nl!(" ")), suffix), ShouldBreak::Yes)
                         }
                     },
+                    None => {
+                        let docs = term_expr.term.iter().map(|t| t.to_docs(config));
+                        join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config)
+                    }
                     _ => {
                         let (body, suffix) = term_expression_to_docs_with_prefix(term_expr, Rc::new(Doc::Nil), ShouldBreak::No, config);
                         cons!(body, suffix)
@@ -395,6 +398,27 @@ impl<'a> Code for Expression<'a> {
             Expression::SubsetExpression(subset_expression) => {
                 let (object_ref, args) = (&subset_expression.object_ref, &subset_expression.args);
                 group!(cons!(object_ref.to_docs(config), args.to_docs(config)))
+            }
+            Expression::ForLoopExpression(for_loop) => {
+                let (keyword, left_delim, identifier, in_keyword, collection, right_delim, body) = (
+                &for_loop.keyword, &for_loop.left_delim, &for_loop.identifier, &for_loop.in_keyword, &for_loop.collection, &for_loop.right_delim, &for_loop.body
+            );
+                keyword.to_docs(config)
+                    .cons(text!(" "))
+                    .cons(left_delim.to_docs(config))
+                    .cons(identifier.to_docs(config))
+                    .cons(text!(" "))
+                    .cons(in_keyword.to_docs(config))
+                    .cons(text!(" "))
+                    .cons(collection.to_docs(config))
+                    .cons(right_delim.to_docs(config))
+                    .cons(text!(" "))
+                    .cons(body.to_docs(config))
+                    .to_group(ShouldBreak::No)
+            }
+            Expression::LambdaFunction(lambda) => {
+                let (keyword, args, body) = (&lambda.keyword, &lambda.args, &lambda.body);
+                keyword.to_docs(config).cons(args.to_docs(config)).cons(text!(" ")).cons(body.to_docs(config))
             }
         }
     }

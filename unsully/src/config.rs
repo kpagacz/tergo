@@ -2,8 +2,8 @@ use formatter::config::FormattingConfig;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
-    indent: i32,
-    line_length: i32,
+    pub indent: i32,
+    pub line_length: i32,
 }
 
 impl FormattingConfig for Config {

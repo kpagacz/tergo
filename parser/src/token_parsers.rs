@@ -11,7 +11,6 @@ macro_rules! token_parser {
         where
             'a: 'b,
         {
-            log::trace!("Trying to parse: {}", stringify!($name));
             match input {
                 [token @ CommentedToken { token: $token, .. }, rest @ ..] => Ok((rest, token)),
                 _ => Err(nom::Err::Error(nom::error::Error::new(
@@ -36,18 +35,18 @@ token_parser!(rbracket, RBracket);
 token_parser!(comma, Comma);
 
 // Reserved
-// token_parser!(continue_token, Continue);
-// token_parser!(break_token, Break);
+token_parser!(continue_token, Continue);
+token_parser!(break_token, Break);
 
 // Compound
 token_parser!(if_token, If);
 token_parser!(else_token, Else);
 token_parser!(while_token, While);
-// token_parser!(for_token, For);
+token_parser!(for_token, For);
 token_parser!(repeat, Repeat);
-// token_parser!(in_token, In);
+token_parser!(in_token, In);
 token_parser!(function, Function);
-// token_parser!(lambda, Lambda);
+token_parser!(lambda, Lambda);
 
 // Binary operators
 // token_parser!(lassign, LAssign);

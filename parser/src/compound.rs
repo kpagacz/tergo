@@ -8,10 +8,11 @@ use nom::{
 
 use crate::{
     ast::{
-        Arg, Args, Delimiter, ElseIfConditional, Expression, FunctionDefinition, IfConditional,
-        IfExpression, RepeatExpression, TrailingElse, WhileExpression,
+        Arg, Args, Delimiter, ElseIfConditional, Expression, ForLoop, FunctionDefinition,
+        IfConditional, IfExpression, Lambda, RepeatExpression, TrailingElse, WhileExpression,
     },
     expressions::expr,
+    program::statement_or_expr,
     token_parsers::*,
     Input,
 };
@@ -144,6 +145,76 @@ pub(crate) fn repeat_expression<'a, 'b: 'a>(
         |(repeat_keyword, _, body)| {
             Expression::RepeatExpression(RepeatExpression {
                 repeat_keyword,
+                body: Box::new(body),
+            })
+        },
+    )(tokens)
+}
+
+// For loops
+pub(crate) fn for_loop_expression<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    map(
+        tuple((
+            for_token,
+            many0(newline),
+            map(lparen, Delimiter::Paren),
+            many0(newline),
+            expr,
+            many0(newline),
+            in_token,
+            many0(newline),
+            expr,
+            many0(newline),
+            map(rparen, Delimiter::Paren),
+            many0(newline),
+            expr,
+        )),
+        |(
+            keyword,
+            _,
+            left_delim,
+            _,
+            identifier,
+            _,
+            in_keyword,
+            _,
+            collection,
+            _,
+            right_delim,
+            _,
+            body,
+        )| {
+            Expression::ForLoopExpression(ForLoop {
+                keyword,
+                left_delim,
+                identifier: Box::new(identifier),
+                in_keyword,
+                collection: Box::new(collection),
+                right_delim,
+                body: Box::new(body),
+            })
+        },
+    )(tokens)
+}
+
+// Lambda
+pub(crate) fn lambda_function<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    map(
+        tuple((
+            lambda,
+            many0(newline),
+            delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
+            many0(newline),
+            statement_or_expr,
+        )),
+        |(keyword, _, args, _, body)| {
+            Expression::LambdaFunction(Lambda {
+                keyword,
+                args,
                 body: Box::new(body),
             })
         },

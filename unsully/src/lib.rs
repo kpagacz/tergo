@@ -2,7 +2,10 @@ pub mod config;
 use config::Config;
 use formatter::format_code;
 use log::trace;
-use parser::{parse, pre_parse};
+use parser::{
+    ast::{Expression, TermExpr},
+    parse, pre_parse,
+};
 use tokenizer::{tokens_buffer::TokensBuffer, Tokenizer};
 
 pub fn format(input: &str, config: Option<Config>) -> Result<String, String> {
@@ -17,5 +20,6 @@ pub fn format(input: &str, config: Option<Config>) -> Result<String, String> {
     );
     let cst = parse(&tokens_without_comments)?;
     trace!("CST: {:?}", cst);
-    Ok(format_code(&cst, &config))
+    let top_node = Expression::Term(Box::new(TermExpr::new(None, cst, None)));
+    Ok(format_code(top_node, &config))
 }

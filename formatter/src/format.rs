@@ -2,8 +2,6 @@
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use log::trace;
-
 use crate::config::FormattingConfig;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +34,21 @@ impl std::fmt::Display for Doc {
             Doc::Break(newline) => f.write_fmt(format_args!("NL({})", newline)),
             Doc::Group(inside) => f.write_fmt(format_args!("SB:{:?}<{}>", inside.1, inside.0)),
         }
+    }
+}
+
+pub trait DocAlgebra {
+    fn cons(self, other: Rc<Doc>) -> Rc<Doc>;
+    fn to_group(self, should_break: ShouldBreak) -> Rc<Doc>;
+}
+
+impl DocAlgebra for Rc<Doc> {
+    fn cons(self, other: Rc<Doc>) -> Rc<Doc> {
+        Rc::new(Doc::Cons(self, other))
+    }
+
+    fn to_group(self, should_break: ShouldBreak) -> Rc<Doc> {
+        Rc::new(Doc::Group(GroupDocProperties(self, should_break)))
     }
 }
 
@@ -139,7 +152,6 @@ pub(crate) fn format_to_sdoc(
                     )
                 }
                 (_, Mode::Flat, Doc::Break(s)) => {
-                    trace!("Formatting a break to its string: `{s}`");
                     let length = s.len() as i32;
                     SimpleDoc::Text(
                         Rc::from(*s),
@@ -147,23 +159,17 @@ pub(crate) fn format_to_sdoc(
                     )
                 }
                 (i, Mode::Break, Doc::Break(_)) => {
-                    trace!("Formatting a break to a new line");
                     SimpleDoc::Line(i as usize, Rc::new(format_to_sdoc(i, docs, config)))
                 }
                 (i, _, Doc::Group(groupped_doc)) => {
-                    trace!(
-                        "Formatting a group: {groupped_doc:?} with i: {i} and consumed: {consumed}"
-                    );
                     let mut group_docs =
                         VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
                     if groupped_doc.1 == ShouldBreak::Yes
                         || !fits(line_length - consumed, &mut group_docs)
                     {
-                        trace!("The group does not fit");
                         docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));
                         format_to_sdoc(consumed, docs, config)
                     } else {
-                        trace!("The group fits");
                         docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
                         format_to_sdoc(consumed, docs, config)
                     }

@@ -12,19 +12,14 @@ use parser::ast::Expression;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-pub fn format_code(
-    expression: &[Expression],
-    formatting_config: &impl config::FormattingConfig,
+pub fn format_code<T: config::FormattingConfig>(
+    expression: Expression,
+    formatting_config: &T,
 ) -> String {
-    let mut docs: VecDeque<_> = expression
-        .iter()
-        .map(|expr| (0i32, Mode::Flat, expr.to_docs(formatting_config)))
-        .collect();
+    let mut docs: VecDeque<_> =
+        VecDeque::from([(0i32, Mode::Flat, expression.to_docs(formatting_config))]);
     trace!("Docs: {}", DocBuffer(&docs));
     let simple_doc = Rc::new(format_to_sdoc(0, &mut docs, formatting_config));
     trace!("Simple docs: {:?}", simple_doc);
-    let mut ans = simple_doc_to_string(simple_doc);
-    // Add a newline at the end of the file
-    ans.push('\n');
-    ans
+    simple_doc_to_string(simple_doc)
 }
