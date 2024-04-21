@@ -1,6 +1,5 @@
 use crate::{config::FormattingConfig, format::DocAlgebra};
 
-use log::trace;
 use parser::ast::{Arg, Args, Delimiter, Expression, IfConditional, TermExpr};
 use tokenizer::tokens::CommentedToken;
 
@@ -19,13 +18,6 @@ macro_rules! group {
     };
     ($doc:expr, $should_break: expr) => {
         Rc::new(Doc::Group(GroupDocProperties($doc, $should_break)))
-    };
-}
-
-// Macro that creates a Doc::Nest
-macro_rules! nest {
-    ($indent:expr, $doc:expr) => {
-        Rc::new(Doc::Nest($indent, $doc))
     };
 }
 
@@ -48,34 +40,6 @@ macro_rules! text {
     ($txt: expr) => {
         Rc::new(Doc::Text(Rc::from($txt)))
     };
-}
-
-// Macro that surrounds a doc with parentheses
-macro_rules! delimited_doc {
-    ($doc:expr, $ldelim: expr, $rdelim: expr) => {
-        Rc::new(Doc::Group(GroupDocProperties(
-            Rc::new(Doc::Cons(
-                $ldelim,
-                Rc::new(Doc::Cons(
-                    Rc::new(Doc::Break("")),
-                    Rc::new(Doc::Cons(
-                        $doc,
-                        Rc::new(Doc::Cons(Rc::new(Doc::Break("")), $rdelim)),
-                    )),
-                )),
-            )),
-            ShouldBreak::No,
-        )))
-    };
-}
-
-// TODO: Make this a macro
-pub(crate) fn with_optional_break(
-    first_doc: Rc<Doc>,
-    second_doc: Rc<Doc>,
-    break_text: &'static str,
-) -> Rc<Doc> {
-    cons!(cons!(first_doc, nl!(break_text)), second_doc)
 }
 
 impl<'a> Code for Token<'a> {
@@ -132,7 +96,7 @@ impl<'a> Code for Token<'a> {
             Token::UnaryNot => Rc::new(Doc::Text(Rc::from("!"))),
             Token::InlineComment(s) => Rc::new(Doc::Text(Rc::from(*s))),
             Token::Comment(s) => Rc::new(Doc::Text(Rc::from(*s))),
-            Token::EOF => Rc::new(Doc::Break("")),
+            Token::EOF => Rc::new(Doc::Text(Rc::from(""))),
         }
     }
 }
@@ -180,94 +144,74 @@ where
     }
 
     for next_doc in docs {
-        res = Rc::new(Doc::Cons(
-            res,
-            cons!(Rc::clone(&separator), Rc::new(Doc::Break(" "))),
-        ));
-        res = Rc::new(Doc::Cons(res, next_doc));
+        if !matches!(*next_doc, Doc::Nil) {
+            res = Rc::new(Doc::Cons(
+                res,
+                cons!(Rc::clone(&separator), Rc::new(Doc::Break(" "))),
+            ));
+            res = Rc::new(Doc::Cons(res, next_doc));
+        }
     }
 
     res = Rc::new(Doc::Group(GroupDocProperties(res, should_break)));
     res
 }
 
-/// Returns the docs of the term and the suffix after the last potential line break
-fn term_expression_to_docs_with_prefix<Config>(
-    term: &TermExpr,
-    prefix_docs: Rc<Doc>,
-    should_break: ShouldBreak,
-    config: &Config,
-) -> (Rc<Doc>, Rc<Doc>)
-where
-    Config: FormattingConfig,
-{
-    let (pre_delim, xprs, post_delim) = (term.pre_delimiters, &term.term, term.post_delimiters);
-    let mut suffix = Rc::new(Doc::Nil);
-    let mut docs: Rc<Doc>;
-    match (pre_delim, xprs, post_delim) {
-        (Some(pre), xprs, Some(post)) if xprs.is_empty() => {
-            docs = cons!(pre.to_docs(config), post.to_docs(config));
-            docs = cons!(prefix_docs, docs);
-        }
-        (Some(pre), xprs, Some(post)) if matches!(pre.token, Token::LBrace) => {
-            // Brace-delimited terms - put a space between the delimiters and the body
-            trace!("to_docs for the term with curly brace expressions: {xprs:?}");
-            let body_doc = join_docs(
-                xprs.iter().map(|t| t.to_docs(config)),
-                Rc::new(Doc::Nil),
-                should_break,
-                config,
-            );
-            let pre = cons!(prefix_docs, cons!(pre.to_docs(config), nl!(" ")));
-            docs = cons!(pre, body_doc);
-            suffix = post.to_docs(config);
-        }
-        (Some(pre), xprs, Some(post)) => {
-            // Do not put the space between the delimiters and the body
-            docs = delimited_doc!(
-                join_docs(
-                    xprs.iter().map(|t| t.to_docs(config)),
-                    Rc::new(Doc::Nil),
-                    should_break,
-                    config
-                ),
-                cons!(prefix_docs, pre.to_docs(config)),
-                Rc::new(Doc::Nil)
-            );
-            suffix = post.to_docs(config);
-        }
-        _ => panic!("A term without matching delimiteres encountered"),
-    };
-
-    (docs, suffix)
-}
-
 impl<'a> Code for Expression<'a> {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
-        let indent = config.indent();
-
         match self {
             Expression::Symbol(token) | Expression::Literal(token) | Expression::Comment(token) | Expression::Continue(token) | Expression::Break(token) => {
                 token.to_docs(config)
             }
             Expression::Term(term_expr) => {
-                match term_expr.pre_delimiters {
-                    Some(pre_delim) if matches!(pre_delim.token, Token::LBrace) => {
-                        let (body, suffix) = term_expression_to_docs_with_prefix(term_expr, Rc::new(Doc::Nil), ShouldBreak::Yes, config);
-                        if matches!(&*suffix, Doc::Nil) {
-                            group!(body)
+                match &**term_expr {
+                    TermExpr {
+                        pre_delimiters: Some(pre_delim),
+                        term,
+                        post_delimiters: Some(post_delim)
+                    } if matches!(pre_delim.token, Token::LBrace) => {
+                        if term.is_empty() {
+                           pre_delim.to_docs(config).cons(post_delim.to_docs(config))
                         } else {
-                            group!(cons!(cons!(body, nl!(" ")), suffix), ShouldBreak::Yes)
+                           let docs = term.iter().map(|t| t.to_docs(config));
+                           let inner = join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config);
+                           pre_delim.to_docs(config)
+                                .cons(nl!(" "))
+                                .cons(inner)
+                                .nest(config.indent())
+                                .cons(nl!(" "))
+                                .cons(post_delim.to_docs(config))
+                                .to_group(ShouldBreak::Yes)
                         }
                     },
-                    None => {
-                        let docs = term_expr.term.iter().map(|t| t.to_docs(config));
+                    TermExpr {
+                        pre_delimiters: None,
+                        term,
+                        post_delimiters: None
+                    } => {
+                        let docs = term.iter().map(|t| t.to_docs(config));
                         join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config)
                     }
-                    _ => {
-                        let (body, suffix) = term_expression_to_docs_with_prefix(term_expr, Rc::new(Doc::Nil), ShouldBreak::No, config);
-                        cons!(body, suffix)
+                    TermExpr {
+                        pre_delimiters: Some(pre_delim),
+                        term,
+                        post_delimiters: Some(post_delim)
+                    } => {
+                        if term.is_empty() {
+                           pre_delim.to_docs(config).cons(post_delim.to_docs(config))
+                        } else {
+                           let docs = term.iter().map(|t| t.to_docs(config));
+                           let inner = join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::No, config);
+                           pre_delim.to_docs(config)
+                                .cons(nl!(""))
+                                .cons(inner)
+                                .nest(config.indent())
+                                .cons(nl!(""))
+                                .cons(post_delim.to_docs(config))
+                                .to_group(ShouldBreak::No)
+                        }
                     },
+                    _ => panic!("Term with not matching delimiters found")
 
                 }
             }
@@ -295,97 +239,98 @@ impl<'a> Code for Expression<'a> {
                 | Token::Modulo
                 | Token::Tilde
                 | Token::Special(_) => {
-                    group!(nest!(
-                        indent,
-                        with_optional_break(
-                            cons!(cons!(lhs.to_docs(config), text!(" ")), op.to_docs(config)),
-                            rhs.to_docs(config),
-                            " "
+                    lhs.to_docs(config)
+                        .cons(text!(" "))
+                        .cons(op.to_docs(config))
+                        .cons(
+                            nl!(" ")
+                                .cons(rhs.to_docs(config))
+                                .nest(config.indent())
                         )
-                    ))
+                        .to_group(ShouldBreak::No)
                 },
                 Token::Dollar | Token::NsGet | Token::NsGetInt | Token::Colon | Token::Slot => {
-                    group!(nest!(
-                        indent,
-                        with_optional_break(
-                            cons!(cons!(lhs.to_docs(config), text!("")), op.to_docs(config)),
-                            rhs.to_docs(config),
-                            ""
-                        )
-                    ))
+                    lhs.to_docs(config)
+                        .cons(op.to_docs(config))
+                        .cons(rhs.to_docs(config))
+                        .to_group(ShouldBreak::No)
                 },
                 _ => panic!("Got a not a binary operator token inside a binary expression when formatting. Token: {:?}", &op.token)
             },
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
-            Expression::EOF(_) => Rc::new(Doc::Nil),
-            Expression::Whitespace(_) => Rc::new(Doc::Break("\n")),
+            Expression::EOF(eof) => eof.to_docs(config),
+            Expression::Whitespace(_) => Rc::new(Doc::Text(Rc::from(""))),
             Expression::FunctionDef(function_def) =>  {
-                // function(<potential_break>args) {<hard_break>body<hard_break>}
-               let (_, args, body) = (function_def.keyword, &function_def.arguments, &function_def.body) ;
-                let keyword = cons!(text!("function"), args.left_delimeter.to_docs(config));
+               let (keyword, args, body) = (function_def.keyword, &function_def.arguments, &function_def.body) ;
                 let args_doc = join_docs(
                     args.args.iter().map(|arg| cons!(arg.0.to_docs(config), arg.1.as_ref().map(|sep| sep.to_docs(config)).unwrap_or(Rc::new(Doc::Nil)))),
                     Rc::new(Doc::Nil),
                     ShouldBreak::No,
                     config
                 );
-                let args_with_delimiter = delimited_doc!(args_doc, Rc::new(Doc::Nil), cons!(args.right_delimeter.to_docs(config), cons!(text!(" "), nl!(""))));
-                let body_doc = body.to_docs(config);
-
-                let keyword_plus_args_part = group!(cons!(keyword, args_with_delimiter));
-                group!(cons!(keyword_plus_args_part, body_doc), ShouldBreak::No)
+                let args_group = args.left_delimeter.to_docs(config)
+                    .cons(nl!(""))
+                    .cons(args_doc)
+                    .nest(2 * config.indent())
+                    .cons(nl!(""))
+                    .cons(args.right_delimeter.to_docs(config))
+                    .to_group(ShouldBreak::No);
+                keyword.to_docs(config)
+                    .cons(args_group)
+                    .cons(text!(" "))
+                    .cons(body.to_docs(config))
+                    .to_group(ShouldBreak::No)
             },
             Expression::IfExpression(if_expression) => {
                 let (if_conditional, else_ifs, trailing_else) = (&if_expression.if_conditional, &if_expression.else_ifs, &if_expression.trailing_else);
-                let mut docs = Rc::new(Doc::Nil);
-                let (conditional_docs, mut conditional_suffix) = if_conditional_to_docs(Rc::new(Doc::Nil), if_conditional, config);
-                docs = cons!(docs, conditional_docs);
-                // if (<potential_break>condition<potential_break>) [{]<potential_break>
-                // body<potential_break>
-                // } else if(<potential_break>...) {
-                // } else if(...) { ... 
+
+                let if_conditional_to_docs = |if_conditional: &IfConditional<'_>| {
+                   let (keyword, left_delim, condition, right_delim, body) = (
+                        if_conditional.keyword, 
+                        if_conditional.left_delimiter, 
+                        &if_conditional.condition, 
+                        if_conditional.right_delimiter, 
+                        &if_conditional.body);
+                    let condition_docs = left_delim.to_docs(config)
+                        .cons(nl!(""))
+                        .cons(condition.to_docs(config))
+                        .nest(config.indent())
+                        .cons(nl!(""))
+                        .cons(right_delim.to_docs(config))
+                        .to_group(ShouldBreak::No);
+                    keyword.to_docs(config)
+                      .cons(text!(" "))
+                        .cons(condition_docs)
+                        .cons(text!(" "))
+                        .cons(body.to_docs(config))
+                };
+                let mut docs = if_conditional_to_docs(if_conditional);
                 for else_if in else_ifs {
-                let (&keyword, body) = (&else_if.else_keyword, &else_if.if_conditional);
-                    let prefix = cons!(cons!(conditional_suffix, text!(" ")), keyword.to_docs(config));
-                    let (else_if_docs, new_suffix) = if_conditional_to_docs(prefix, body, config);
-                    docs = cons!(docs, else_if_docs);
-                    conditional_suffix = new_suffix;
+                    let (else_keyword, conditional) = (else_if.else_keyword, &else_if.if_conditional);
+                    docs = docs
+                      .cons(text!(" "))
+                        .cons(else_keyword.to_docs(config))
+                        .cons(text!(" "))
+                        .cons(if_conditional_to_docs(conditional));
                 }
                 if let Some(trailing_else) = trailing_else {
-                    match trailing_else.body.as_ref() {
-                        Expression::Term(term_expr) => {
-                            let trailing_else_prefix = cons!(
-                                cons!(conditional_suffix, text!(" ")),
-                                cons!(trailing_else.else_keyword.to_docs(config), text!(" "))
-                            );
-                            let (body_docs, suffix) = term_expression_to_docs_with_prefix(
-                                term_expr,
-                                trailing_else_prefix,
-                                ShouldBreak::Yes,
-                                config
-                           );
-                            if !matches!(&*suffix, Doc::Nil) {
-                                docs = cons!(docs, group!(cons!(body_docs, nl!(""))));
-                            } else {
-                                docs = cons!(docs, group!(body_docs));
-                            }
-
-                            conditional_suffix = suffix;
-                        }
-                        _ => {
-                            conditional_suffix = cons!(conditional_suffix, trailing_else.body.to_docs(config));
-                        }
-                    }
+                    let (else_keyword, body) = (&trailing_else.else_keyword, &trailing_else.body);
+                    docs = docs
+                        .cons(text!(" "))
+                        .cons(else_keyword.to_docs(config))
+                        .cons(text!(" "))
+                        .cons(body.to_docs(config));
                 }
-                docs = cons!(docs, conditional_suffix);
-
                 docs
             }
             Expression::WhileExpression(while_expression) => {
                 let (keyword, condition, body) = (&while_expression.while_keyword, &while_expression.condition, &while_expression.body);
-                    group!(cons!(cons!(cons!(cons!(
-                        keyword.to_docs(config), text!(" ")), condition.to_docs(config)), text!(" ")), body.to_docs(config)
-                    ))
+                keyword.to_docs(config)
+                  .cons(text!(" "))
+                  .cons(condition.to_docs(config))
+                  .cons(text!(" "))
+                  .cons(body.to_docs(config))
+                  .to_group(ShouldBreak::No)
             }
             Expression::RepeatExpression(repeat_expression) => {
                 let (keyword, body) = (&repeat_expression.repeat_keyword, &repeat_expression.body);
@@ -393,7 +338,9 @@ impl<'a> Code for Expression<'a> {
             }
             Expression::FunctionCall(function_call) => {
                 let (function_ref, args) = (&function_call.function_ref, &function_call.args);
-                group!(cons!(function_ref.to_docs(config), args.to_docs(config)))
+                function_ref.to_docs(config)
+                    .cons(args.to_docs(config))
+                    .to_group(ShouldBreak::No)
             }
             Expression::SubsetExpression(subset_expression) => {
                 let (object_ref, args) = (&subset_expression.object_ref, &subset_expression.args);
@@ -406,84 +353,48 @@ impl<'a> Code for Expression<'a> {
                 keyword.to_docs(config)
                     .cons(text!(" "))
                     .cons(left_delim.to_docs(config))
+                    .cons(nl!(""))
                     .cons(identifier.to_docs(config))
                     .cons(text!(" "))
                     .cons(in_keyword.to_docs(config))
-                    .cons(text!(" "))
+                    .cons(nl!(" "))
                     .cons(collection.to_docs(config))
+                    .nest(config.indent())
+                    .cons(nl!(""))
                     .cons(right_delim.to_docs(config))
+                    .to_group(ShouldBreak::No)
                     .cons(text!(" "))
                     .cons(body.to_docs(config))
                     .to_group(ShouldBreak::No)
             }
             Expression::LambdaFunction(lambda) => {
                 let (keyword, args, body) = (&lambda.keyword, &lambda.args, &lambda.body);
-                keyword.to_docs(config).cons(args.to_docs(config)).cons(text!(" ")).cons(body.to_docs(config))
+                keyword.to_docs(config)
+                    .cons(args.to_docs(config))
+                    .cons(text!(" "))
+                    .cons(body.to_docs(config))
+                    .to_group(ShouldBreak::No)
             }
         }
     }
-}
-
-/// Returns the docs of the if conditional and the suffix after the last potential line break
-fn if_conditional_to_docs(
-    prefix_docs: Rc<Doc>,
-    if_conditional: &IfConditional,
-    config: &impl FormattingConfig,
-) -> (Rc<Doc>, Rc<Doc>) {
-    let mut docs = cons!(
-        cons!(
-            if !matches!(prefix_docs.as_ref(), Doc::Nil) {
-                cons!(prefix_docs, text!(" "))
-            } else {
-                prefix_docs
-            },
-            cons!(if_conditional.keyword.to_docs(config), text!(" "))
-        ),
-        if_conditional.left_delimiter.to_docs(config)
-    );
-    docs = cons!(docs, nl!(""));
-    docs = cons!(
-        docs,
-        cons!(if_conditional.condition.to_docs(config), nl!(""))
-    );
-    docs = group!(docs);
-    let mut next_group = cons!(if_conditional.right_delimiter.to_docs(config), text!(" "));
-    let mut suffix = Rc::new(Doc::Nil);
-    match if_conditional.body.as_ref() {
-        Expression::Term(term_expr) => {
-            let (body, new_suffix) = term_expression_to_docs_with_prefix(
-                term_expr,
-                next_group,
-                ShouldBreak::Yes,
-                config,
-            );
-            next_group = body;
-            if !matches!(&*new_suffix, Doc::Nil) {
-                next_group = cons!(next_group, nl!(""));
-            }
-            suffix = new_suffix;
-        }
-        _ => {
-            next_group = cons!(next_group, if_conditional.body.to_docs(config));
-        }
-    }
-    docs = cons!(docs, group!(next_group));
-    (docs, suffix)
 }
 
 impl Code for Args<'_> {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
-        let mut docs = cons!(self.left_delimeter.to_docs(config), nl!(""));
+        let mut docs = self.left_delimeter.to_docs(config).cons(nl!(""));
         let mut it = self.args.iter();
         if let Some(arg) = it.next() {
-            docs = cons!(docs, arg.to_docs(config));
+            docs = docs.cons(arg.to_docs(config));
         }
         for arg in it {
-            docs = cons!(docs, nl!(" "));
-            docs = cons!(docs, arg.to_docs(config));
+            docs = docs.cons(nl!(" "));
+            docs = docs.cons(arg.to_docs(config));
         }
-        docs = cons!(docs, self.right_delimeter.to_docs(config));
-        group!(docs)
+        docs
+            .nest(config.indent())
+            .cons(nl!(""))
+            .cons(self.right_delimeter.to_docs(config))
+            .to_group(ShouldBreak::No)
     }
 }
 impl Code for Arg<'_> {

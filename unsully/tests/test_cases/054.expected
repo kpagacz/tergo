@@ -1,0 +1,5 @@
+a <- 1
+b <- 2
+f <- function(a, b) a + b
+
+f(a, b)

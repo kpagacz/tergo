@@ -19,7 +19,7 @@ pub fn format(input: &str, config: Option<Config>) -> Result<String, String> {
         TokensBuffer(&tokens_without_comments)
     );
     let cst = parse(&tokens_without_comments)?;
-    trace!("CST: {:?}", cst);
     let top_node = Expression::Term(Box::new(TermExpr::new(None, cst, None)));
+    trace!("CST: {:?}", top_node);
     Ok(format_code(top_node, &config))
 }

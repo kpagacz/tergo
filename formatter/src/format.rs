@@ -40,6 +40,7 @@ impl std::fmt::Display for Doc {
 pub trait DocAlgebra {
     fn cons(self, other: Rc<Doc>) -> Rc<Doc>;
     fn to_group(self, should_break: ShouldBreak) -> Rc<Doc>;
+    fn nest(self, indent: i32) -> Rc<Doc>;
 }
 
 impl DocAlgebra for Rc<Doc> {
@@ -49,6 +50,10 @@ impl DocAlgebra for Rc<Doc> {
 
     fn to_group(self, should_break: ShouldBreak) -> Rc<Doc> {
         Rc::new(Doc::Group(GroupDocProperties(self, should_break)))
+    }
+
+    fn nest(self, indent: i32) -> Rc<Doc> {
+        Rc::new(Doc::Nest(indent, self))
     }
 }
 

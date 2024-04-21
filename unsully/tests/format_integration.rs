@@ -57,6 +57,13 @@ fn short_line_config() -> Config {
     Config::new(0, 4)
 }
 
+fn short_line_plus_indent() -> Config {
+    Config {
+        indent: 2,
+        line_length: 0,
+    }
+}
+
 comparison_test!(simple_bop_with_parenthesis, "004");
 comparison_test!(
     simple_bop_with_parentheses_forced_to_break_line,
@@ -113,3 +120,22 @@ comparison_test!(simple_for_loop, "040");
 comparison_test!(for_loop_with_multiline_body, "041");
 comparison_test!(break_continue, "042");
 comparison_test!(lambda_function_test, "043");
+comparison_test!(indent_bop, "044", short_line_plus_indent);
+comparison_test!(indent_multiline_bop, "045", short_line_plus_indent);
+comparison_test!(
+    indent_multiline_bop_parenthesized,
+    "046",
+    short_line_plus_indent
+);
+comparison_test!(indent_function_def, "047", short_line_plus_indent);
+comparison_test!(indent_multiline_term, "048", short_line_plus_indent);
+comparison_test!(indent_conditional_no_brace, "049", short_line_plus_indent);
+comparison_test!(indent_conditional_with_brace, "050", short_line_plus_indent);
+comparison_test!(indent_while_multiline_body, "051", short_line_plus_indent);
+comparison_test!(indent_for_loop_complex, "052", short_line_plus_indent);
+comparison_test!(
+    indent_bop_multiline_many_new_lines,
+    "053",
+    short_line_plus_indent
+);
+comparison_test!(longer_example, "054");
