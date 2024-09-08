@@ -27,7 +27,7 @@ mod tests {
 
     #[test]
     fn test_displaying_tokens() {
-        let tokens = vec![
+        let tokens = [
             CommentedToken::new(Token::Symbol("a"), 1, 0),
             CommentedToken::new(Token::Symbol("b"), 1, 1),
         ];

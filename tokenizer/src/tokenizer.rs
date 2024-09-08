@@ -248,7 +248,8 @@ impl<'a> Tokenizer<'a> {
                         }
                         _ => {
                             eprintln!(
-                                "Found not alphabetic and non-numeric character after a dot. Treating it as an identifier."
+                                "Found not alphabetic and non-numeric character after a dot. \
+                                 Treating it as an identifier."
                             );
                             self.identifier(&mut tokens);
                         }

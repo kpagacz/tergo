@@ -1,0 +1,4 @@
+edition = "2021"
+format_macro_matchers = true
+format_strings = true
+version = "Two"

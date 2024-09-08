@@ -5,7 +5,7 @@ fn log_init() {
 }
 
 macro_rules! comparison_test {
-    ($name: ident, $file_number: literal) => {
+    ($name:ident, $file_number:literal) => {
         #[test]
         fn $name() {
             log_init();
@@ -24,7 +24,7 @@ macro_rules! comparison_test {
             );
         }
     };
-    ($name: ident, $file_number: literal, $config: ident) => {
+    ($name:ident, $file_number:literal, $config:ident) => {
         #[test]
         fn $name() {
             log_init();
