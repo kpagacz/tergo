@@ -24,13 +24,14 @@ macro_rules! comparison_test {
             );
         }
     };
-    ($name:ident, $file_number:literal, $config:ident) => {
+    ($name:ident, $file_number:literal, $config:expr) => {
         #[test]
         fn $name() {
             log_init();
+            let config: Config = $config;
             let input = include_str!(concat!("test_cases/", $file_number, ".R"));
             let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
-            assert_eq!(format(input, Some($config())).unwrap(), expected);
+            assert_eq!(format(input, Some(config)).unwrap(), expected);
         }
     };
 }
@@ -68,17 +69,17 @@ comparison_test!(simple_bop_with_parenthesis, "004");
 comparison_test!(
     simple_bop_with_parentheses_forced_to_break_line,
     "005",
-    short_line_config
+    short_line_config()
 );
 comparison_test!(
     simple_term_with_parentheses_forced_to_break_line,
     "006",
-    short_line_config
+    short_line_config()
 );
 comparison_test!(
     simple_bop_forced_to_break_and_indent,
     "007",
-    short_line_config
+    short_line_config()
 );
 comparison_test!(range_bop_one_line, "008");
 comparison_test!(parenthesized_bop_one_line, "009");
@@ -101,7 +102,7 @@ comparison_test!(term_with_braces, "025");
 comparison_test!(
     conditional_with_if_if_else_and_trailing_else_short_lines,
     "026",
-    short_line_config
+    short_line_config()
 );
 comparison_test!(while_empty_loop, "027");
 comparison_test!(while_single_expression_loop, "028");
@@ -120,22 +121,37 @@ comparison_test!(simple_for_loop, "040");
 comparison_test!(for_loop_with_multiline_body, "041");
 comparison_test!(break_continue, "042");
 comparison_test!(lambda_function_test, "043");
-comparison_test!(indent_bop, "044", short_line_plus_indent);
-comparison_test!(indent_multiline_bop, "045", short_line_plus_indent);
+comparison_test!(indent_bop, "044", short_line_plus_indent());
+comparison_test!(indent_multiline_bop, "045", short_line_plus_indent());
 comparison_test!(
     indent_multiline_bop_parenthesized,
     "046",
-    short_line_plus_indent
+    short_line_plus_indent()
 );
-comparison_test!(indent_function_def, "047", short_line_plus_indent);
-comparison_test!(indent_multiline_term, "048", short_line_plus_indent);
-comparison_test!(indent_conditional_no_brace, "049", short_line_plus_indent);
-comparison_test!(indent_conditional_with_brace, "050", short_line_plus_indent);
-comparison_test!(indent_while_multiline_body, "051", short_line_plus_indent);
-comparison_test!(indent_for_loop_complex, "052", short_line_plus_indent);
+comparison_test!(indent_function_def, "047", short_line_plus_indent());
+comparison_test!(indent_multiline_term, "048", short_line_plus_indent());
+comparison_test!(indent_conditional_no_brace, "049", short_line_plus_indent());
+comparison_test!(
+    indent_conditional_with_brace,
+    "050",
+    short_line_plus_indent()
+);
+comparison_test!(indent_while_multiline_body, "051", short_line_plus_indent());
+comparison_test!(indent_for_loop_complex, "052", short_line_plus_indent());
 comparison_test!(
     indent_bop_multiline_many_new_lines,
     "053",
-    short_line_plus_indent
+    short_line_plus_indent()
 );
 comparison_test!(longer_example, "054");
+comparison_test!(comment_shows_up, "055");
+comparison_test!(
+    comments_are_not_part_of_line_length,
+    "056",
+    Config {
+        indent: 0,
+        line_length: 20
+    }
+);
+comparison_test!(comments_are_not_formatted, "057");
+comparison_test!(comments_in_an_array, "058");

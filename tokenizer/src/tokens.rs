@@ -15,7 +15,7 @@ pub struct CommentedToken<'a> {
     /// in the array of tokens.
     pub leading_comments: Option<(usize, usize)>,
     /// Trailing inline comment. The offset is the index of the comment in the array of tokens.
-    pub inline_comment: Option<usize>,
+    pub inline_comment: Option<&'a str>,
 }
 
 impl<'a> CommentedToken<'a> {
@@ -34,7 +34,7 @@ impl<'a> CommentedToken<'a> {
         line: u32,
         offset: usize,
         leading_comments: Option<(usize, usize)>,
-        inline_comment: Option<usize>,
+        inline_comment: Option<&'a str>,
     ) -> Self {
         Self {
             token,
@@ -47,17 +47,10 @@ impl<'a> CommentedToken<'a> {
 
     pub fn get_preceding_comments(
         &'a self,
-        tokens: &'a [CommentedToken],
-    ) -> Option<&'a [CommentedToken]> {
+        tokens: &'a [CommentedToken<'a>],
+    ) -> Option<&'a [CommentedToken<'a>]> {
         self.leading_comments
             .map(|(start, end)| &tokens[start..end])
-    }
-
-    pub fn get_inline_comment(
-        &'a self,
-        tokens: &'a [CommentedToken],
-    ) -> Option<&'a CommentedToken> {
-        self.inline_comment.map(|idx| &tokens[idx])
     }
 }
 

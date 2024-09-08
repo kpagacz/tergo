@@ -22,8 +22,8 @@ pub fn pre_parse<'a>(tokens: &'a mut [CommentedToken<'a>]) -> Vec<&'a CommentedT
 
             tokens[it].leading_comments = Some((start, it));
             tokens_without_comments.push(it);
-        } else if let Token::InlineComment(_) = tokens[it].token {
-            tokens[it - 1].inline_comment = Some(it);
+        } else if let Token::InlineComment(comment) = tokens[it].token {
+            tokens[it - 1].inline_comment = Some(comment);
         } else {
             tokens_without_comments.push(it);
         }
@@ -62,6 +62,9 @@ mod tests {
 
         // Inlined comments
         assert!(res_token.inline_comment.is_some());
-        assert!(matches!(res_token.inline_comment.unwrap(), 3));
+        assert!(matches!(
+            res_token.inline_comment.unwrap(),
+            "Inline comment"
+        ));
     }
 }

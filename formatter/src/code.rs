@@ -3,7 +3,7 @@ use crate::{config::FormattingConfig, format::DocAlgebra};
 use parser::ast::{Arg, Args, Delimiter, Expression, IfConditional, TermExpr};
 use tokenizer::tokens::CommentedToken;
 
-use crate::format::{Doc, GroupDocProperties, ShouldBreak};
+use crate::format::{CommonProperties, Doc, InlineCommentPosition, ShouldBreak};
 use std::rc::Rc;
 use tokenizer::Token;
 
@@ -13,21 +13,17 @@ pub(crate) trait Code {
 
 // Macro that creates a Doc::Group
 macro_rules! group {
-    ($doc:expr) => {
-        Rc::new(Doc::Group(GroupDocProperties($doc, ShouldBreak::No)))
-    };
-    ($doc:expr, $should_break:expr) => {
-        Rc::new(Doc::Group(GroupDocProperties($doc, $should_break)))
-    };
-}
-
-// Macro that creates a Doc::Cons
-macro_rules! cons {
-    ($e: expr) => (($e));
-    ($first:expr $(, $rest:expr)*) => {{
-        Rc::new(Doc::Cons($first, cons!($($rest)*)))
+    ($doc:expr) => {{
+        let doc: Rc<Doc> = $doc;
+        doc.to_group(ShouldBreak::No)
     }};
+    ($doc:expr, $should_break:expr) => {
+        let doc: Rc<Doc> = $doc;
+        let should_break: ShouldBreak = $should_break;
+        doc.to_group($should_break)
+    };
 }
+pub(crate) use group;
 
 // Macro that creates a Doc::Break
 macro_rules! nl {
@@ -35,80 +31,108 @@ macro_rules! nl {
         Rc::new(Doc::Break($txt))
     };
 }
+pub(crate) use nl;
 
 // Macro that creates a Doc::Text
 macro_rules! text {
-    ($txt:expr) => {
-        Rc::new(Doc::Text(Rc::from($txt)))
-    };
+    ($txt:expr) => {{
+        let txt: &str = $txt;
+        Rc::new(Doc::Text(
+            Rc::from(txt),
+            txt.len(),
+            CommonProperties(InlineCommentPosition::No),
+        ))
+    }};
+    ($txt:expr, $size:expr) => {{
+        let txt: &str = $txt;
+        let size: usize = $size;
+        Rc::new(Doc::Text(
+            Rc::from(txt),
+            size,
+            CommonProperties(InlineCommentPosition::No),
+        ))
+    }};
+    ($txt:expr, $size:expr, $comment_position:expr) => {{
+        let txt: &str = $txt;
+        let size: usize = $size;
+        let position: InlineCommentPosition = $comment_position;
+        Rc::new(Doc::Text(Rc::from(txt), size, CommonProperties(position)))
+    }};
 }
+pub(crate) use text;
 
 impl<'a> Code for Token<'a> {
     fn to_docs(&self, _: &impl FormattingConfig) -> Rc<Doc> {
         match self {
-            Token::Symbol(s) | Token::Literal(s) => Rc::new(Doc::Text(Rc::from(*s))),
-            Token::Semicolon => Rc::new(Doc::Text(Rc::from(";"))),
-            Token::Newline => Rc::new(Doc::Text(Rc::from("\n"))),
-            Token::LParen => Rc::new(Doc::Text(Rc::from("("))),
-            Token::RParen => Rc::new(Doc::Text(Rc::from(")"))),
-            Token::LBrace => Rc::new(Doc::Text(Rc::from("{"))),
-            Token::RBrace => Rc::new(Doc::Text(Rc::from("}"))),
-            Token::LBracket => Rc::new(Doc::Text(Rc::from("["))),
-            Token::RBracket => Rc::new(Doc::Text(Rc::from("]"))),
-            Token::Comma => Rc::new(Doc::Text(Rc::from(","))),
-            Token::Continue => Rc::new(Doc::Text(Rc::from("continue"))),
-            Token::Break => Rc::new(Doc::Text(Rc::from("break"))),
-            Token::If => Rc::new(Doc::Text(Rc::from("if"))),
-            Token::Else => Rc::new(Doc::Text(Rc::from("else"))),
-            Token::While => Rc::new(Doc::Text(Rc::from("while"))),
-            Token::For => Rc::new(Doc::Text(Rc::from("for"))),
-            Token::Repeat => Rc::new(Doc::Text(Rc::from("repeat"))),
-            Token::In => Rc::new(Doc::Text(Rc::from("in"))),
-            Token::Function => Rc::new(Doc::Text(Rc::from("function"))),
-            Token::Lambda => Rc::new(Doc::Text(Rc::from("\\"))),
-            Token::LAssign => Rc::new(Doc::Text(Rc::from("<-"))),
-            Token::RAssign => Rc::new(Doc::Text(Rc::from("->"))),
-            Token::OldAssign => Rc::new(Doc::Text(Rc::from("="))),
-            Token::Equal => Rc::new(Doc::Text(Rc::from("=="))),
-            Token::NotEqual => Rc::new(Doc::Text(Rc::from("!="))),
-            Token::LowerThan => Rc::new(Doc::Text(Rc::from("<"))),
-            Token::GreaterThan => Rc::new(Doc::Text(Rc::from(">"))),
-            Token::LowerEqual => Rc::new(Doc::Text(Rc::from("<="))),
-            Token::GreaterEqual => Rc::new(Doc::Text(Rc::from(">="))),
-            Token::Power => Rc::new(Doc::Text(Rc::from("^"))),
-            Token::Divide => Rc::new(Doc::Text(Rc::from("/"))),
-            Token::Multiply => Rc::new(Doc::Text(Rc::from("*"))),
-            Token::Minus => Rc::new(Doc::Text(Rc::from("-"))),
-            Token::Plus => Rc::new(Doc::Text(Rc::from("+"))),
-            Token::Help => Rc::new(Doc::Text(Rc::from("?"))),
-            Token::And => Rc::new(Doc::Text(Rc::from("&&"))),
-            Token::VectorizedAnd => Rc::new(Doc::Text(Rc::from("&"))),
-            Token::Or => Rc::new(Doc::Text(Rc::from("||"))),
-            Token::VectorizedOr => Rc::new(Doc::Text(Rc::from("|"))),
-            Token::Dollar => Rc::new(Doc::Text(Rc::from("$"))),
-            Token::Pipe => Rc::new(Doc::Text(Rc::from("|>"))),
-            Token::Modulo => Rc::new(Doc::Text(Rc::from("%"))),
-            Token::NsGet => Rc::new(Doc::Text(Rc::from("::"))),
-            Token::NsGetInt => Rc::new(Doc::Text(Rc::from(":::"))),
-            Token::Tilde => Rc::new(Doc::Text(Rc::from("~"))),
-            Token::Colon => Rc::new(Doc::Text(Rc::from(":"))),
-            Token::Slot => Rc::new(Doc::Text(Rc::from("@"))),
-            Token::Special(s) => Rc::new(Doc::Text(Rc::from(*s))),
-            Token::UnaryNot => Rc::new(Doc::Text(Rc::from("!"))),
-            Token::InlineComment(s) => Rc::new(Doc::Text(Rc::from(*s))),
-            Token::Comment(s) => Rc::new(Doc::Text(Rc::from(*s))),
-            Token::EOF => Rc::new(Doc::Text(Rc::from(""))),
+            Token::Symbol(s) | Token::Literal(s) => text!(*s),
+            Token::Semicolon => text!(";"),
+            Token::Newline => text!("\n"),
+            Token::LParen => text!("("),
+            Token::RParen => text!(")"),
+            Token::LBrace => text!("{"),
+            Token::RBrace => text!("}"),
+            Token::LBracket => text!("["),
+            Token::RBracket => text!("]"),
+            Token::Comma => text!(","),
+            Token::Continue => text!("continue"),
+            Token::Break => text!("break"),
+            Token::If => text!("if"),
+            Token::Else => text!("else"),
+            Token::While => text!("while"),
+            Token::For => text!("for"),
+            Token::Repeat => text!("repeat"),
+            Token::In => text!("in"),
+            Token::Function => text!("function"),
+            Token::Lambda => text!("\\"),
+            Token::LAssign => text!("<-"),
+            Token::RAssign => text!("->"),
+            Token::OldAssign => text!("="),
+            Token::Equal => text!("=="),
+            Token::NotEqual => text!("!="),
+            Token::LowerThan => text!("<"),
+            Token::GreaterThan => text!(">"),
+            Token::LowerEqual => text!("<="),
+            Token::GreaterEqual => text!(">="),
+            Token::Power => text!("^"),
+            Token::Divide => text!("/"),
+            Token::Multiply => text!("*"),
+            Token::Minus => text!("-"),
+            Token::Plus => text!("+"),
+            Token::Help => text!("?"),
+            Token::And => text!("&&"),
+            Token::VectorizedAnd => text!("&"),
+            Token::Or => text!("||"),
+            Token::VectorizedOr => text!("|"),
+            Token::Dollar => text!("$"),
+            Token::Pipe => text!("|>"),
+            Token::Modulo => text!("%"),
+            Token::NsGet => text!("::"),
+            Token::NsGetInt => text!(":::"),
+            Token::Tilde => text!("~"),
+            Token::Colon => text!(":"),
+            Token::Slot => text!("@"),
+            Token::Special(s) => text!(*s),
+            Token::UnaryNot => text!("!"),
+            Token::InlineComment(s) => text!(*s, 0),
+            Token::Comment(s) => text!(*s),
+            Token::EOF => text!(""),
         }
     }
 }
 
 impl Code for CommentedToken<'_> {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
-        // TODO: add the comments
-        // One idea is to just cons the comments in a group that
-        // should break
-
-        self.token.to_docs(config)
+        if let Some(inline_comment) = self.inline_comment {
+            // Group because the token should go with its inline comment
+            // no matter whether the line fits or not
+            self.token.to_docs(config).cons(text!(" ")).cons(text!(
+                inline_comment,
+                0,
+                InlineCommentPosition::End
+            ))
+        } else {
+            self.token.to_docs(config)
+        }
     }
 }
 
@@ -116,7 +140,7 @@ impl Code for Delimiter<'_> {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
         match self {
             Delimiter::Paren(single) | Delimiter::SingleBracket(single) => single.to_docs(config),
-            Delimiter::DoubleBracket((b1, b2)) => cons!(b1.to_docs(config), b2.to_docs(config)),
+            Delimiter::DoubleBracket((b1, b2)) => b1.to_docs(config).cons(b2.to_docs(config)),
         }
     }
 }
@@ -132,21 +156,17 @@ where
 
     if let Some(first_doc) = docs.next() {
         if !matches!(*first_doc, Doc::Nil) {
-            res = Rc::new(Doc::Cons(res, first_doc));
+            res = res.cons(first_doc);
         }
     }
 
     for next_doc in docs {
         if !matches!(*next_doc, Doc::Nil) {
-            res = Rc::new(Doc::Cons(
-                res,
-                cons!(Rc::clone(&separator), Rc::new(Doc::Break(" "))),
-            ));
-            res = Rc::new(Doc::Cons(res, next_doc));
+            res = res.cons(separator.clone()).cons(nl!(" ")).cons(next_doc);
         }
     }
 
-    res = Rc::new(Doc::Group(GroupDocProperties(res, should_break)));
+    res = res.to_group(should_break);
     res
 }
 
@@ -251,7 +271,7 @@ impl<'a> Code for Expression<'a> {
             },
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
             Expression::EOF(eof) => eof.to_docs(config),
-            Expression::Whitespace(_) => Rc::new(Doc::Text(Rc::from(""))),
+            Expression::Whitespace(_) => text!(""),
             Expression::FunctionDef(function_def) => {
                 let (keyword, args, body) = (
                     function_def.keyword,
@@ -260,12 +280,11 @@ impl<'a> Code for Expression<'a> {
                 );
                 let args_doc = join_docs(
                     args.args.iter().map(|arg| {
-                        cons!(
-                            arg.0.to_docs(config),
+                        arg.0.to_docs(config).cons(
                             arg.1
                                 .as_ref()
                                 .map(|sep| sep.to_docs(config))
-                                .unwrap_or(Rc::new(Doc::Nil))
+                                .unwrap_or(Rc::new(Doc::Nil)),
                         )
                     }),
                     Rc::new(Doc::Nil),
@@ -354,7 +373,7 @@ impl<'a> Code for Expression<'a> {
             }
             Expression::RepeatExpression(repeat_expression) => {
                 let (keyword, body) = (&repeat_expression.repeat_keyword, &repeat_expression.body);
-                group!(cons!(keyword.to_docs(config), body.to_docs(config)))
+                group!(keyword.to_docs(config).cons(body.to_docs(config)))
             }
             Expression::FunctionCall(function_call) => {
                 let (function_ref, args) = (&function_call.function_ref, &function_call.args);
@@ -365,7 +384,7 @@ impl<'a> Code for Expression<'a> {
             }
             Expression::SubsetExpression(subset_expression) => {
                 let (object_ref, args) = (&subset_expression.object_ref, &subset_expression.args);
-                group!(cons!(object_ref.to_docs(config), args.to_docs(config)))
+                group!(object_ref.to_docs(config).cons(args.to_docs(config)))
             }
             Expression::ForLoopExpression(for_loop) => {
                 let (keyword, left_delim, identifier, in_keyword, collection, right_delim, body) = (
@@ -428,7 +447,7 @@ impl Code for Args<'_> {
 impl Code for Arg<'_> {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
         if let Some(comma) = &self.1 {
-            cons!(self.0.to_docs(config), comma.to_docs(config))
+            self.0.to_docs(config).cons(comma.to_docs(config))
         } else {
             self.0.to_docs(config)
         }
@@ -460,10 +479,7 @@ mod tests {
 
     #[test]
     fn joining_docs_with_newlines_produces_newlines() {
-        let docs = [
-            Rc::new(Doc::Text(Rc::from("test"))),
-            Rc::new(Doc::Text(Rc::from("test2"))),
-        ];
+        let docs = [text!("test"), text!("test2")];
         let mock_config = MockConfig {};
         let mut doc = VecDeque::from([(
             0,
@@ -478,7 +494,7 @@ mod tests {
 
     #[test]
     fn joinin_docs_with_newlines_does_nothing_for_just_one_doc() {
-        let docs = [Rc::new(Doc::Text(Rc::from("test")))];
+        let docs = [text!("test")];
         let mock_config = MockConfig {};
         let mut doc = VecDeque::from([(
             0,
