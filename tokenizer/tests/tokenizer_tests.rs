@@ -1,5 +1,4 @@
-use tokenizer::tokenizer::Tokenizer;
-use tokenizer::tokens::Token;
+use tergo_tokenizer::{tokenizer::Tokenizer, tokens::Token};
 
 #[test]
 fn symbols() {

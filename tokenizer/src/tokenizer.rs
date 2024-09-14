@@ -30,7 +30,7 @@ impl<'a> Tokenizer<'a> {
     /// # Examples
     ///
     /// ```
-    /// use tokenizer::tokenizer::Tokenizer;
+    /// use tergo_tokenizer::tokenizer::Tokenizer;
     ///
     /// let r_program = r#"
     /// a <- 7
@@ -56,7 +56,7 @@ impl<'a> Tokenizer<'a> {
     /// # Examples
     ///
     /// ```
-    /// use tokenizer::tokenizer::Tokenizer;
+    /// use tergo_tokenizer::tokenizer::Tokenizer;
     ///
     /// let r_program = r#"
     /// a <- 7

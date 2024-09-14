@@ -1,4 +1,4 @@
-use unsully::{config::Config, format};
+use tergo_lib::{config::Config, format};
 
 fn log_init() {
     let _ = env_logger::builder().is_test(true).try_init();

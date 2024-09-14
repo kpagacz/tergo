@@ -1,9 +1,9 @@
-use parser::ast::{
+use tergo_parser::ast::{
     Arg, Args, Delimiter, ElseIfConditional, Expression, ExpressionsBuffer, ForLoop, FunctionCall,
     FunctionDefinition, IfConditional, IfExpression, Lambda, RepeatExpression, TermExpr,
     TrailingElse, WhileExpression,
 };
-use parser::{parse, pre_parse};
+use tergo_parser::{parse, pre_parse};
 use tokenizer::Tokenizer;
 
 fn log_init() {
@@ -20,9 +20,9 @@ fn test_cases() {
     let tokens = pre_parse(&mut commented_tokens);
     let res = parse(&tokens).unwrap();
     let expected = vec![
-        parser::ast::Expression::Literal(tokens[0]),
-        parser::ast::Expression::Whitespace(&tokens[1..2]),
-        parser::ast::Expression::EOF(tokens[3]),
+        Expression::Literal(tokens[0]),
+        Expression::Whitespace(&tokens[1..2]),
+        Expression::EOF(tokens[3]),
     ];
     assert_eq!(res, expected);
 }

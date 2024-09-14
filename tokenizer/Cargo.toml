@@ -1,5 +1,5 @@
 [package]
-name = "tokenizer"
+name = "tergo-tokenizer"
 version = "0.1.0"
 edition = "2021"
 authors = ["Konrad Pagacz konrad.pagacz@gmail.com"]

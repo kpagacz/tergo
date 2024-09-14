@@ -1,5 +1,5 @@
 [package]
-name = "parser"
+name = "tergo-parser"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,7 +9,7 @@ edition = "2021"
 nom = "7.1.3"
 nom_locate = "4.2.0"
 anyhow = "1.0.81"
-tokenizer = { path = "../tokenizer" }
+tokenizer = { package = "tergo-tokenizer", path = "../tokenizer" }
 log = "0.4.21"
 
 [dev-dependencies]

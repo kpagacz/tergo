@@ -1,4 +1,5 @@
 use parser::ast::Expression;
+use tergo_formatter::{config, format_code};
 use tokenizer::{commented_tokens, tokens::CommentedToken, Token};
 
 struct FormatingConfigMock {
@@ -6,7 +7,7 @@ struct FormatingConfigMock {
     pub indent: i32,
 }
 
-impl formatter::config::FormattingConfig for FormatingConfigMock {
+impl config::FormattingConfig for FormatingConfigMock {
     fn line_length(&self) -> i32 {
         self.line_length
     }
@@ -37,6 +38,6 @@ fn test_format_simple_bop() {
         Box::new(Expression::Literal(&commented_tokens[2])),
     );
 
-    let formatted = formatter::format_code(expression, &config);
+    let formatted = format_code(expression, &config);
     assert_eq!(formatted, "1 +\n2");
 }
