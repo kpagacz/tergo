@@ -9,7 +9,7 @@ description = "Formatter for tergo"
 
 [dependencies]
 tokenizer = { package = "tergo-tokenizer", version = "0.1.0" }
-parser = { package = "tergo-parser", path = "../parser" }
+parser = { package = "tergo-parser", path = "../parser", version = "0.1.0" }
 log = "0.4.21"
 
 [dev-dependencies]

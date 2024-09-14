@@ -12,7 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 tokenizer = { package = "tergo-tokenizer", version = "0.1.0" }
-parser = { package = "tergo-parser", path = "../parser" }
-formatter = { package = "tergo-formatter", path = "../formatter" }
+parser = { package = "tergo-parser", path = "../parser", version = "0.1.0" }
+formatter = { package = "tergo-formatter", path = "../formatter", version = "0.1.0" }
 log = "0.4.21"
 env_logger = "0.11.3"
