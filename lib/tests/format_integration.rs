@@ -1,4 +1,4 @@
-use tergo_lib::{config::Config, format};
+use tergo_lib::{config::Config, tergo_format};
 
 fn log_init() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -12,7 +12,7 @@ macro_rules! comparison_test {
             let input = include_str!(concat!("test_cases/", $file_number, ".R"));
             let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
             assert_eq!(
-                format(
+                tergo_format(
                     input,
                     Some(Config {
                         indent: 0,
@@ -31,7 +31,7 @@ macro_rules! comparison_test {
             let config: Config = $config;
             let input = include_str!(concat!("test_cases/", $file_number, ".R"));
             let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
-            assert_eq!(format(input, Some(config)).unwrap(), expected);
+            assert_eq!(tergo_format(input, Some(config)).unwrap(), expected);
         }
     };
 }
@@ -46,12 +46,12 @@ fn simple_bops_indents_and_new_lines() {
     let input = include_str!(concat!("./test_cases/003.R"));
     let expected = include_str!(concat!("./test_cases/003-0-line-length.expected"));
     let config = Config::new(0, 0);
-    assert_eq!(format(input, Some(config)).unwrap(), expected);
+    assert_eq!(tergo_format(input, Some(config)).unwrap(), expected);
 
     let config = Config::new(0, 4);
     let input = include_str!(concat!("./test_cases/003.R"));
     let expected = include_str!(concat!("./test_cases/003-3-line-length.expected"));
-    assert_eq!(format(input, Some(config)).unwrap(), expected);
+    assert_eq!(tergo_format(input, Some(config)).unwrap(), expected);
 }
 
 fn short_line_config() -> Config {

@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["tokenizer", "parser", "unsully", "formatter"]
+members = ["tokenizer", "parser", "lib", "formatter", "cli"]
 resolver = "2"

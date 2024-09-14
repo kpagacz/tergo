@@ -8,7 +8,7 @@ use parser::{
 };
 use tokenizer::{tokens_buffer::TokensBuffer, Tokenizer};
 
-pub fn format(input: &str, config: Option<Config>) -> Result<String, String> {
+pub fn tergo_format(input: &str, config: Option<Config>) -> Result<String, String> {
     let config = config.unwrap_or_default();
     trace!("Formatting with config: {config}");
     let mut tokenizer = Tokenizer::new(input);
