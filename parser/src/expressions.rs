@@ -37,6 +37,7 @@ fn literal_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Exp
 pub(crate) fn term_expr<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("term_expr: {}", TokensBuffer(tokens));
     alt((
         for_loop_expression,
         while_expression,
@@ -75,6 +76,7 @@ pub(crate) fn term_expr<'a, 'b: 'a>(
     ))(tokens)
 }
 
+#[derive(Debug)]
 enum Tail<'a> {
     Call(Args<'a>),
     DoubleSubset(Args<'a>),
@@ -86,6 +88,8 @@ pub(crate) fn atomic_term<'a, 'b: 'a>(
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     let (mut tokens, lhs) = term_expr(tokens)?;
     let mut acc = lhs;
+    trace!("atomic_term: parsed LHS: {acc}");
+    trace!("atomic_term: parsing rhs: {}", TokensBuffer(tokens));
     while let Ok((new_tokens, tail)) = alt((
         map(
             delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
@@ -107,6 +111,7 @@ pub(crate) fn atomic_term<'a, 'b: 'a>(
         ),
     ))(tokens)
     {
+        trace!("atomic_term: parsed the rhs to this tail: {tail:?}");
         match tail {
             Tail::Call(args) => {
                 acc = Expression::FunctionCall(FunctionCall {
@@ -121,8 +126,10 @@ pub(crate) fn atomic_term<'a, 'b: 'a>(
                 })
             }
         }
+        trace!("atomic_term: final acc: {acc}");
         tokens = new_tokens;
     }
+
     Ok((tokens, acc))
 }
 
@@ -257,6 +264,8 @@ impl ExprParser {
             }
             lhs = Expression::Bop(op, Box::new(lhs), Box::new(rhs));
         }
+        trace!("ExprParser::parse: LHS {lhs}");
+        trace!("ExprParser::parse: tokens left: {}", TokensBuffer(tokens));
         Ok((tokens, lhs))
     }
 }

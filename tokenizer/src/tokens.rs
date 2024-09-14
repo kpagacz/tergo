@@ -13,7 +13,7 @@ pub struct CommentedToken<'a> {
     pub offset: usize,
     /// Preceding comments. The tuple contains the start and end offset (exclusive) of the comment
     /// in the array of tokens.
-    pub leading_comments: Option<(usize, usize)>,
+    pub leading_comments: Option<Vec<&'a str>>,
     /// Trailing inline comment. The offset is the index of the comment in the array of tokens.
     pub inline_comment: Option<&'a str>,
 }
@@ -33,7 +33,7 @@ impl<'a> CommentedToken<'a> {
         token: Token<'a>,
         line: u32,
         offset: usize,
-        leading_comments: Option<(usize, usize)>,
+        leading_comments: Option<Vec<&'a str>>,
         inline_comment: Option<&'a str>,
     ) -> Self {
         Self {
@@ -43,14 +43,6 @@ impl<'a> CommentedToken<'a> {
             leading_comments,
             inline_comment,
         }
-    }
-
-    pub fn get_preceding_comments(
-        &'a self,
-        tokens: &'a [CommentedToken<'a>],
-    ) -> Option<&'a [CommentedToken<'a>]> {
-        self.leading_comments
-            .map(|(start, end)| &tokens[start..end])
     }
 }
 

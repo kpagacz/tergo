@@ -155,3 +155,9 @@ comparison_test!(
 );
 comparison_test!(comments_are_not_formatted, "057");
 comparison_test!(comments_in_an_array, "058");
+comparison_test!(single_leading_comment, "059");
+comparison_test!(two_line_leading_comment, "060");
+comparison_test!(two_line_with_short_line_config, "060", short_line_config());
+comparison_test!(two_leading_comments_one_after_another, "061");
+comparison_test!(comments_with_no_code_work, "062");
+comparison_test!(real_life_example_0, "real_life_0");

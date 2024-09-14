@@ -1,3 +1,4 @@
+use log::trace;
 use nom::{
     combinator::{map, opt},
     error::Error,
@@ -65,6 +66,7 @@ where
                 while let Some(xpr) = comma_delimited_args.next() {
                     args.push(Arg(xpr, comma_delimited_args.next()));
                 }
+                trace!("delimited_comma_sep_exprs: parsed args {args:?}");
                 Args::new(ldelim, args, rdelim)
             }
             None => Args::new(ldelim, vec![], rdelim),

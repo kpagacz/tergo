@@ -12,15 +12,22 @@ pub fn pre_parse<'a>(tokens: &'a mut [CommentedToken<'a>]) -> Vec<&'a CommentedT
     let mut it = 0;
     let mut tokens_without_comments = vec![];
     while it < tokens.len() {
-        if let Token::Comment(_) = tokens[it].token {
-            let start = it;
-            while matches!(tokens[it].token, Token::Comment(_))
-                || matches!(tokens[it].token, Token::Newline)
-            {
+        if let Token::Comment(comment) = tokens[it].token {
+            let mut comments = vec![comment];
+            it += 1;
+            loop {
+                match tokens[it].token {
+                    Token::Newline => {
+                        if matches!(tokens[it - 1].token, Token::Newline) {
+                            comments.push("");
+                        }
+                    }
+                    Token::Comment(comment) => comments.push(comment),
+                    _ => break,
+                }
                 it += 1;
             }
-
-            tokens[it].leading_comments = Some((start, it));
+            tokens[it].leading_comments = Some(comments);
             tokens_without_comments.push(it);
         } else if let Token::InlineComment(comment) = tokens[it].token {
             tokens[it - 1].inline_comment = Some(comment);
@@ -56,7 +63,7 @@ mod tests {
         // Comments
         assert_eq!(
             res_token.leading_comments,
-            Some((0, 2)),
+            Some(vec!["Comment"]),
             "The length of the leading comments does not match"
         );
 

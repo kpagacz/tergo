@@ -122,16 +122,33 @@ impl<'a> Code for Token<'a> {
 
 impl Code for CommentedToken<'_> {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
-        if let Some(inline_comment) = self.inline_comment {
-            // Group because the token should go with its inline comment
-            // no matter whether the line fits or not
-            self.token.to_docs(config).cons(text!(" ")).cons(text!(
-                inline_comment,
-                0,
-                InlineCommentPosition::End
-            ))
-        } else {
-            self.token.to_docs(config)
+        match (&self.leading_comments, self.inline_comment) {
+            (None, None) => self.token.to_docs(config),
+            (None, Some(inline_comment)) => self
+                .token
+                .to_docs(config)
+                .cons(text!(" "))
+                .cons(text!(inline_comment, 0, InlineCommentPosition::End)),
+            (Some(leading_comments), None) => {
+                let leading_comments = leading_comments
+                    .iter()
+                    .fold(Rc::new(Doc::Nil), |first, second| {
+                        first.cons(text!(second, 0)).cons(text!("\n"))
+                    });
+
+                leading_comments.cons(self.token.to_docs(config))
+            }
+            (Some(leading_comments), Some(inline_comment)) => {
+                let leading_comments = leading_comments
+                    .iter()
+                    .fold(Rc::new(Doc::Nil), |first, second| {
+                        first.cons(text!(second, 0)).cons(text!("\n"))
+                    });
+                leading_comments
+                    .cons(self.token.to_docs(config))
+                    .cons(text!(" "))
+                    .cons(text!(inline_comment, 0, InlineCommentPosition::End))
+            }
         }
     }
 }
