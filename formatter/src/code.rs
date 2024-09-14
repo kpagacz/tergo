@@ -246,6 +246,7 @@ impl<'a> Code for Expression<'a> {
                 }
                 _ => panic!("Term with not matching delimiters found"),
             },
+            Expression::Unary(op, expr) => op.to_docs(config).cons(expr.to_docs(config)),
             Expression::Bop(op, lhs, rhs) => match op.token {
                 Token::LAssign
                 | Token::RAssign

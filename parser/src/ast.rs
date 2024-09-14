@@ -6,6 +6,7 @@ pub enum Expression<'a> {
     Literal(&'a CommentedToken<'a>),
     Comment(&'a CommentedToken<'a>),
     Term(Box<TermExpr<'a>>),
+    Unary(&'a CommentedToken<'a>, Box<Expression<'a>>),
     Bop(
         &'a CommentedToken<'a>,
         Box<Expression<'a>>,
@@ -33,6 +34,7 @@ impl std::fmt::Display for Expression<'_> {
             Expression::Literal(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
             Expression::Comment(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
             Expression::Term(term) => f.write_fmt(format_args!("{}", term)),
+            Expression::Unary(op, expr) => f.write_fmt(format_args!("{}{}", op, expr)),
             Expression::Bop(op, left, right) => {
                 f.write_fmt(format_args!("{} {} {}", left, TokensBuffer(&[op]), right))
             }

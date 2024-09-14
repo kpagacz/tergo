@@ -61,8 +61,6 @@ token_parser!(lambda, Lambda);
 // token_parser!(power, Power);
 // token_parser!(divide, Divide);
 // token_parser!(multiply, Multiply);
-// token_parser!(minus, Minus);
-// token_parser!(plus, Plus);
 // token_parser!(help, Help);
 // token_parser!(and, And);
 // token_parser!(vectorized_and, VectorizedAnd);
@@ -76,7 +74,9 @@ token_parser!(lambda, Lambda);
 // token_parser!(colon, Colon);
 
 // Unary operators
-// token_parser!(unary_not, UnaryNot);
+token_parser!(unary_not, UnaryNot);
+token_parser!(minus, Minus);
+token_parser!(plus, Plus);
 
 // Comments
 // token_parser!(inline_comment, InlineComment(_));

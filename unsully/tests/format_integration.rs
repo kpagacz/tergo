@@ -160,4 +160,5 @@ comparison_test!(two_line_leading_comment, "060");
 comparison_test!(two_line_with_short_line_config, "060", short_line_config());
 comparison_test!(two_leading_comments_one_after_another, "061");
 comparison_test!(comments_with_no_code_work, "062");
+comparison_test!(parsing_unary_operators, "063");
 comparison_test!(real_life_example_0, "real_life_0");

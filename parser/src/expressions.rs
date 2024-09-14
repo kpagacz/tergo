@@ -83,6 +83,19 @@ enum Tail<'a> {
     SingleSubset(Args<'a>),
 }
 
+fn unary_op<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, &'b CommentedToken<'a>> {
+    alt((minus, plus, unary_not))(tokens)
+}
+
+fn unary_term<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    alt((
+        map(tuple((unary_op, atomic_term)), |(op, term)| {
+            Expression::Unary(op, Box::new(term))
+        }),
+        atomic_term,
+    ))(tokens)
+}
+
 pub(crate) fn atomic_term<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
@@ -242,7 +255,7 @@ impl ExprParser {
         while is_binary_operator(lookahead) && precedence(lookahead) >= self.0 {
             let op = lookahead;
             tokens = &tokens[1..];
-            let (new_tokens, mut rhs) = atomic_term(tokens)?;
+            let (new_tokens, mut rhs) = unary_term(tokens)?;
             tokens = new_tokens;
             lookahead = &tokens[0];
             while is_binary_operator(lookahead)
@@ -272,7 +285,7 @@ impl ExprParser {
 
 pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     trace!("expr: {}", TokensBuffer(tokens));
-    let (tokens, term) = atomic_term(tokens)?;
+    let (tokens, term) = unary_term(tokens)?;
     if !tokens.is_empty() {
         let parser = ExprParser(0);
         parser.parse(term, tokens)
