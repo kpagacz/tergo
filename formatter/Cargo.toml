@@ -7,7 +7,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokenizer = { package = "tergo-tokenizer", path = "../tokenizer" }
+tokenizer = { package = "tergo-tokenizer", version = "0.1.0" }
 parser = { package = "tergo-parser", path = "../parser" }
 log = "0.4.21"
 
