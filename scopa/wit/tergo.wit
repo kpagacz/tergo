@@ -1,0 +1,8 @@
+// wit/tergo.wit
+package vscode:tergo;
+
+world tergo {
+    import log: func(msg: string);
+
+    export format: func(code: string) -> result<string, string>;
+}

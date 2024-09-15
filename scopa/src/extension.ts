@@ -1,11 +1,26 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
+import { WasmContext, Memory } from '@vscode/wasm-component-model';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+import { tergo } from "./tergo";
+
+export async function activate(context: vscode.ExtensionContext) {
   console.log("tergo activated");
+
+  const filename = vscode.Uri.joinPath(
+    context.extensionUri,
+    'scopa.wasm'
+  );
+
+  console.log(`Looking for the WASM under ${filename}`);
+  const bits = await vscode.workspace.fs.readFile(filename);
+  const module = await WebAssembly.compile(bits);
+  const wasmContext: WasmContext.Default = new WasmContext.Default();
+  const instance = await WebAssembly.instantiate(module, {});
+  wasmContext.initialize(new Memory.Default(instance.exports));
+  const api = tergo._.exports.bind(
+    instance.exports as tergo._.Exports,
+    wasmContext
+  );
 
   vscode.languages.registerDocumentFormattingEditProvider("r", {
     provideDocumentFormattingEdits(
@@ -14,14 +29,14 @@ export function activate(context: vscode.ExtensionContext) {
       token
     ): vscode.TextEdit[] {
       let documentText = document.getText();
-      console.log(`Formatting the document:\n${ documentText }`);
+      console.log(`Formatting the document:\n${documentText}`);
       return [
         vscode.TextEdit.replace(
           new vscode.Range(
             document.lineAt(0).range.start,
             document.lineAt(document.lineCount - 1).range.end
           ),
-          "Formatted code\n"
+          api.format(documentText)
         ),
       ];
     },
@@ -29,4 +44,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {
+  console.log("tergo deactivated");
+}
