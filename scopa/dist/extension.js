@@ -45,7 +45,7 @@ async function activate(context) {
     wasmContext.initialize(new wasm_component_model_1.Memory.Default(instance.exports));
     const api = tergo_1.tergo._.exports.bind(instance.exports, wasmContext);
     vscode.languages.registerDocumentFormattingEditProvider("r", {
-        provideDocumentFormattingEdits(document, options, token) {
+        provideDocumentFormattingEdits(document, _options, _token) {
             let documentText = document.getText();
             console.log(`Formatting the document:\n${documentText}`);
             return [

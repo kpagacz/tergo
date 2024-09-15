@@ -25,8 +25,8 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.languages.registerDocumentFormattingEditProvider("r", {
     provideDocumentFormattingEdits(
       document,
-      options,
-      token
+      _options,
+      _token
     ): vscode.TextEdit[] {
       let documentText = document.getText();
       console.log(`Formatting the document:\n${documentText}`);
