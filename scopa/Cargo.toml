@@ -1,0 +1,11 @@
+[package]
+name = "scopa"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wit-bindgen = "0.32.0"
+
+[dev-dependencies]
+wasm-tools = "1.217.0"
+wit-bindgen-cli = "0.32.0"
