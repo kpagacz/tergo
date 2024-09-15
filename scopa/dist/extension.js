@@ -37,18 +37,16 @@ const vscode = __importStar(__webpack_require__(1));
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 function activate(context) {
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "tergo" is now active!');
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
-    const disposable = vscode.commands.registerCommand('tergo.helloWorld', () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Hello World from tergo!');
+    console.log("tergo activated");
+    vscode.languages.registerDocumentFormattingEditProvider("r", {
+        provideDocumentFormattingEdits(document, options, token) {
+            let documentText = document.getText();
+            console.log(`Formatting the document:\n${documentText}`);
+            return [
+                vscode.TextEdit.replace(new vscode.Range(document.lineAt(0).range.start, document.lineAt(document.lineCount - 1).range.end), "Formatted code\n"),
+            ];
+        },
     });
-    context.subscriptions.push(disposable);
 }
 // This method is called when your extension is deactivated
 function deactivate() { }

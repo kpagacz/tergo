@@ -3,19 +3,28 @@
   "displayName": "tergo",
   "description": "R Code formatter",
   "version": "0.0.1",
+  "publisher": "kpagacz",
   "engines": {
     "vscode": "^1.93.0"
   },
   "categories": [
-    "Other"
+    "Formatters"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:r"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [
+    "languages": [
       {
-        "command": "tergo.helloWorld",
-        "title": "Hello World"
+        "id": "r",
+        "aliases": [
+          "R"
+        ],
+        "extensions": [
+          "r",
+          "R"
+        ]
       }
     ]
   },
