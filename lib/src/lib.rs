@@ -8,8 +8,9 @@ use parser::{
 };
 use tokenizer::{tokens_buffer::TokensBuffer, Tokenizer};
 
-pub fn tergo_format(input: &str, config: Option<Config>) -> Result<String, String> {
-    let config = config.unwrap_or_default();
+pub fn tergo_format(input: &str, config: Option<&Config>) -> Result<String, String> {
+    let default_config = Config::default();
+    let config = config.unwrap_or(&default_config);
     trace!("Formatting with config: {config}");
     let mut tokenizer = Tokenizer::new(input);
     let mut commented_tokens = tokenizer.tokenize();
@@ -21,5 +22,5 @@ pub fn tergo_format(input: &str, config: Option<Config>) -> Result<String, Strin
     let cst = parse(&tokens_without_comments)?;
     let top_node = Expression::Term(Box::new(TermExpr::new(None, cst, None)));
     trace!("CST: {:?}", top_node);
-    Ok(format_code(top_node, &config))
+    Ok(format_code(top_node, config))
 }

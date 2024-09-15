@@ -1,6 +1,7 @@
 use formatter::config::FormattingConfig;
+use serde::Deserialize;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 pub struct Config {
     pub indent: i32,
     pub line_length: i32,
