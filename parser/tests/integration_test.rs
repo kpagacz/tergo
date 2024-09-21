@@ -114,7 +114,7 @@ fn function_def_with_one_arg() {
             tokens[0],
             Args::new(
                 Delimiter::Paren(tokens[1]),
-                vec![Arg(Expression::Symbol(tokens[2]), None)],
+                vec![Arg(Some(Expression::Symbol(tokens[2])), None)],
                 Delimiter::Paren(tokens[3]),
             ),
             Box::new(Expression::Term(Box::new(TermExpr::new(
@@ -150,11 +150,11 @@ fn function_def_with_one_arg_with_default_value() {
             Args::new(
                 Delimiter::Paren(tokens[1]),
                 vec![Arg(
-                    Expression::Bop(
+                    Some(Expression::Bop(
                         tokens[3],
                         Box::new(Expression::Symbol(tokens[2])),
                         Box::new(Expression::Literal(tokens[4])),
-                    ),
+                    )),
                     None,
                 )],
                 Delimiter::Paren(tokens[5]),
@@ -193,10 +193,10 @@ fn function_def_with_two_args() {
                 Delimiter::Paren(tokens[1]),
                 vec![
                     Arg(
-                        Expression::Symbol(tokens[2]),
+                        Some(Expression::Symbol(tokens[2])),
                         Some(Expression::Literal(tokens[3])),
                     ),
-                    Arg(Expression::Symbol(tokens[4]), None),
+                    Arg(Some(Expression::Symbol(tokens[4])), None),
                 ],
                 Delimiter::Paren(tokens[5]),
             ),
@@ -560,7 +560,7 @@ fn for_loop_test() {
                 function_ref: Box::new(Expression::Symbol(tokens[4])),
                 args: Args {
                     left_delimeter: Delimiter::Paren(tokens[5]),
-                    args: vec![Arg(Expression::Literal(tokens[6]), None)],
+                    args: vec![Arg(Some(Expression::Literal(tokens[6])), None)],
                     right_delimeter: Delimiter::Paren(tokens[7]),
                 },
             })),

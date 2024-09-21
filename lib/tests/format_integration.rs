@@ -161,4 +161,34 @@ comparison_test!(two_line_with_short_line_config, "060", short_line_config());
 comparison_test!(two_leading_comments_one_after_another, "061");
 comparison_test!(comments_with_no_code_work, "062");
 comparison_test!(parsing_unary_operators, "063");
-comparison_test!(real_life_example_0, "real_life_0");
+comparison_test!(binary_operator_with_newline, "064");
+comparison_test!(real_life_example_0, "real_life_000");
+comparison_test!(real_life_example_1, "real_life_001", Config::default());
+comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
+comparison_test!(tidyverse_commas2, "tidyverse_style_guide_002");
+comparison_test!(tidyverse_spaces, "tidyverse_style_guide_003");
+comparison_test!(
+    tidyverse_spaces_if,
+    "tidyverse_style_guide_004",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_spaces_for_loops,
+    "tidyverse_style_guide_005",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_spaces_while_loops,
+    "tidyverse_style_guide_006",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_spaces_around_function,
+    "tidyverse_style_guide_007",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_embracing,
+    "tidyverse_style_guide_008",
+    Config::default()
+);

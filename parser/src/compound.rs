@@ -51,25 +51,29 @@ where
             opt(expr),
             many0(tuple((
                 tuple((comma, many0(newline))),
-                tuple((expr, many0(newline))),
+                tuple((opt(expr), many0(newline))),
             ))),
             many0(newline),
             right_delimiter,
         )),
-        |(ldelim, _, first_arg, comma_delimited_args, _, rdelim)| match first_arg {
-            Some(xpr) => {
-                let comma_delimited_args = comma_delimited_args
-                    .into_iter()
-                    .flat_map(|((sep, _), (xpr, _))| [Expression::Literal(sep), xpr]);
-                let mut comma_delimited_args = std::iter::once(xpr).chain(comma_delimited_args);
-                let mut args = vec![];
-                while let Some(xpr) = comma_delimited_args.next() {
-                    args.push(Arg(xpr, comma_delimited_args.next()));
+        |(ldelim, _, first_arg, comma_delimited_args, _, rdelim)| {
+            let comma_delimited_args = comma_delimited_args
+                .into_iter()
+                .flat_map(|((sep, _), (xpr, _))| [Some(Expression::Literal(sep)), xpr]);
+            let mut args = vec![];
+            let mut comma_delimited_args = std::iter::once(first_arg).chain(comma_delimited_args);
+            while let Some(potential_arg) = comma_delimited_args.next() {
+                if let Some(potential_delim) = comma_delimited_args.next() {
+                    args.push(Arg(potential_arg, potential_delim));
+                } else {
+                    args.push(Arg(potential_arg, None));
                 }
-                trace!("delimited_comma_sep_exprs: parsed args {args:?}");
-                Args::new(ldelim, args, rdelim)
             }
-            None => Args::new(ldelim, vec![], rdelim),
+            if !args.is_empty() && args[0] == Arg(None, None) {
+                args = vec![];
+            }
+            trace!("delimited_comma_sep_exprs: parsed args {args:?}");
+            Args::new(ldelim, args, rdelim)
         },
     )
 }

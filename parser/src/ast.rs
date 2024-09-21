@@ -139,11 +139,13 @@ impl std::fmt::Display for TermExpr<'_> {
 // The formatter needs comments and some of them might end up squeezed into
 // the comma token
 #[derive(Debug, Clone, PartialEq)]
-pub struct Arg<'a>(pub Expression<'a>, pub Option<Expression<'a>>); // Argument, comma
+pub struct Arg<'a>(pub Option<Expression<'a>>, pub Option<Expression<'a>>); // Argument, comma
 
 impl std::fmt::Display for Arg<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.0))?;
+        if let Some(ref xpr) = self.0 {
+            f.write_fmt(format_args!("{}", xpr))?;
+        }
         if let Some(comma) = &self.1 {
             f.write_fmt(format_args!("comma:{}", comma))?;
         }

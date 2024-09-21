@@ -13,7 +13,9 @@ pub fn tergo_format(input: &str, config: Option<&Config>) -> Result<String, Stri
     let config = config.unwrap_or(&default_config);
     trace!("Formatting with config: {config}");
     let mut tokenizer = Tokenizer::new(input);
+    trace!("Tokenizer created");
     let mut commented_tokens = tokenizer.tokenize();
+    trace!("Tokens with comments: {commented_tokens:?}",);
     let tokens_without_comments = pre_parse(&mut commented_tokens);
     trace!(
         "Tokens without comments: {}",

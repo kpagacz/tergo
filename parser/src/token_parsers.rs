@@ -77,6 +77,7 @@ token_parser!(lambda, Lambda);
 token_parser!(unary_not, UnaryNot);
 token_parser!(minus, Minus);
 token_parser!(plus, Plus);
+token_parser!(tilde, Tilde);
 
 // Comments
 // token_parser!(inline_comment, InlineComment(_));

@@ -1,5 +1,9 @@
 use tergo_tokenizer::{tokenizer::Tokenizer, tokens::Token};
 
+fn log_init() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
+
 #[test]
 fn symbols() {
     let examples = [
@@ -308,5 +312,16 @@ fn function_definitions() {
             .map(|token| token.token)
             .collect::<Vec<_>>();
         assert_eq!(tokens, expected);
+    }
+}
+
+#[test]
+fn custom_binary_operators() {
+    log_init();
+    let examples = vec!["%>%", "%custom%"];
+
+    for example in examples {
+        let mut tokenizer = Tokenizer::new(example);
+        let _ = tokenizer.tokenize();
     }
 }

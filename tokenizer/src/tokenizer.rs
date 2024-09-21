@@ -1,4 +1,4 @@
-use log::trace;
+use log::{trace, warn};
 
 use crate::tokens::{
     CommentedToken,
@@ -247,7 +247,7 @@ impl<'a> Tokenizer<'a> {
                             self.number_literal(&mut tokens);
                         }
                         _ => {
-                            eprintln!(
+                            warn!(
                                 "Found not alphabetic and non-numeric character after a dot. \
                                  Treating it as an identifier."
                             );
@@ -266,7 +266,19 @@ impl<'a> Tokenizer<'a> {
                             self.next();
                             self.next();
                         }
-                        _ => self.identifier(&mut tokens),
+                        _ => {
+                            let custom_binary_start = self.it;
+                            self.next();
+                            while self.source[self.it] != '%' {
+                                self.next();
+                            }
+                            let custom_binary_end = self.it;
+                            self.push_token(
+                                Special(&self.raw_source[custom_binary_start..=custom_binary_end]),
+                                &mut tokens,
+                            );
+                            self.next()
+                        }
                     }
                 }
                 'a'..='z' | 'A'..='Z' => {

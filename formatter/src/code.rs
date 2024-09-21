@@ -11,6 +11,18 @@ pub(crate) trait Code {
     fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc>;
 }
 
+impl<T> Code for Option<T>
+where
+    T: Code,
+{
+    fn to_docs(&self, config: &impl FormattingConfig) -> Rc<Doc> {
+        match self {
+            Some(inner) => inner.to_docs(config),
+            None => text!(""),
+        }
+    }
+}
+
 // Macro that creates a Doc::Group
 macro_rules! group {
     ($doc:expr) => {{
@@ -314,7 +326,7 @@ impl<'a> Code for Expression<'a> {
                     .to_docs(config)
                     .cons(nl!(""))
                     .cons(args_doc)
-                    .nest(2 * config.indent())
+                    .nest(config.indent())
                     .cons(nl!(""))
                     .cons(args.right_delimeter.to_docs(config))
                     .to_group(ShouldBreak::No);

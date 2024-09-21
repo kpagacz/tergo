@@ -84,7 +84,7 @@ enum Tail<'a> {
 }
 
 fn unary_op<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, &'b CommentedToken<'a>> {
-    alt((minus, plus, unary_not))(tokens)
+    alt((minus, plus, unary_not, tilde))(tokens)
 }
 
 fn unary_term<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
@@ -99,6 +99,7 @@ fn unary_term<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expre
 pub(crate) fn atomic_term<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("atomic_term: {}", TokensBuffer(tokens));
     let (mut tokens, lhs) = term_expr(tokens)?;
     let mut acc = lhs;
     trace!("atomic_term: parsed LHS: {acc}");
@@ -139,10 +140,10 @@ pub(crate) fn atomic_term<'a, 'b: 'a>(
                 })
             }
         }
-        trace!("atomic_term: final acc: {acc}");
         tokens = new_tokens;
     }
 
+    trace!("atomic_term: final acc: {acc}");
     Ok((tokens, acc))
 }
 
@@ -251,10 +252,15 @@ impl ExprParser {
         mut lhs: Expression<'a>,
         mut tokens: Input<'a, 'b>,
     ) -> IResult<Input<'a, 'b>, Expression<'a>> {
+        trace!("ExprParser::parse: {}", TokensBuffer(tokens));
         let mut lookahead = &tokens[0];
         while is_binary_operator(lookahead) && precedence(lookahead) >= self.0 {
             let op = lookahead;
-            tokens = &tokens[1..];
+            let mut it = 1;
+            while matches!(tokens[it].token, Newline) {
+                it += 1;
+            }
+            tokens = &tokens[it..];
             let (new_tokens, mut rhs) = unary_term(tokens)?;
             tokens = new_tokens;
             lookahead = &tokens[0];
@@ -428,6 +434,25 @@ mod tests {
                 )),
                 Box::new(Expression::Literal(tokens[4]))
             )
+        )
+    }
+
+    #[test]
+    fn double_brace() {
+        let tokens_ = commented_tokens!(LBrace, LBrace, Literal("1"), RBrace, RBrace);
+        let tokens: Vec<_> = tokens_.iter().collect();
+        let res = expr(&tokens).unwrap().1;
+        assert_eq!(
+            res,
+            Expression::Term(Box::new(TermExpr {
+                pre_delimiters: Some(tokens[0]),
+                term: vec![Expression::Term(Box::new(TermExpr {
+                    pre_delimiters: Some(tokens[1]),
+                    term: vec![Expression::Literal(tokens[2])],
+                    post_delimiters: Some(tokens[3])
+                }))],
+                post_delimiters: Some(tokens[4])
+            }))
         )
     }
 }
