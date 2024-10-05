@@ -18,6 +18,7 @@ pub fn format_code<T: config::FormattingConfig>(
 ) -> String {
     let mut docs: VecDeque<_> =
         VecDeque::from([(0i32, Mode::Flat, expression.to_docs(formatting_config))]);
+    trace!("Config: {}", formatting_config);
     trace!("Docs: {}", DocBuffer(&docs));
     let simple_doc = Rc::new(format_to_sdoc(0, &mut docs, formatting_config));
     trace!("Simple docs: {:?}", simple_doc);

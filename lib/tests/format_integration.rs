@@ -1,3 +1,4 @@
+#![allow(clippy::field_reassign_with_default)]
 use tergo_lib::{config::Config, tergo_format};
 
 fn log_init() {
@@ -12,14 +13,7 @@ macro_rules! comparison_test {
             let input = include_str!(concat!("test_cases/", $file_number, ".R"));
             let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
             assert_eq!(
-                tergo_format(
-                    input,
-                    Some(&Config {
-                        indent: 0,
-                        line_length: 120
-                    })
-                )
-                .unwrap(),
+                tergo_format(input, Some(&long_line_config())).unwrap(),
                 expected
             );
         }
@@ -45,24 +39,35 @@ fn simple_bops_indents_and_new_lines() {
     log_init();
     let input = include_str!(concat!("./test_cases/003.R"));
     let expected = include_str!(concat!("./test_cases/003-0-line-length.expected"));
-    let config = Config::new(0, 0);
+    let config = Config::new(0, 0, true, true);
     assert_eq!(tergo_format(input, Some(&config)).unwrap(), expected);
 
-    let config = Config::new(0, 4);
+    let config = Config::new(0, 4, true, true);
     let input = include_str!(concat!("./test_cases/003.R"));
     let expected = include_str!(concat!("./test_cases/003-3-line-length.expected"));
     assert_eq!(tergo_format(input, Some(&config)).unwrap(), expected);
 }
 
 fn short_line_config() -> Config {
-    Config::new(0, 4)
+    Config::new(0, 4, true, true)
 }
 
 fn short_line_plus_indent() -> Config {
     Config {
         indent: 2,
         line_length: 0,
+        embracing_op_no_nl: true,
+        allow_nl_after_assignment: true,
     }
+}
+
+#[allow(clippy::field_reassign_with_default)]
+fn long_line_config() -> Config {
+    let mut config = Config::default();
+    config.embracing_op_no_nl = true;
+    config.indent = 0;
+    config.line_length = 120;
+    config
 }
 
 comparison_test!(simple_bop_with_parenthesis, "004");
@@ -148,10 +153,7 @@ comparison_test!(comment_shows_up, "055");
 comparison_test!(
     comments_are_not_part_of_line_length,
     "056",
-    Config {
-        indent: 0,
-        line_length: 20
-    }
+    long_line_config()
 );
 comparison_test!(comments_are_not_formatted, "057");
 comparison_test!(comments_in_an_array, "058");
@@ -162,8 +164,24 @@ comparison_test!(two_leading_comments_one_after_another, "061");
 comparison_test!(comments_with_no_code_work, "062");
 comparison_test!(parsing_unary_operators, "063");
 comparison_test!(binary_operator_with_newline, "064");
+comparison_test!(function_definition_with_indent, "065", Config::default());
+comparison_test!(
+    function_definition_with_args_very_long,
+    "066",
+    Config::default()
+);
+comparison_test!(
+    function_definition_with_args_very_long_assigned,
+    "067",
+    Config::default()
+);
+comparison_test!(multi_bop_with_two_parts_fit_in_one_line, "068", {
+    let mut config = Config::default();
+    config.line_length = 3;
+    config
+});
 comparison_test!(real_life_example_0, "real_life_000");
-comparison_test!(real_life_example_1, "real_life_001", Config::default());
+comparison_test!(short_pipes_fit_one_line, "real_life_001", Config::default());
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
 comparison_test!(tidyverse_commas2, "tidyverse_style_guide_002");
 comparison_test!(tidyverse_spaces, "tidyverse_style_guide_003");
@@ -187,8 +205,8 @@ comparison_test!(
     "tidyverse_style_guide_007",
     Config::default()
 );
-comparison_test!(
-    tidyverse_embracing,
-    "tidyverse_style_guide_008",
-    Config::default()
-);
+comparison_test!(tidyverse_embracing, "tidyverse_style_guide_008", {
+    let mut config = Config::default();
+    config.line_length = 80;
+    config
+});

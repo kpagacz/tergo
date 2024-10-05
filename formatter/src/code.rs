@@ -180,6 +180,15 @@ where
     I: IntoIterator<Item = Rc<Doc>>,
     F: FormattingConfig,
 {
+    join_docs_ungroupped(docs, separator, _config).to_group(should_break)
+}
+
+/// Returns a Doc::Cons
+fn join_docs_ungroupped<I, F>(docs: I, separator: Rc<Doc>, _config: &F) -> Rc<Doc>
+where
+    I: IntoIterator<Item = Rc<Doc>>,
+    F: FormattingConfig,
+{
     let mut docs = docs.into_iter();
     let mut res = Rc::new(Doc::Nil);
 
@@ -195,7 +204,6 @@ where
         }
     }
 
-    res = res.to_group(should_break);
     res
 }
 
@@ -208,6 +216,68 @@ impl<'a> Code for Expression<'a> {
             | Expression::Continue(token)
             | Expression::Break(token) => token.to_docs(config),
             Expression::Term(term_expr) => match &**term_expr {
+                // Case for the embracing operator
+                TermExpr {
+                    pre_delimiters: Some(pre_delim),
+                    term,
+                    post_delimiters: Some(post_delim),
+                } if config.embracing_op_no_nl()
+                    && matches!(pre_delim.token, Token::LBrace)
+                    && term.len() == 1
+                    && matches!(term[0], Expression::Term { .. }) =>
+                {
+                    match &term[0] {
+                        Expression::Term(inner_term_expr) => {
+                            if inner_term_expr
+                                .pre_delimiters
+                                .is_some_and(|delim| matches!(delim.token, Token::LBrace))
+                            {
+                                let inner_docs =
+                                    inner_term_expr.term.iter().map(|t| t.to_docs(config));
+                                let inner_docs = join_docs(
+                                    inner_docs,
+                                    Rc::new(Doc::Nil),
+                                    ShouldBreak::No,
+                                    config,
+                                );
+                                pre_delim
+                                    .to_docs(config)
+                                    .cons(
+                                        inner_term_expr
+                                            .pre_delimiters
+                                            .as_ref()
+                                            .unwrap()
+                                            .to_docs(config),
+                                    )
+                                    .cons(text!(" "))
+                                    .cons(inner_docs)
+                                    .cons(text!(" "))
+                                    .cons(
+                                        inner_term_expr
+                                            .post_delimiters
+                                            .as_ref()
+                                            .unwrap()
+                                            .to_docs(config),
+                                    )
+                                    .cons(post_delim.to_docs(config))
+                                    .to_group(ShouldBreak::No)
+                            } else {
+                                let docs = term.iter().map(|t| t.to_docs(config));
+                                let inner =
+                                    join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::No, config);
+                                pre_delim
+                                    .to_docs(config)
+                                    .cons(nl!(" "))
+                                    .cons(inner)
+                                    .nest(config.indent())
+                                    .cons(nl!(" "))
+                                    .cons(post_delim.to_docs(config))
+                                    .to_group(ShouldBreak::Yes)
+                            }
+                        }
+                        _ => unreachable!("Already checked that term[0] is a Term"),
+                    }
+                }
                 TermExpr {
                     pre_delimiters: Some(pre_delim),
                     term,
@@ -216,7 +286,9 @@ impl<'a> Code for Expression<'a> {
                     if term.is_empty() {
                         pre_delim.to_docs(config).cons(post_delim.to_docs(config))
                     } else {
-                        let docs = term.iter().map(|t| t.to_docs(config));
+                        let docs = term
+                            .iter()
+                            .map(|t| t.to_docs(config).to_group(ShouldBreak::No));
                         let inner = join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config);
                         pre_delim
                             .to_docs(config)
@@ -233,7 +305,9 @@ impl<'a> Code for Expression<'a> {
                     term,
                     post_delimiters: None,
                 } => {
-                    let docs = term.iter().map(|t| t.to_docs(config));
+                    let docs = term
+                        .iter()
+                        .map(|t| t.to_docs(config).to_group(ShouldBreak::No));
                     join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config)
                 }
                 TermExpr {
@@ -260,6 +334,12 @@ impl<'a> Code for Expression<'a> {
             },
             Expression::Unary(op, expr) => op.to_docs(config).cons(expr.to_docs(config)),
             Expression::Bop(op, lhs, rhs) => match op.token {
+                Token::LAssign if !config.allow_nl_after_assignment() => lhs
+                    .to_docs(config)
+                    .cons(text!(" "))
+                    .cons(op.to_docs(config))
+                    .cons(text!(" ").cons(rhs.to_docs(config)))
+                    .to_group(ShouldBreak::No),
                 Token::LAssign
                 | Token::RAssign
                 | Token::OldAssign
@@ -286,8 +366,8 @@ impl<'a> Code for Expression<'a> {
                     .to_docs(config)
                     .cons(text!(" "))
                     .cons(op.to_docs(config))
-                    .cons(nl!(" ").cons(rhs.to_docs(config)).nest(config.indent()))
-                    .to_group(ShouldBreak::No),
+                    .cons(nl!(" ").cons(rhs.to_docs(config)).nest(config.indent())),
+                // .to_group(ShouldBreak::No),
                 Token::Dollar | Token::NsGet | Token::NsGetInt | Token::Colon | Token::Slot => lhs
                     .to_docs(config)
                     .cons(op.to_docs(config))
@@ -308,17 +388,19 @@ impl<'a> Code for Expression<'a> {
                     &function_def.arguments,
                     &function_def.body,
                 );
-                let args_doc = join_docs(
+                let args_doc = join_docs_ungroupped(
                     args.args.iter().map(|arg| {
-                        arg.0.to_docs(config).cons(
-                            arg.1
-                                .as_ref()
-                                .map(|sep| sep.to_docs(config))
-                                .unwrap_or(Rc::new(Doc::Nil)),
-                        )
+                        arg.0
+                            .to_docs(config)
+                            .cons(
+                                arg.1
+                                    .as_ref()
+                                    .map(|sep| sep.to_docs(config))
+                                    .unwrap_or(Rc::new(Doc::Nil)),
+                            )
+                            .to_group(ShouldBreak::No)
                     }),
                     Rc::new(Doc::Nil),
-                    ShouldBreak::No,
                     config,
                 );
                 let args_group = args
@@ -326,7 +408,7 @@ impl<'a> Code for Expression<'a> {
                     .to_docs(config)
                     .cons(nl!(""))
                     .cons(args_doc)
-                    .nest(config.indent())
+                    .nest(2 * config.indent())
                     .cons(nl!(""))
                     .cons(args.right_delimeter.to_docs(config))
                     .to_group(ShouldBreak::No);
@@ -462,11 +544,11 @@ impl Code for Args<'_> {
         let mut docs = self.left_delimeter.to_docs(config).cons(nl!(""));
         let mut it = self.args.iter();
         if let Some(arg) = it.next() {
-            docs = docs.cons(arg.to_docs(config));
+            docs = docs.cons(arg.to_docs(config).to_group(ShouldBreak::No));
         }
         for arg in it {
             docs = docs.cons(nl!(" "));
-            docs = docs.cons(arg.to_docs(config));
+            docs = docs.cons(arg.to_docs(config).to_group(ShouldBreak::No));
         }
         docs.nest(config.indent())
             .cons(nl!(""))
@@ -498,6 +580,13 @@ mod tests {
         }
         fn indent(&self) -> i32 {
             0
+        }
+        fn embracing_op_no_nl(&self) -> bool {
+            true
+        }
+
+        fn allow_nl_after_assignment(&self) -> bool {
+            true
         }
     }
     impl std::fmt::Display for MockConfig {

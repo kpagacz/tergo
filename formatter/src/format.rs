@@ -3,6 +3,8 @@ use std::collections::VecDeque;
 use std::ops::Add;
 use std::rc::Rc;
 
+use log::trace;
+
 use crate::config::FormattingConfig;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -171,13 +173,14 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                 (_, Mode::Flat, Doc::Break(s)) => fits(remaining_width - s.len() as i32, docs),
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
                 (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos))) => {
-                    if inline_comment_pos == &InlineCommentPosition::Middle
-                        || groupped_doc.1 == ShouldBreak::Yes
-                    {
+                    if inline_comment_pos == &InlineCommentPosition::Middle {
+                        trace!("Fits false for {groupped_doc:?}");
                         false
                     } else {
                         docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
-                        fits(remaining_width, docs)
+                        let f = fits(remaining_width, docs);
+                        trace!("Remainging width: {remaining_width} Fits {f} for {groupped_doc:?}");
+                        f
                     }
                 }
             },
@@ -223,10 +226,11 @@ pub(crate) fn format_to_sdoc(
                 (i, Mode::Break, Doc::Break(_)) => {
                     SimpleDoc::Line(i as usize, Rc::new(format_to_sdoc(i, docs, config)))
                 }
-                (i, _, Doc::Group(groupped_doc, _)) => {
+                (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos))) => {
                     let mut group_docs =
                         VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
                     if groupped_doc.1 == ShouldBreak::Yes
+                        || matches!(inline_comment_pos, InlineCommentPosition::Middle)
                         || !fits(line_length - consumed, &mut group_docs)
                     {
                         docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));
@@ -257,6 +261,13 @@ mod tests {
         }
         fn indent(&self) -> i32 {
             0
+        }
+        fn embracing_op_no_nl(&self) -> bool {
+            true
+        }
+
+        fn allow_nl_after_assignment(&self) -> bool {
+            true
         }
     }
     impl std::fmt::Display for MockConfig {
@@ -297,44 +308,6 @@ mod tests {
                         CommonProperties::default(),
                     )),
                     ShouldBreak::Yes,
-                ),
-                CommonProperties::default(),
-            )),
-        )]);
-        let mock_config = MockConfig {};
-        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
-
-        assert_eq!(simple_doc_to_string(sdoc), "Test\nTest2")
-    }
-
-    #[test]
-    fn should_break_propagates_to_parents() {
-        log_init();
-        let mut doc = VecDeque::from([(
-            0i32,
-            Mode::Flat,
-            Rc::new(Doc::Group(
-                GroupDocProperties(
-                    Rc::new(Doc::Cons(
-                        Rc::new(Doc::Text(Rc::from("Test"), 4, CommonProperties::default())),
-                        Rc::new(Doc::Cons(
-                            Rc::new(Doc::Break(" ")),
-                            Rc::new(Doc::Group(
-                                GroupDocProperties(
-                                    Rc::new(Doc::Text(
-                                        Rc::from("Test2"),
-                                        5,
-                                        CommonProperties::default(),
-                                    )),
-                                    ShouldBreak::Yes,
-                                ),
-                                CommonProperties::default(),
-                            )),
-                            CommonProperties::default(),
-                        )),
-                        CommonProperties::default(),
-                    )),
-                    ShouldBreak::No,
                 ),
                 CommonProperties::default(),
             )),
