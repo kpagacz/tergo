@@ -83,9 +83,14 @@ impl std::fmt::Display for Doc {
             Doc::Cons(left, right, _) => f.write_fmt(format_args!("{} + {}", left, right)),
             Doc::Text(text, _, _) => f.write_fmt(format_args!("'{}'", text)),
             Doc::Nest(indent, body, _) => f.write_fmt(format_args!("Nest{}({})", indent, body)),
-            Doc::NestIfBreak(indent, body, _, _) => write!(f, "NestIfBreak{indent}({body})"),
+            Doc::NestIfBreak(indent, body, _, watched) => {
+                write!(f, "NestIfBreak{indent}<if{watched}>({body})")
+            }
             Doc::Break(newline) => f.write_fmt(format_args!("NL({})", newline)),
-            Doc::Group(inside, _) => f.write_fmt(format_args!("SB:{:?}<{}>", inside.1, inside.0)),
+            Doc::Group(inside, common_props) => f.write_fmt(format_args!(
+                "SB:<ref{}>{:?}<{}>",
+                common_props.1, inside.1, inside.0
+            )),
         }
     }
 }

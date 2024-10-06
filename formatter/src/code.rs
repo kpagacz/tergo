@@ -381,7 +381,7 @@ impl<'a> Code for Expression<'a> {
                 .to_docs(config, doc_ref)
                 .cons(expr.to_docs(config, doc_ref)),
             Expression::Bop(op, lhs, rhs) => match op.token {
-                Token::LAssign if !config.allow_nl_after_assignment() => lhs
+                Token::OldAssign | Token::LAssign if !config.allow_nl_after_assignment() => lhs
                     .to_docs(config, doc_ref)
                     .cons(text!(" "))
                     .cons(op.to_docs(config, doc_ref))
@@ -564,7 +564,7 @@ impl<'a> Code for Expression<'a> {
                         .cons(args_to_docs_with_conditional_nest(
                             args, config, doc_ref, group_ref
                         )),
-                    ShouldBreak::No,
+                    should_break_args(args),
                     group_ref
                 )
             }
@@ -573,7 +573,7 @@ impl<'a> Code for Expression<'a> {
                 object_ref
                     .to_docs(config, doc_ref)
                     .cons(args.to_docs(config, doc_ref))
-                    .to_group(ShouldBreak::No, doc_ref)
+                    .to_group(should_break_args(args), doc_ref)
             }
             Expression::ForLoopExpression(for_loop) => {
                 let (keyword, left_delim, identifier, in_keyword, collection, right_delim, body) = (
@@ -681,6 +681,136 @@ fn args_to_docs_with_conditional_nest(
         args.left_delimeter
             .to_docs(config, doc_ref)
             .cons(args.right_delimeter.to_docs(config, doc_ref))
+    }
+}
+
+fn should_break_args(args: &Args) -> ShouldBreak {
+    // Tidyverse has some crazy breaking rules regarding curly braces
+    // breaking. See this: https://style.tidyverse.org/syntax.html#indenting
+    // Specifically, these are good examples:
+    //
+    // test_that("call1 returns an ordered factor", {
+    //   expect_s3_class(call1(x, y), c("factor", "ordered"))
+    // })
+    //
+    // tryCatch(
+    //   {
+    //     x <- scan()
+    //     cat("Total: ", sum(x), "\n", sep = "")
+    //   },
+    //   interrupt = function(e) {
+    //     message("Aborted by user")
+    //   }
+    // )
+    //
+    // The first one is just wack, because there are breaks inside the arguments,
+    // but the inside of the parenthesis behaves like if it wasn't broken.
+    // Notice that there is only single level of indent in the closure as well. Wack.
+    //
+    // And the second one does not try to emulate what the first one does,
+    // it just does the breaking normally.
+    //
+    // I am going to create some custom rules for this behaviour (lots of ifs basically)
+    // to specify what is the desired behaviour:
+    // * if there is only one argument then support this:
+    // f({
+    //   2
+    // }) (let the algorithm calculate the fits normally)
+    // * if there are >= two arguments, and only the last one contains closures, let things happen
+    // normally (so this wack behaviour from the first example is supported)
+    // * if there are >= two arguments and not only the last one contains closures,
+    // break all arguments
+
+    if args.args.len() >= 2
+        && args
+            .args
+            .iter()
+            .take(args.args.len() - 1)
+            .any(|arg| arg.0.iter().any(contains_closure))
+    {
+        ShouldBreak::Yes
+    } else {
+        ShouldBreak::No
+    }
+}
+
+fn contains_closure(expr: &Expression) -> bool {
+    match expr {
+        Expression::Symbol(_)
+        | Expression::Literal(_)
+        | Expression::Formula(_, _)
+        | Expression::Newline(_)
+        | Expression::Whitespace(_)
+        | Expression::EOF(_)
+        | Expression::Break(_)
+        | Expression::Continue(_)
+        | Expression::Comment(_) => false,
+        Expression::Term(term) => {
+            if is_embracing_operator_closure(term) {
+                false
+            } else if let Some(pre_delim) = term.pre_delimiters {
+                matches!(pre_delim.token, Token::LBrace)
+            } else {
+                term.term.iter().any(contains_closure)
+            }
+        }
+        Expression::Unary(_, expr) => contains_closure(expr),
+        Expression::Bop(_, expr1, expr2) => contains_closure(expr1) || contains_closure(expr2),
+        Expression::FunctionDef(func_def) => {
+            func_def
+                .arguments
+                .args
+                .iter()
+                .any(|arg| arg.0.iter().any(contains_closure))
+                || contains_closure(&func_def.body)
+        }
+        Expression::LambdaFunction(_) => false,
+        Expression::IfExpression(if_expr) => {
+            contains_closure(&if_expr.if_conditional.condition)
+                || contains_closure(&if_expr.if_conditional.body)
+                || if_expr.else_ifs.iter().any(|else_if| {
+                    contains_closure(&else_if.if_conditional.body)
+                        || contains_closure(&else_if.if_conditional.condition)
+                })
+                || if_expr
+                    .trailing_else
+                    .iter()
+                    .any(|trailing_else| contains_closure(&trailing_else.body))
+        }
+        Expression::WhileExpression(while_loop) => {
+            contains_closure(&while_loop.condition) || contains_closure(&while_loop.body)
+        }
+        Expression::RepeatExpression(_) => true,
+        Expression::FunctionCall(call) => call
+            .args
+            .args
+            .iter()
+            .any(|arg| arg.0.iter().any(contains_closure)),
+        Expression::SubsetExpression(subset) => subset
+            .args
+            .args
+            .iter()
+            .any(|arg| arg.0.iter().any(contains_closure)),
+        Expression::ForLoopExpression(for_loop) => {
+            contains_closure(&for_loop.collection) || contains_closure(&for_loop.body)
+        }
+    }
+}
+
+fn is_embracing_operator_closure(term: &TermExpr) -> bool {
+    match (term.pre_delimiters, term.term.first()) {
+        (None, _) | (Some(_), None) => false,
+        (Some(pre), Some(first)) => {
+            if !matches!(pre.token, Token::LBrace) {
+                return false;
+            }
+            if let Expression::Term(term) = first {
+                term.pre_delimiters.is_some()
+                    && matches!(term.pre_delimiters.unwrap().token, Token::LBrace)
+            } else {
+                false
+            }
+        }
     }
 }
 
