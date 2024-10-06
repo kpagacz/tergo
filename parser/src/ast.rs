@@ -12,6 +12,7 @@ pub enum Expression<'a> {
         Box<Expression<'a>>,
         Box<Expression<'a>>,
     ),
+    Formula(&'a CommentedToken<'a>, Box<Expression<'a>>),
     Newline(&'a CommentedToken<'a>),
     Whitespace(&'a [&'a CommentedToken<'a>]),
     EOF(&'a CommentedToken<'a>),
@@ -38,6 +39,7 @@ impl std::fmt::Display for Expression<'_> {
             Expression::Bop(op, left, right) => {
                 f.write_fmt(format_args!("{} {} {}", left, TokensBuffer(&[op]), right))
             }
+            Expression::Formula(tilde, term) => write!(f, "{} {}", tilde, term),
             Expression::Newline(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
             Expression::Whitespace(tokens) => f.write_fmt(format_args!("{}", TokensBuffer(tokens))),
             Expression::EOF(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),

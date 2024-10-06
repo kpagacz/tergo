@@ -89,6 +89,9 @@ fn unary_op<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, &'b Com
 
 fn unary_term<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
     alt((
+        map(tuple((tilde, expr)), |(tilde, term)| {
+            Expression::Formula(tilde, Box::new(term))
+        }),
         map(tuple((unary_op, atomic_term)), |(op, term)| {
             Expression::Unary(op, Box::new(term))
         }),

@@ -1,0 +1,13 @@
+# Good
+~foo
+tribble(
+  ~col1, ~col2,
+  "a",   "b"
+)
+
+# Bad
+~ foo
+tribble(
+  ~ col1, ~ col2,
+  "a", "b"
+)

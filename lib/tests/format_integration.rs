@@ -39,26 +39,32 @@ fn simple_bops_indents_and_new_lines() {
     log_init();
     let input = include_str!(concat!("./test_cases/003.R"));
     let expected = include_str!(concat!("./test_cases/003-0-line-length.expected"));
-    let config = Config::new(0, 0, true, true);
+    let mut config = Config::default();
+    config.allow_nl_after_assignment = true;
+    config.embracing_op_no_nl = true;
+    config.indent = 0;
+    config.line_length = 0;
     assert_eq!(tergo_format(input, Some(&config)).unwrap(), expected);
 
-    let config = Config::new(0, 4, true, true);
+    config.line_length = 4;
     let input = include_str!(concat!("./test_cases/003.R"));
     let expected = include_str!(concat!("./test_cases/003-3-line-length.expected"));
     assert_eq!(tergo_format(input, Some(&config)).unwrap(), expected);
 }
 
 fn short_line_config() -> Config {
-    Config::new(0, 4, true, true)
+    let mut config = Config::default();
+    config.indent = 0;
+    config.line_length = 4;
+    config.embracing_op_no_nl = true;
+    config.allow_nl_after_assignment = true;
+    config
 }
 
 fn short_line_plus_indent() -> Config {
-    Config {
-        indent: 2,
-        line_length: 0,
-        embracing_op_no_nl: true,
-        allow_nl_after_assignment: true,
-    }
+    let mut config = short_line_config();
+    config.indent = 2;
+    config
 }
 
 #[allow(clippy::field_reassign_with_default)]
@@ -210,3 +216,23 @@ comparison_test!(tidyverse_embracing, "tidyverse_style_guide_008", {
     config.line_length = 80;
     config
 });
+comparison_test!(
+    tidyverse_infix_operators,
+    "tidyverse_style_guide_009",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_infix_operators_high_precedence,
+    "tidyverse_style_guide_010",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_formulas_simple_rhs,
+    "tidyverse_style_guide_011",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_formulas_complex_rhs,
+    "tidyverse_style_guide_012",
+    Config::default()
+);

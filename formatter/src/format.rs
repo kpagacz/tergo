@@ -269,6 +269,10 @@ mod tests {
         fn allow_nl_after_assignment(&self) -> bool {
             true
         }
+
+        fn space_before_complex_rhs_in_formulas(&self) -> bool {
+            true
+        }
     }
     impl std::fmt::Display for MockConfig {
         fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

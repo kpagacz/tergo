@@ -349,12 +349,10 @@ impl<'a> Code for Expression<'a> {
                 | Token::GreaterThan
                 | Token::LowerEqual
                 | Token::GreaterEqual
-                | Token::Power
                 | Token::Divide
                 | Token::Multiply
                 | Token::Minus
                 | Token::Plus
-                | Token::Help
                 | Token::And
                 | Token::VectorizedAnd
                 | Token::Or
@@ -368,7 +366,13 @@ impl<'a> Code for Expression<'a> {
                     .cons(op.to_docs(config))
                     .cons(nl!(" ").cons(rhs.to_docs(config)).nest(config.indent())),
                 // .to_group(ShouldBreak::No),
-                Token::Dollar | Token::NsGet | Token::NsGetInt | Token::Colon | Token::Slot => lhs
+                Token::Dollar
+                | Token::NsGet
+                | Token::NsGetInt
+                | Token::Colon
+                | Token::Slot
+                | Token::Power
+                | Token::Help => lhs
                     .to_docs(config)
                     .cons(op.to_docs(config))
                     .cons(rhs.to_docs(config))
@@ -379,6 +383,14 @@ impl<'a> Code for Expression<'a> {
                     &op.token
                 ),
             },
+            Expression::Formula(tilde, term) => tilde
+                .to_docs(config)
+                .cons(if matches!(**term, Expression::Symbol(_)) {
+                    text!("")
+                } else {
+                    text!(" ")
+                })
+                .cons(term.to_docs(config)),
             Expression::Newline(_) => Rc::new(Doc::Break("\n")),
             Expression::EOF(eof) => eof.to_docs(config),
             Expression::Whitespace(_) => text!(""),
@@ -586,6 +598,10 @@ mod tests {
         }
 
         fn allow_nl_after_assignment(&self) -> bool {
+            true
+        }
+
+        fn space_before_complex_rhs_in_formulas(&self) -> bool {
             true
         }
     }

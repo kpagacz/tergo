@@ -7,6 +7,7 @@ pub struct Config {
     pub line_length: i32,
     pub embracing_op_no_nl: bool,
     pub allow_nl_after_assignment: bool,
+    pub space_before_complex_rhs_in_formula: bool,
 }
 
 impl FormattingConfig for Config {
@@ -25,6 +26,10 @@ impl FormattingConfig for Config {
     fn allow_nl_after_assignment(&self) -> bool {
         self.allow_nl_after_assignment
     }
+
+    fn space_before_complex_rhs_in_formulas(&self) -> bool {
+        self.space_before_complex_rhs_in_formula
+    }
 }
 
 impl Default for Config {
@@ -34,6 +39,7 @@ impl Default for Config {
             line_length: 120,
             embracing_op_no_nl: true,
             allow_nl_after_assignment: false,
+            space_before_complex_rhs_in_formula: true,
         }
     }
 }
@@ -53,12 +59,14 @@ impl Config {
         line_length: i32,
         embracing_op_no_nl: bool,
         allow_nl_after_assignment: bool,
+        space_before_complex_rhs_in_formula: bool,
     ) -> Self {
         Self {
             indent,
             line_length,
             embracing_op_no_nl,
             allow_nl_after_assignment,
+            space_before_complex_rhs_in_formula,
         }
     }
 }
