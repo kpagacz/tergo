@@ -179,14 +179,14 @@ impl<'a> Tokenizer<'a> {
                     let next_char = self.lookahead().expect("Script does not end on '|'");
                     match next_char {
                         '|' => {
-                            self.push_token(VectorizedOr, &mut tokens);
+                            self.push_token(Or, &mut tokens);
                             self.next();
                         }
                         '>' => {
                             self.push_token(Pipe, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(Or, &mut tokens),
+                        _ => self.push_token(VectorizedOr, &mut tokens),
                     }
                     self.next();
                 }
@@ -194,10 +194,10 @@ impl<'a> Tokenizer<'a> {
                     let next_char = self.lookahead().expect("Script does not end on '&'");
                     match next_char {
                         '&' => {
-                            self.push_token(VectorizedAnd, &mut tokens);
+                            self.push_token(And, &mut tokens);
                             self.next();
                         }
-                        _ => self.push_token(And, &mut tokens),
+                        _ => self.push_token(VectorizedAnd, &mut tokens),
                     }
                     self.next();
                 }

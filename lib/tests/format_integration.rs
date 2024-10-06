@@ -186,6 +186,7 @@ comparison_test!(multi_bop_with_two_parts_fit_in_one_line, "068", {
     config.line_length = 3;
     config
 });
+comparison_test!(closure_as_a_function_argument, "069", Config::default());
 comparison_test!(real_life_example_0, "real_life_000");
 comparison_test!(short_pipes_fit_one_line, "real_life_001", Config::default());
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
@@ -250,5 +251,15 @@ comparison_test!(
 comparison_test!(
     tidyverse_avoid_empty_lines,
     "tidyverse_style_guide_015",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_collapse_whitespace_to_single_line,
+    "tidyverse_style_guide_016",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_curly_braces,
+    "tidyverse_style_guide_017",
     Config::default()
 );

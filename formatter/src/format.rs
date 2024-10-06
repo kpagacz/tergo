@@ -1,5 +1,5 @@
 // Implementing Wadler and https://lindig.github.io/papers/strictly-pretty-2000.pdf
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::ops::Add;
 use std::rc::Rc;
 
@@ -7,17 +7,17 @@ use log::trace;
 
 use crate::config::FormattingConfig;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum ShouldBreak {
     Yes,
     No,
 }
 
 /// ShouldBreak is a linebreak that propagates to the parents
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct GroupDocProperties(pub(crate) Rc<Doc>, pub(crate) ShouldBreak); // (doc, should parents break?)
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Hash, Eq)]
 pub(crate) enum InlineCommentPosition {
     No,
     Middle,
@@ -40,20 +40,38 @@ impl Add for InlineCommentPosition {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct CommonProperties(pub(crate) InlineCommentPosition);
+#[derive(Debug, Clone, PartialEq, Hash, Eq)]
+pub(crate) struct CommonProperties(pub(crate) InlineCommentPosition, pub(crate) usize); // inlineCommentPosition, doc ref
 impl Default for CommonProperties {
     fn default() -> Self {
-        CommonProperties(InlineCommentPosition::No)
+        CommonProperties(InlineCommentPosition::No, 0)
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub(crate) enum Doc {
     Nil,
     Cons(Rc<Doc>, Rc<Doc>, CommonProperties),
     Text(Rc<str>, usize, CommonProperties), // text, text length
     Nest(i32, Rc<Doc>, CommonProperties),   // indent size, doc
+    // This NestIfBreak supports an important layout feature of
+    // tidyverse styleguide for R, e.g.
+    // test_that("something", {
+    //   TRUE
+    // })
+    // The above piece of code:
+    // * function arguments are nested by 2 by default (from test_that)
+    // * closures are normally nested by 2 by default
+    // * but the inside of the closure is intended only by 2
+    // The content of the closure is basially indented only if
+    // group for all function arguments breaks, e.g.
+    // test_that(
+    //   "very very long name",
+    //   {
+    //     TRUE
+    //   }
+    // )
+    NestIfBreak(i32, Rc<Doc>, CommonProperties, usize), // indent size, indented doc, props, possibly broken doc
     Break(&'static str),
     Group(GroupDocProperties, CommonProperties),
 }
@@ -65,6 +83,7 @@ impl std::fmt::Display for Doc {
             Doc::Cons(left, right, _) => f.write_fmt(format_args!("{} + {}", left, right)),
             Doc::Text(text, _, _) => f.write_fmt(format_args!("'{}'", text)),
             Doc::Nest(indent, body, _) => f.write_fmt(format_args!("Nest{}({})", indent, body)),
+            Doc::NestIfBreak(indent, body, _, _) => write!(f, "NestIfBreak{indent}({body})"),
             Doc::Break(newline) => f.write_fmt(format_args!("NL({})", newline)),
             Doc::Group(inside, _) => f.write_fmt(format_args!("SB:{:?}<{}>", inside.1, inside.0)),
         }
@@ -77,6 +96,7 @@ pub(crate) fn query_inline_position(doc: &Doc) -> InlineCommentPosition {
         Doc::Cons(_, _, props) => props.0,
         Doc::Text(_, _, props) => props.0,
         Doc::Nest(_, _, props) => props.0,
+        Doc::NestIfBreak(_, _, props, _) => props.0,
         Doc::Break(_) => InlineCommentPosition::No,
         Doc::Group(_, props) => props.0,
     }
@@ -84,19 +104,23 @@ pub(crate) fn query_inline_position(doc: &Doc) -> InlineCommentPosition {
 
 pub trait DocAlgebra {
     fn cons(self, other: Rc<Doc>) -> Rc<Doc>;
-    fn to_group(self, should_break: ShouldBreak) -> Rc<Doc>;
+    fn to_group(self, should_break: ShouldBreak, doc_ref: &mut usize) -> Rc<Doc>;
     fn nest(self, indent: i32) -> Rc<Doc>;
+    fn nest_if_break(self, indent: i32, observed_doc: usize) -> Rc<Doc>;
 }
 
 impl DocAlgebra for Rc<Doc> {
     fn cons(self, other: Rc<Doc>) -> Rc<Doc> {
-        let properties =
-            CommonProperties(query_inline_position(&self) + query_inline_position(&other));
+        let properties = CommonProperties(
+            query_inline_position(&self) + query_inline_position(&other),
+            0,
+        );
         Rc::new(Doc::Cons(self, other, properties))
     }
 
-    fn to_group(self, should_break: ShouldBreak) -> Rc<Doc> {
-        let properties = CommonProperties(query_inline_position(&self));
+    fn to_group(self, should_break: ShouldBreak, doc_ref: &mut usize) -> Rc<Doc> {
+        *doc_ref += 1;
+        let properties = CommonProperties(query_inline_position(&self), *doc_ref);
         Rc::new(Doc::Group(
             GroupDocProperties(self, should_break),
             properties,
@@ -104,8 +128,13 @@ impl DocAlgebra for Rc<Doc> {
     }
 
     fn nest(self, indent: i32) -> Rc<Doc> {
-        let properties = CommonProperties(query_inline_position(&self));
+        let properties = CommonProperties(query_inline_position(&self), 0);
         Rc::new(Doc::Nest(indent, self, properties))
+    }
+
+    fn nest_if_break(self, indent: i32, observed_doc: usize) -> Rc<Doc> {
+        let properties = CommonProperties(query_inline_position(&self), 0);
+        Rc::new(Doc::NestIfBreak(indent, self, properties, observed_doc))
     }
 }
 
@@ -156,7 +185,7 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
             None => true,
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
                 (_, _, Doc::Nil) => fits(remaining_width, docs),
-                (i, m, Doc::Cons(first, second, CommonProperties(inline_comment_pos))) => {
+                (i, m, Doc::Cons(first, second, CommonProperties(inline_comment_pos, _))) => {
                     if inline_comment_pos == &InlineCommentPosition::Middle {
                         false
                     } else {
@@ -169,10 +198,14 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                     docs.push_front((i + step, m, Rc::clone(doc)));
                     fits(remaining_width, docs)
                 }
+                (i, m, Doc::NestIfBreak(step, doc, _, _)) => {
+                    docs.push_front((i + step, m, Rc::clone(doc)));
+                    fits(remaining_width, docs)
+                }
                 (_, _, Doc::Text(_, s_len, _)) => fits(remaining_width - *s_len as i32, docs),
                 (_, Mode::Flat, Doc::Break(s)) => fits(remaining_width - s.len() as i32, docs),
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
-                (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos))) => {
+                (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, _))) => {
                     if inline_comment_pos == &InlineCommentPosition::Middle {
                         trace!("Fits false for {groupped_doc:?}");
                         false
@@ -192,6 +225,7 @@ pub(crate) fn format_to_sdoc(
     consumed: i32,
     docs: &mut VecDeque<Triple>,
     config: &impl FormattingConfig,
+    broken_docs: &mut HashSet<usize>,
 ) -> SimpleDoc {
     let line_length = config.line_length();
     match docs.pop_front() {
@@ -199,34 +233,43 @@ pub(crate) fn format_to_sdoc(
         Some(doc) => {
             let (indent, mode, doc) = doc;
             match (indent, mode, &*doc) {
-                (_, _, Doc::Nil) => format_to_sdoc(consumed, docs, config),
+                (_, _, Doc::Nil) => format_to_sdoc(consumed, docs, config, broken_docs),
                 (i, m, Doc::Cons(first, second, _)) => {
                     docs.push_front((i, m, Rc::clone(second)));
                     docs.push_front((i, m, Rc::clone(first)));
-                    format_to_sdoc(consumed, docs, config)
+                    format_to_sdoc(consumed, docs, config, broken_docs)
                 }
                 (i, m, Doc::Nest(step, doc, _)) => {
                     docs.push_front((i + step, m, Rc::clone(doc)));
-                    format_to_sdoc(consumed, docs, config)
+                    format_to_sdoc(consumed, docs, config, broken_docs)
+                }
+                (i, m, Doc::NestIfBreak(step, doc, _, observed_doc)) => {
+                    if broken_docs.contains(observed_doc) {
+                        docs.push_front((i + step, m, Rc::clone(doc)));
+                    } else {
+                        docs.push_front((i, m, Rc::clone(doc)));
+                    }
+                    format_to_sdoc(consumed, docs, config, broken_docs)
                 }
                 (_, _, Doc::Text(s, width, _)) => {
                     let length = *width as i32;
                     SimpleDoc::Text(
                         Rc::clone(s),
-                        Rc::new(format_to_sdoc(consumed + length, docs, config)),
+                        Rc::new(format_to_sdoc(consumed + length, docs, config, broken_docs)),
                     )
                 }
                 (_, Mode::Flat, Doc::Break(s)) => {
                     let length = s.len() as i32;
                     SimpleDoc::Text(
                         Rc::from(*s),
-                        Rc::new(format_to_sdoc(consumed + length, docs, config)),
+                        Rc::new(format_to_sdoc(consumed + length, docs, config, broken_docs)),
                     )
                 }
-                (i, Mode::Break, Doc::Break(_)) => {
-                    SimpleDoc::Line(i as usize, Rc::new(format_to_sdoc(i, docs, config)))
-                }
-                (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos))) => {
+                (i, Mode::Break, Doc::Break(_)) => SimpleDoc::Line(
+                    i as usize,
+                    Rc::new(format_to_sdoc(i, docs, config, broken_docs)),
+                ),
+                (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, doc_ref))) => {
                     let mut group_docs =
                         VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
                     if groupped_doc.1 == ShouldBreak::Yes
@@ -234,10 +277,11 @@ pub(crate) fn format_to_sdoc(
                         || !fits(line_length - consumed, &mut group_docs)
                     {
                         docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));
-                        format_to_sdoc(consumed, docs, config)
+                        broken_docs.insert(*doc_ref);
+                        format_to_sdoc(consumed, docs, config, broken_docs)
                     } else {
                         docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
-                        format_to_sdoc(consumed, docs, config)
+                        format_to_sdoc(consumed, docs, config, broken_docs)
                     }
                 }
             }
@@ -293,7 +337,8 @@ mod tests {
             Rc::new(Doc::Text(Rc::from("Test"), 4, CommonProperties::default())),
         )]);
         let mock_config = MockConfig {};
-        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
+        let mut s = HashSet::default();
+        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config, &mut s));
 
         assert_eq!(simple_doc_to_string(sdoc), "Test")
     }
@@ -321,7 +366,8 @@ mod tests {
             )),
         )]);
         let mock_config = MockConfig {};
-        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config));
+        let mut s = HashSet::default();
+        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config, &mut s));
 
         assert_eq!(simple_doc_to_string(sdoc), "Test\nTest2")
     }

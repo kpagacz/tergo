@@ -28,13 +28,24 @@ pub fn format_code<T: config::FormattingConfig>(
     }
 
     // Doc stage
-    let mut docs: VecDeque<_> =
-        VecDeque::from([(0i32, Mode::Flat, expression.to_docs(formatting_config))]);
+    let mut doc_ref = 0usize;
+    let mut docs: VecDeque<_> = VecDeque::from([(
+        0i32,
+        Mode::Flat,
+        expression.to_docs(formatting_config, &mut doc_ref),
+    )]);
     trace!("Config: {}", formatting_config);
     trace!("Docs: {}", DocBuffer(&docs));
 
     // Simple docs stage
-    let simple_doc = Rc::new(format_to_sdoc(0, &mut docs, formatting_config));
+    use std::collections::HashSet;
+    let mut broken_docs = HashSet::default();
+    let simple_doc = Rc::new(format_to_sdoc(
+        0,
+        &mut docs,
+        formatting_config,
+        &mut broken_docs,
+    ));
     trace!("Simple docs: {:?}", simple_doc);
 
     // Printing to string
