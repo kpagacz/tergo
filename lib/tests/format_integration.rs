@@ -236,3 +236,19 @@ comparison_test!(
     "tidyverse_style_guide_012",
     Config::default()
 );
+comparison_test!(
+    tidyverse_negation_operator,
+    "tidyverse_style_guide_013",
+    Config::default()
+);
+comparison_test!(
+    tidyverse_help_operator,
+    "tidyverse_style_guide_014",
+    Config::default()
+);
+// https://style.tidyverse.org/syntax.html#vertical-space
+comparison_test!(
+    tidyverse_avoid_empty_lines,
+    "tidyverse_style_guide_015",
+    Config::default()
+);

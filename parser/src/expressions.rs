@@ -84,7 +84,7 @@ enum Tail<'a> {
 }
 
 fn unary_op<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, &'b CommentedToken<'a>> {
-    alt((minus, plus, unary_not, tilde))(tokens)
+    alt((minus, plus, unary_not, tilde, help))(tokens)
 }
 
 fn unary_term<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
@@ -92,7 +92,7 @@ fn unary_term<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expre
         map(tuple((tilde, expr)), |(tilde, term)| {
             Expression::Formula(tilde, Box::new(term))
         }),
-        map(tuple((unary_op, atomic_term)), |(op, term)| {
+        map(tuple((unary_op, unary_term)), |(op, term)| {
             Expression::Unary(op, Box::new(term))
         }),
         atomic_term,

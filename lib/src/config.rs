@@ -8,6 +8,7 @@ pub struct Config {
     pub embracing_op_no_nl: bool,
     pub allow_nl_after_assignment: bool,
     pub space_before_complex_rhs_in_formula: bool,
+    pub strip_suffix_whitespace_in_function_defs: bool,
 }
 
 impl FormattingConfig for Config {
@@ -30,6 +31,10 @@ impl FormattingConfig for Config {
     fn space_before_complex_rhs_in_formulas(&self) -> bool {
         self.space_before_complex_rhs_in_formula
     }
+
+    fn strip_suffix_whitespace_in_function_defs(&self) -> bool {
+        self.strip_suffix_whitespace_in_function_defs
+    }
 }
 
 impl Default for Config {
@@ -40,6 +45,7 @@ impl Default for Config {
             embracing_op_no_nl: true,
             allow_nl_after_assignment: false,
             space_before_complex_rhs_in_formula: true,
+            strip_suffix_whitespace_in_function_defs: true,
         }
     }
 }
@@ -60,6 +66,7 @@ impl Config {
         embracing_op_no_nl: bool,
         allow_nl_after_assignment: bool,
         space_before_complex_rhs_in_formula: bool,
+        strip_suffix_whitespace_in_function_defs: bool,
     ) -> Self {
         Self {
             indent,
@@ -67,6 +74,7 @@ impl Config {
             embracing_op_no_nl,
             allow_nl_after_assignment,
             space_before_complex_rhs_in_formula,
+            strip_suffix_whitespace_in_function_defs,
         }
     }
 }

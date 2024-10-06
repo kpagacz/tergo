@@ -1,6 +1,7 @@
 mod code;
 pub mod config;
 mod format;
+pub(crate) mod pre_format_hooks;
 
 use crate::code::Code;
 use crate::format::format_to_sdoc;
@@ -13,14 +14,29 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 
 pub fn format_code<T: config::FormattingConfig>(
-    expression: Expression,
+    mut expression: Expression,
     formatting_config: &T,
 ) -> String {
+    // Pre formatting hooks
+    let mut pre_format: Vec<fn(&mut Expression<'_>)> = vec![];
+    if formatting_config.strip_suffix_whitespace_in_function_defs() {
+        pre_format.push(pre_format_hooks::remove_trailing_whitespace_from_function_defs);
+    }
+
+    for hook in pre_format {
+        hook(&mut expression);
+    }
+
+    // Doc stage
     let mut docs: VecDeque<_> =
         VecDeque::from([(0i32, Mode::Flat, expression.to_docs(formatting_config))]);
     trace!("Config: {}", formatting_config);
     trace!("Docs: {}", DocBuffer(&docs));
+
+    // Simple docs stage
     let simple_doc = Rc::new(format_to_sdoc(0, &mut docs, formatting_config));
     trace!("Simple docs: {:?}", simple_doc);
+
+    // Printing to string
     simple_doc_to_string(simple_doc)
 }

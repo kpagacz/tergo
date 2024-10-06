@@ -604,6 +604,10 @@ mod tests {
         fn space_before_complex_rhs_in_formulas(&self) -> bool {
             true
         }
+
+        fn strip_suffix_whitespace_in_function_defs(&self) -> bool {
+            true
+        }
     }
     impl std::fmt::Display for MockConfig {
         fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
