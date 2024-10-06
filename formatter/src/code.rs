@@ -96,6 +96,7 @@ impl<'a> Code for Token<'a> {
             Token::Comma => text!(","),
             Token::Continue => text!("continue"),
             Token::Break => text!("break"),
+            Token::Stop => text!("stop"),
             Token::If => text!("if"),
             Token::Else => text!("else"),
             Token::While => text!("while"),

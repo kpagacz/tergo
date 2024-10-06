@@ -193,6 +193,7 @@ comparison_test!(
     "071",
     short_line_plus_indent()
 );
+comparison_test!(closure_as_a_function_argument3, "072", Config::default());
 comparison_test!(real_life_example_0, "real_life_000");
 comparison_test!(short_pipes_fit_one_line, "real_life_001", Config::default());
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

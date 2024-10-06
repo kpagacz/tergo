@@ -79,6 +79,7 @@ pub enum Token<'a> {
     // Reserved
     Continue,
     Break,
+    Stop,
 
     // Compound
     If,

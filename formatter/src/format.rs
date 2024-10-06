@@ -207,6 +207,29 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                     docs.push_front((i + step, m, Rc::clone(doc)));
                     fits(remaining_width, docs)
                 }
+                // Special case for the embracing operator
+                (_, _, Doc::Text(text, s_len, _)) if &**text == "{" => {
+                    if docs.front().is_some() {
+                        let (_, _, inner_doc) = docs.front().unwrap();
+                        match &**inner_doc {
+                            Doc::Text(inner_text, _, _) => {
+                                if &**inner_text == "{" {
+                                    trace!("Found embracing operator while trying to fit the line");
+                                    docs.pop_front();
+                                    fits(remaining_width - 2 * *s_len as i32, docs)
+                                } else {
+                                    trace!(
+                                        "Found a non-embracing left brace. Returning true from fit"
+                                    );
+                                    true
+                                }
+                            }
+                            _ => true,
+                        }
+                    } else {
+                        fits(remaining_width - *s_len as i32, docs)
+                    }
+                }
                 (_, _, Doc::Text(_, s_len, _)) => fits(remaining_width - *s_len as i32, docs),
                 (_, Mode::Flat, Doc::Break(s)) => fits(remaining_width - s.len() as i32, docs),
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
