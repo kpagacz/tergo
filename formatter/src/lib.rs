@@ -51,3 +51,9 @@ pub fn format_code<T: config::FormattingConfig>(
     // Printing to string
     simple_doc_to_string(simple_doc)
 }
+
+// TODO:
+// * multiline function definitions...
+// https://style.tidyverse.org/functions.html#multi-line-function-defintions
+// Scary prospect. I still have only a rough idea on how to implement
+// the hanging indent

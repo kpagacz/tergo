@@ -275,3 +275,17 @@ comparison_test!(
     "tidyverse_style_guide_018",
     Config::default()
 );
+comparison_test!(
+    tidyverse_long_argument_names,
+    "tidyverse_style_guide_019",
+    {
+        let mut config = Config::default();
+        config.line_length = 80;
+        config
+    }
+);
+comparison_test!(
+    tidyverse_strings_and_quotes,
+    "tidyverse_style_guide_020",
+    Config::default()
+);
