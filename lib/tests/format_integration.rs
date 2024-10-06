@@ -269,3 +269,8 @@ comparison_test!(
     "tidyverse_style_guide_017",
     Config::default()
 );
+comparison_test!(
+    tidyverse_ifs,
+    "tidyverse_style_guide_018",
+    Config::default()
+);
