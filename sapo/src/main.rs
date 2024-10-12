@@ -1,6 +1,5 @@
 use std::{
     ffi::OsStr,
-    io::{Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -20,10 +19,8 @@ struct Cli {
 
 #[derive(Debug)]
 enum Error {
-    OpenFile(std::io::Error),
-    ReadFileToString(std::io::Error),
-    SeekFile(std::io::Error),
-    WriteToFile(std::io::Error),
+    ReadFileToString,
+    WriteToFile,
     Formatting,
 }
 
@@ -39,27 +36,18 @@ fn get_config(path: &Path) -> Config {
 
 fn format_file_in_place(path: &Path, config: &Config) -> Result<(), Error> {
     use Error::*;
-    let mut file = std::fs::File::options()
-        .read(true)
-        .write(true)
-        .open(path)
-        .map_err(|e| {
-            trace!("Error opening the file: {e:?}");
-            OpenFile(e)
-        })?;
-    let mut content = String::default();
-    file.read_to_string(&mut content).map_err(|e| {
-        trace!("Error when reading the file: {e:?}");
-        ReadFileToString(e)
+    let content = std::fs::read_to_string(path).map_err(|e| {
+        trace!("Error when reading the file {e}");
+        ReadFileToString
     })?;
     let formatted = tergo_format(&content, Some(config)).map_err(|e| {
         trace!("Error when formatting: {e}");
         Formatting
     })?;
-    file.seek(SeekFrom::Start(0)).map_err(WriteToFile)?;
-    file.write(formatted.as_bytes()).map_err(|e| {
-        trace!("Error writing to file: {e}");
-        WriteToFile(e)
+    trace!("Formatted code:\n:{}", formatted);
+    std::fs::write(path, formatted).map_err(|e| {
+        trace!("Error writing to file {e}");
+        WriteToFile
     })?;
     Ok(())
 }

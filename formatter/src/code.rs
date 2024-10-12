@@ -319,9 +319,7 @@ impl<'a> Code for Expression<'a> {
                                 );
                                 pre_delim
                                     .to_docs(config, doc_ref)
-                                    .cons(nl!(" "))
-                                    .cons(inner)
-                                    .nest(config.indent())
+                                    .cons(nl!(" ").cons(inner).nest(config.indent()))
                                     .cons(nl!(" "))
                                     .cons(post_delim.to_docs(config, doc_ref))
                                     .to_group(ShouldBreak::Yes, doc_ref)
@@ -354,9 +352,7 @@ impl<'a> Code for Expression<'a> {
                             join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config, doc_ref);
                         pre_delim
                             .to_docs(config, doc_ref)
-                            .cons(nl!(" "))
-                            .cons(inner)
-                            .nest(config.indent())
+                            .cons(nl!(" ").cons(inner).nest(config.indent()))
                             .cons(nl!(" "))
                             .cons(post_delim.to_docs(config, doc_ref))
                             .to_group(ShouldBreak::Yes, doc_ref)
@@ -394,9 +390,7 @@ impl<'a> Code for Expression<'a> {
                             join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::No, config, doc_ref);
                         pre_delim
                             .to_docs(config, doc_ref)
-                            .cons(nl!(""))
-                            .cons(inner)
-                            .nest(config.indent())
+                            .cons(nl!("").cons(inner).nest(config.indent()))
                             .cons(nl!(""))
                             .cons(post_delim.to_docs(config, doc_ref))
                             .to_group(ShouldBreak::No, doc_ref)

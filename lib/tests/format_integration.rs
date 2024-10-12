@@ -39,9 +39,21 @@ macro_rules! comparison_test {
                  {}:\nResult: {}\nExpected: {}\n",
                 result,
                 expected,
-                first_difference_line.unwrap().0,
-                first_difference_line.unwrap().1.0,
-                first_difference_line.unwrap().1.1,
+                if let Some(first_difference_line) = first_difference_line {
+                    first_difference_line.0
+                } else {
+                    0
+                },
+                if let Some(first_difference_line) = first_difference_line {
+                    first_difference_line.1.0
+                } else {
+                    "Empty unwrap"
+                },
+                if let Some(first_difference_line) = first_difference_line {
+                    first_difference_line.1.1
+                } else {
+                    "Empty unwrap"
+                },
             );
         }
     };
@@ -68,7 +80,6 @@ fn simple_bops_indents_and_new_lines() {
     let expected = include_str!(concat!("./test_cases/003-3-line-length.expected"));
     assert_eq!(tergo_format(input, Some(&config)).unwrap(), expected);
 }
-
 fn short_line_config() -> Config {
     let mut config = Config::default();
     config.indent = 0;
@@ -77,13 +88,11 @@ fn short_line_config() -> Config {
     config.allow_nl_after_assignment = true;
     config
 }
-
 fn short_line_plus_indent() -> Config {
     let mut config = short_line_config();
     config.indent = 2;
     config
 }
-
 #[allow(clippy::field_reassign_with_default)]
 fn long_line_config() -> Config {
     let mut config = Config::default();
@@ -92,7 +101,6 @@ fn long_line_config() -> Config {
     config.line_length = 120;
     config
 }
-
 comparison_test!(simple_bop_with_parenthesis, "004");
 comparison_test!(
     simple_bop_with_parentheses_forced_to_break_line,
@@ -212,6 +220,8 @@ comparison_test!(
 );
 comparison_test!(closure_as_a_function_argument3, "072", Config::default());
 comparison_test!(bop_with_dollar, "073", Config::default());
+comparison_test!(comment_to_a_closure, "074", Config::default());
+comparison_test!(stop_formatting, "075", Config::default());
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
@@ -358,3 +368,4 @@ comparison_test!(
     "real_life_003",
     Config::default()
 );
+comparison_test!(rle_tmc, "real_life_004", Config::default());

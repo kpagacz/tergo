@@ -192,34 +192,32 @@ pub(crate) enum Mode {
 
 pub(crate) type Triple = (i32, Mode, Rc<Doc>);
 
-fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
-    if remaining_width < 0 {
-        false
-    } else {
+fn fits(mut remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
+    while remaining_width >= 0 {
         match docs.pop_front() {
-            None => true,
+            None => return true,
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
-                (_, _, Doc::Nil) => fits(remaining_width, docs),
+                (_, _, Doc::Nil) => continue,
                 (i, m, Doc::Cons(first, second, CommonProperties(inline_comment_pos, _))) => {
                     if inline_comment_pos == &InlineCommentPosition::Middle {
-                        false
+                        return false;
                     } else {
                         docs.push_front((i, m, Rc::clone(second)));
                         docs.push_front((i, m, Rc::clone(first)));
-                        fits(remaining_width, docs)
+                        continue;
                     }
                 }
                 (i, m, Doc::Nest(step, doc, _)) => {
                     docs.push_front((i + step, m, Rc::clone(doc)));
-                    fits(remaining_width, docs)
+                    continue;
                 }
                 (i, m, Doc::NestIfBreak(step, doc, _, _)) => {
                     docs.push_front((i + step, m, Rc::clone(doc)));
-                    fits(remaining_width, docs)
+                    continue;
                 }
                 (i, m, Doc::NestHanging(doc, _)) => {
                     docs.push_front((i, m, Rc::clone(doc)));
-                    fits(remaining_width, docs)
+                    continue;
                 }
                 // Special case for the embracing operator
                 (_, _, Doc::Text(text, s_len, _)) if &**text == "{" => {
@@ -230,37 +228,44 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                                 if &**inner_text == "{" {
                                     trace!("Found embracing operator while trying to fit the line");
                                     docs.pop_front();
-                                    fits(remaining_width - 2 * *s_len as i32, docs)
+                                    remaining_width -= 2 * *s_len as i32;
+                                    continue;
                                 } else {
                                     trace!(
                                         "Found a non-embracing left brace. Returning true from fit"
                                     );
-                                    true
+                                    return true;
                                 }
                             }
-                            _ => true,
+                            _ => return true,
                         }
                     } else {
-                        fits(remaining_width - *s_len as i32, docs)
+                        remaining_width -= *s_len as i32;
+                        continue;
                     }
                 }
-                (_, _, Doc::Text(_, s_len, _)) => fits(remaining_width - *s_len as i32, docs),
-                (_, Mode::Flat, Doc::Break(s)) => fits(remaining_width - s.len() as i32, docs),
+                (_, _, Doc::Text(_, s_len, _)) => {
+                    remaining_width -= *s_len as i32;
+                    continue;
+                }
+                (_, Mode::Flat, Doc::Break(s)) => {
+                    remaining_width -= s.len() as i32;
+                    continue;
+                }
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
                 (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, _))) => {
                     if inline_comment_pos == &InlineCommentPosition::Middle {
                         trace!("Fits false for {groupped_doc:?}");
-                        false
+                        return false;
                     } else {
                         docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
-                        let f = fits(remaining_width, docs);
-                        trace!("Remainging width: {remaining_width} Fits {f} for {groupped_doc:?}");
-                        f
+                        continue;
                     }
                 }
             },
         }
     }
+    false
 }
 
 /// `broken_docs` is a set of all the docs that are being formatted
