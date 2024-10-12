@@ -199,6 +199,7 @@ fn precedence(token: &CommentedToken) -> u8 {
         LAssign => 5,
         OldAssign => 6,
         RAssign => 7,
+        Pipe => 8,
         Tilde => 8,
         Or | VectorizedOr => 9,
         And | VectorizedAnd => 10,
@@ -241,6 +242,7 @@ fn is_binary_operator(token: &CommentedToken) -> bool {
             | LAssign
             | OldAssign
             | Power
+            | Pipe
             | Special(_)
     )
 }

@@ -1,0 +1,8 @@
+teal.widgets::standard_layout(
+  output = verbatimTextOutput(ns("text")),
+  encoding = tags$div(
+    selectInput(ns("dataname"), "Choose a dataset", choices = NULL),
+    teal.widgets::verbatim_popup_ui(ns("rcode"), "Show R code")
+  )
+)
+

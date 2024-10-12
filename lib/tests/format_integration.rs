@@ -25,7 +25,24 @@ macro_rules! comparison_test {
             let config: Config = $config;
             let input = include_str!(concat!("test_cases/", $file_number, ".R"));
             let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
-            assert_eq!(tergo_format(input, Some(&config)).unwrap(), expected);
+            let result = tergo_format(input, Some(&config)).unwrap();
+            let first_difference_line = result
+                .lines()
+                .zip(expected.lines())
+                .enumerate()
+                .filter(|(_, (result_line, expect_line))| result_line != expect_line)
+                .next();
+            assert!(
+                result == expected,
+                "Formatted text is not what expected. Result \
+                 was:\n{}===\nExpected:\n{}===\n\nFirst line of difference was at line \
+                 {}:\nResult: {}\nExpected: {}\n",
+                result,
+                expected,
+                first_difference_line.unwrap().0,
+                first_difference_line.unwrap().1.0,
+                first_difference_line.unwrap().1.1,
+            );
         }
     };
 }
@@ -194,8 +211,9 @@ comparison_test!(
     short_line_plus_indent()
 );
 comparison_test!(closure_as_a_function_argument3, "072", Config::default());
-comparison_test!(real_life_example_0, "real_life_000");
-comparison_test!(short_pipes_fit_one_line, "real_life_001", Config::default());
+comparison_test!(bop_with_dollar, "073", Config::default());
+
+// Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
 comparison_test!(tidyverse_commas2, "tidyverse_style_guide_002");
 comparison_test!(tidyverse_spaces, "tidyverse_style_guide_003");
@@ -311,4 +329,32 @@ comparison_test!(
         config.line_length = 40;
         config
     }
+);
+comparison_test!(tidyverse_pipes, "tidyverse_style_guide_024", {
+    let mut config = Config::default();
+    config.line_length = 40;
+    config
+});
+comparison_test!(
+    tidyverse_pipes_with_long_funcs,
+    "tidyverse_style_guide_025",
+    {
+        let mut config = Config::default();
+        config.line_length = 40;
+        config
+    }
+);
+
+// Real life examples
+comparison_test!(rle_0, "real_life_000");
+comparison_test!(
+    rle_short_pipes_fit_one_line,
+    "real_life_001",
+    Config::default()
+);
+comparison_test!(rle_collapse_whiteline, "real_life_002", Config::default());
+comparison_test!(
+    rle_make_line_broke_funcs_fit_one_line,
+    "real_life_003",
+    Config::default()
 );
