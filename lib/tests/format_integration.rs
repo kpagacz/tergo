@@ -289,3 +289,26 @@ comparison_test!(
     "tidyverse_style_guide_020",
     Config::default()
 );
+comparison_test!(tidyverse_hanging_indent, "tidyverse_style_guide_021", {
+    let mut config = Config::default();
+    config.line_length = 40;
+    config
+});
+comparison_test!(
+    tidyverse_hanging_indent_with_leading_and_trailing_comment,
+    "tidyverse_style_guide_022",
+    {
+        let mut config = Config::default();
+        config.line_length = 40;
+        config
+    }
+);
+comparison_test!(
+    tidyverse_formatting_function_defs_from_single,
+    "tidyverse_style_guide_023",
+    {
+        let mut config = Config::default();
+        config.line_length = 40;
+        config
+    }
+);

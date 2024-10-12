@@ -1,4 +1,7 @@
-use crate::{config::FormattingConfig, format::DocAlgebra};
+use crate::{
+    config::{FormattingConfig, FunctionLineBreaks},
+    format::DocAlgebra,
+};
 
 use parser::ast::{Arg, Args, Delimiter, Expression, IfConditional, TermExpr};
 use tokenizer::tokens::CommentedToken;
@@ -151,24 +154,44 @@ impl Code for CommentedToken<'_> {
                 .cons(text!(" "))
                 .cons(text!(inline_comment, 0, InlineCommentPosition::End)),
             (Some(leading_comments), None) => {
+                let mut leading_comments_it = leading_comments.iter();
+                let mut leading_comments = text!(leading_comments_it.next().unwrap());
+                for comment in leading_comments_it {
+                    leading_comments = leading_comments.cons(nl!("")).cons(text!(comment, 0));
+                }
                 let leading_comments = leading_comments
-                    .iter()
-                    .fold(Rc::new(Doc::Nil), |first, second| {
-                        first.cons(text!(second, 0)).cons(text!("\n"))
-                    });
+                    .nest_hanging()
+                    .to_group(ShouldBreak::Yes, &mut 0);
 
-                leading_comments.cons(self.token.to_docs(config, doc_ref))
+                leading_comments
+                    .cons(nl!(""))
+                    .cons(
+                        self.token
+                            .to_docs(config, doc_ref)
+                            .to_group(ShouldBreak::No, &mut 0),
+                    )
+                    .to_group(ShouldBreak::Yes, &mut 0)
             }
             (Some(leading_comments), Some(inline_comment)) => {
+                let mut leading_comments_it = leading_comments.iter();
+                let mut leading_comments = text!(leading_comments_it.next().unwrap());
+                for comment in leading_comments_it {
+                    leading_comments = leading_comments.cons(nl!("")).cons(text!(comment, 0));
+                }
                 let leading_comments = leading_comments
-                    .iter()
-                    .fold(Rc::new(Doc::Nil), |first, second| {
-                        first.cons(text!(second, 0)).cons(text!("\n"))
-                    });
+                    .nest_hanging()
+                    .to_group(ShouldBreak::Yes, &mut 0);
+
                 leading_comments
-                    .cons(self.token.to_docs(config, doc_ref))
-                    .cons(text!(" "))
-                    .cons(text!(inline_comment, 0, InlineCommentPosition::End))
+                    .cons(nl!(""))
+                    .cons(
+                        self.token
+                            .to_docs(config, doc_ref)
+                            .cons(text!(" "))
+                            .cons(text!(inline_comment, 0, InlineCommentPosition::End))
+                            .to_group(ShouldBreak::No, &mut 0),
+                    )
+                    .to_group(ShouldBreak::Yes, &mut 0)
             }
         }
     }
@@ -315,7 +338,10 @@ impl<'a> Code for Expression<'a> {
                     if term.is_empty() {
                         pre_delim
                             .to_docs(config, doc_ref)
+                            .cons(nl!(""))
+                            .nest(config.indent())
                             .cons(post_delim.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::No, &mut 0)
                     } else {
                         let docs = term
                             .iter()
@@ -452,36 +478,101 @@ impl<'a> Code for Expression<'a> {
                     &function_def.arguments,
                     &function_def.body,
                 );
-                let args_doc = join_docs_ungroupped(
-                    args.args.iter().map(|arg| {
-                        arg.0
+                match config.function_line_breaks() {
+                    FunctionLineBreaks::Hanging => {
+                        let args_doc = join_docs_ungroupped(
+                            args.args.iter().map(|arg| {
+                                arg.0
+                                    .to_docs(config, doc_ref)
+                                    .cons(
+                                        arg.1
+                                            .as_ref()
+                                            .map(|sep| sep.to_docs(config, doc_ref))
+                                            .unwrap_or(Rc::new(Doc::Nil)),
+                                    )
+                                    .to_group(ShouldBreak::No, doc_ref)
+                            }),
+                            Rc::new(Doc::Nil),
+                            config,
+                        );
+                        let args_group = args
+                            .left_delimeter
                             .to_docs(config, doc_ref)
-                            .cons(
-                                arg.1
-                                    .as_ref()
-                                    .map(|sep| sep.to_docs(config, doc_ref))
-                                    .unwrap_or(Rc::new(Doc::Nil)),
-                            )
+                            .cons(args_doc.nest_hanging())
+                            .cons(args.right_delimeter.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::No, doc_ref);
+                        keyword
+                            .to_docs(config, doc_ref)
+                            .cons(args_group)
+                            .cons(text!(" "))
+                            .cons(body.to_docs(config, doc_ref))
                             .to_group(ShouldBreak::No, doc_ref)
-                    }),
-                    Rc::new(Doc::Nil),
-                    config,
-                );
-                let args_group = args
-                    .left_delimeter
-                    .to_docs(config, doc_ref)
-                    .cons(nl!(""))
-                    .cons(args_doc)
-                    .nest(2 * config.indent())
-                    .cons(nl!(""))
-                    .cons(args.right_delimeter.to_docs(config, doc_ref))
-                    .to_group(ShouldBreak::No, doc_ref);
-                keyword
-                    .to_docs(config, doc_ref)
-                    .cons(args_group)
-                    .cons(text!(" "))
-                    .cons(body.to_docs(config, doc_ref))
-                    .to_group(ShouldBreak::No, doc_ref)
+                    }
+                    FunctionLineBreaks::Double => {
+                        let args_doc = join_docs_ungroupped(
+                            args.args.iter().map(|arg| {
+                                arg.0
+                                    .to_docs(config, doc_ref)
+                                    .cons(
+                                        arg.1
+                                            .as_ref()
+                                            .map(|sep| sep.to_docs(config, doc_ref))
+                                            .unwrap_or(Rc::new(Doc::Nil)),
+                                    )
+                                    .to_group(ShouldBreak::No, doc_ref)
+                            }),
+                            Rc::new(Doc::Nil),
+                            config,
+                        );
+                        let args_group = args
+                            .left_delimeter
+                            .to_docs(config, doc_ref)
+                            .cons(nl!(""))
+                            .cons(args_doc)
+                            .nest(2 * config.indent())
+                            .cons(nl!(""))
+                            .cons(args.right_delimeter.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::No, doc_ref);
+                        keyword
+                            .to_docs(config, doc_ref)
+                            .cons(args_group)
+                            .cons(text!(" "))
+                            .cons(body.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::No, doc_ref)
+                    }
+                    FunctionLineBreaks::Single => {
+                        let args_doc = join_docs_ungroupped(
+                            args.args.iter().map(|arg| {
+                                arg.0
+                                    .to_docs(config, doc_ref)
+                                    .cons(
+                                        arg.1
+                                            .as_ref()
+                                            .map(|sep| sep.to_docs(config, doc_ref))
+                                            .unwrap_or(Rc::new(Doc::Nil)),
+                                    )
+                                    .to_group(ShouldBreak::No, doc_ref)
+                            }),
+                            Rc::new(Doc::Nil),
+                            config,
+                        );
+                        let args_group = args
+                            .left_delimeter
+                            .to_docs(config, doc_ref)
+                            .cons(nl!(""))
+                            .cons(args_doc)
+                            .nest(config.indent())
+                            .cons(nl!(""))
+                            .cons(args.right_delimeter.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::No, doc_ref);
+                        keyword
+                            .to_docs(config, doc_ref)
+                            .cons(args_group)
+                            .cons(text!(" "))
+                            .cons(body.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::No, doc_ref)
+                    }
+                }
             }
             Expression::IfExpression(if_expression) => {
                 let (if_conditional, else_ifs, trailing_else) = (
@@ -588,15 +679,17 @@ impl<'a> Code for Expression<'a> {
                 );
                 keyword
                     .to_docs(config, doc_ref)
-                    .cons(text!(" "))
-                    .cons(left_delim.to_docs(config, doc_ref))
-                    .cons(nl!(""))
-                    .cons(identifier.to_docs(config, doc_ref))
-                    .cons(text!(" "))
-                    .cons(in_keyword.to_docs(config, doc_ref))
-                    .cons(nl!(" "))
-                    .cons(collection.to_docs(config, doc_ref))
-                    .nest(config.indent())
+                    .cons(
+                        text!(" ")
+                            .cons(left_delim.to_docs(config, doc_ref))
+                            .cons(nl!(""))
+                            .cons(identifier.to_docs(config, doc_ref))
+                            .cons(text!(" "))
+                            .cons(in_keyword.to_docs(config, doc_ref))
+                            .cons(nl!(" "))
+                            .cons(collection.to_docs(config, doc_ref))
+                            .nest(config.indent()),
+                    )
                     .cons(nl!(""))
                     .cons(right_delim.to_docs(config, doc_ref))
                     .to_group(ShouldBreak::No, doc_ref)
@@ -817,7 +910,10 @@ fn is_embracing_operator_closure(term: &TermExpr) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::format::{format_to_sdoc, simple_doc_to_string, Mode};
+    use crate::{
+        config::FunctionLineBreaks,
+        format::{format_to_sdoc, simple_doc_to_string, Mode},
+    };
 
     use super::*;
 
@@ -844,6 +940,10 @@ mod tests {
 
         fn strip_suffix_whitespace_in_function_defs(&self) -> bool {
             true
+        }
+
+        fn function_line_breaks(&self) -> FunctionLineBreaks {
+            FunctionLineBreaks::Hanging
         }
     }
     impl std::fmt::Display for MockConfig {

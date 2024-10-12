@@ -1,4 +1,4 @@
-use formatter::config::FormattingConfig;
+use formatter::config::{FormattingConfig, FunctionLineBreaks};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -9,6 +9,7 @@ pub struct Config {
     pub allow_nl_after_assignment: bool,
     pub space_before_complex_rhs_in_formula: bool,
     pub strip_suffix_whitespace_in_function_defs: bool,
+    pub function_line_breaks: FunctionLineBreaks,
 }
 
 impl FormattingConfig for Config {
@@ -35,6 +36,10 @@ impl FormattingConfig for Config {
     fn strip_suffix_whitespace_in_function_defs(&self) -> bool {
         self.strip_suffix_whitespace_in_function_defs
     }
+
+    fn function_line_breaks(&self) -> FunctionLineBreaks {
+        self.function_line_breaks
+    }
 }
 
 impl Default for Config {
@@ -46,6 +51,7 @@ impl Default for Config {
             allow_nl_after_assignment: false,
             space_before_complex_rhs_in_formula: true,
             strip_suffix_whitespace_in_function_defs: true,
+            function_line_breaks: FunctionLineBreaks::Hanging,
         }
     }
 }
@@ -67,6 +73,7 @@ impl Config {
         allow_nl_after_assignment: bool,
         space_before_complex_rhs_in_formula: bool,
         strip_suffix_whitespace_in_function_defs: bool,
+        function_line_breaks: FunctionLineBreaks,
     ) -> Self {
         Self {
             indent,
@@ -75,6 +82,7 @@ impl Config {
             allow_nl_after_assignment,
             space_before_complex_rhs_in_formula,
             strip_suffix_whitespace_in_function_defs,
+            function_line_breaks,
         }
     }
 }

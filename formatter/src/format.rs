@@ -40,8 +40,9 @@ impl Add for InlineCommentPosition {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Hash, Eq)]
-pub(crate) struct CommonProperties(pub(crate) InlineCommentPosition, pub(crate) usize); // inlineCommentPosition, doc ref
+/// inlineCommentPosition, doc reference
+#[derive(Debug, Clone, PartialEq, Hash, Eq, Copy)]
+pub(crate) struct CommonProperties(pub(crate) InlineCommentPosition, pub(crate) usize);
 impl Default for CommonProperties {
     fn default() -> Self {
         CommonProperties(InlineCommentPosition::No, 0)
@@ -63,7 +64,7 @@ pub(crate) enum Doc {
     // * function arguments are nested by 2 by default (from test_that)
     // * closures are normally nested by 2 by default
     // * but the inside of the closure is intended only by 2
-    // The content of the closure is basially indented only if
+    // The content of the closure is basically indented only if the
     // group for all function arguments breaks, e.g.
     // test_that(
     //   "very very long name",
@@ -72,6 +73,7 @@ pub(crate) enum Doc {
     //   }
     // )
     NestIfBreak(i32, Rc<Doc>, CommonProperties, usize), // indent size, indented doc, props, possibly broken doc
+    NestHanging(Rc<Doc>, CommonProperties),
     Break(&'static str),
     Group(GroupDocProperties, CommonProperties),
 }
@@ -86,6 +88,7 @@ impl std::fmt::Display for Doc {
             Doc::NestIfBreak(indent, body, _, watched) => {
                 write!(f, "NestIfBreak{indent}<if{watched}>({body})")
             }
+            Doc::NestHanging(body, _) => write!(f, "NestHanging({body})"),
             Doc::Break(newline) => f.write_fmt(format_args!("NL({})", newline)),
             Doc::Group(inside, common_props) => f.write_fmt(format_args!(
                 "SB:<ref{}>{:?}<{}>",
@@ -102,6 +105,7 @@ pub(crate) fn query_inline_position(doc: &Doc) -> InlineCommentPosition {
         Doc::Text(_, _, props) => props.0,
         Doc::Nest(_, _, props) => props.0,
         Doc::NestIfBreak(_, _, props, _) => props.0,
+        Doc::NestHanging(_, props) => props.0,
         Doc::Break(_) => InlineCommentPosition::No,
         Doc::Group(_, props) => props.0,
     }
@@ -112,6 +116,7 @@ pub trait DocAlgebra {
     fn to_group(self, should_break: ShouldBreak, doc_ref: &mut usize) -> Rc<Doc>;
     fn nest(self, indent: i32) -> Rc<Doc>;
     fn nest_if_break(self, indent: i32, observed_doc: usize) -> Rc<Doc>;
+    fn nest_hanging(self) -> Rc<Doc>;
 }
 
 impl DocAlgebra for Rc<Doc> {
@@ -140,6 +145,11 @@ impl DocAlgebra for Rc<Doc> {
     fn nest_if_break(self, indent: i32, observed_doc: usize) -> Rc<Doc> {
         let properties = CommonProperties(query_inline_position(&self), 0);
         Rc::new(Doc::NestIfBreak(indent, self, properties, observed_doc))
+    }
+
+    fn nest_hanging(self) -> Rc<Doc> {
+        let properties = CommonProperties(query_inline_position(&self), 0);
+        Rc::new(Doc::NestHanging(self, properties))
     }
 }
 
@@ -207,6 +217,10 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                     docs.push_front((i + step, m, Rc::clone(doc)));
                     fits(remaining_width, docs)
                 }
+                (i, m, Doc::NestHanging(doc, _)) => {
+                    docs.push_front((i, m, Rc::clone(doc)));
+                    fits(remaining_width, docs)
+                }
                 // Special case for the embracing operator
                 (_, _, Doc::Text(text, s_len, _)) if &**text == "{" => {
                     if docs.front().is_some() {
@@ -249,6 +263,9 @@ fn fits(remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
     }
 }
 
+/// `broken_docs` is a set of all the docs that are being formatted
+/// with line breaks. This set is continuously being filled up during
+/// execution of `format_to_sdoc`.
 pub(crate) fn format_to_sdoc(
     consumed: i32,
     docs: &mut VecDeque<Triple>,
@@ -277,6 +294,14 @@ pub(crate) fn format_to_sdoc(
                     } else {
                         docs.push_front((i, m, Rc::clone(doc)));
                     }
+                    format_to_sdoc(consumed, docs, config, broken_docs)
+                }
+                (i, m, Doc::NestHanging(doc, props)) => {
+                    docs.push_front((
+                        i,
+                        m,
+                        Rc::new(Doc::Nest(consumed - i, Rc::clone(doc), *props)),
+                    ));
                     format_to_sdoc(consumed, docs, config, broken_docs)
                 }
                 (_, _, Doc::Text(s, width, _)) => {
@@ -319,6 +344,8 @@ pub(crate) fn format_to_sdoc(
 
 #[cfg(test)]
 mod tests {
+    use crate::config::FunctionLineBreaks;
+
     use super::*;
 
     fn log_init() {
@@ -348,6 +375,10 @@ mod tests {
 
         fn strip_suffix_whitespace_in_function_defs(&self) -> bool {
             true
+        }
+
+        fn function_line_breaks(&self) -> FunctionLineBreaks {
+            FunctionLineBreaks::Hanging
         }
     }
     impl std::fmt::Display for MockConfig {

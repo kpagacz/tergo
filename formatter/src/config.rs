@@ -1,3 +1,13 @@
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FunctionLineBreaks {
+    Hanging,
+    Double,
+    Single,
+}
+
 pub trait FormattingConfig: std::fmt::Display {
     fn line_length(&self) -> i32;
     fn indent(&self) -> i32;
@@ -6,4 +16,5 @@ pub trait FormattingConfig: std::fmt::Display {
     fn allow_nl_after_assignment(&self) -> bool;
     fn space_before_complex_rhs_in_formulas(&self) -> bool;
     fn strip_suffix_whitespace_in_function_defs(&self) -> bool;
+    fn function_line_breaks(&self) -> FunctionLineBreaks;
 }
