@@ -17,6 +17,14 @@ pub struct CommentedToken<'a> {
     pub inline_comment: Option<&'a str>,
 }
 
+impl<'a> Deref for CommentedToken<'a> {
+    type Target = Token<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.token
+    }
+}
+
 impl<'a> CommentedToken<'a> {
     pub fn new(token: Token<'a>, line: u32, offset: usize) -> Self {
         Self {
@@ -143,6 +151,8 @@ macro_rules! commented_tokens {
         ]
     }}
 }
+use std::ops::Deref;
+
 pub use commented_tokens;
 
 #[cfg(test)]

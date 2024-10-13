@@ -29,6 +29,30 @@ where
     }
 }
 
+pub(crate) trait CodeWithoutLeadingComments {
+    fn to_docs_without_leading_comments(
+        &self,
+        config: &impl FormattingConfig,
+        doc_ref: &mut usize,
+    ) -> Rc<Doc>;
+}
+
+impl<T> CodeWithoutLeadingComments for Option<T>
+where
+    T: CodeWithoutLeadingComments,
+{
+    fn to_docs_without_leading_comments(
+        &self,
+        config: &impl FormattingConfig,
+        doc_ref: &mut usize,
+    ) -> Rc<Doc> {
+        match self {
+            Some(code) => code.to_docs_without_leading_comments(config, doc_ref),
+            None => Rc::new(Doc::Nil),
+        }
+    }
+}
+
 // Macro that creates a Doc::Group
 macro_rules! group {
     ($doc:expr, $should_break:expr, $doc_ref:expr) => {{
@@ -199,6 +223,23 @@ impl Code for CommentedToken<'_> {
     }
 }
 
+impl CodeWithoutLeadingComments for CommentedToken<'_> {
+    fn to_docs_without_leading_comments(
+        &self,
+        config: &impl FormattingConfig,
+        doc_ref: &mut usize,
+    ) -> Rc<Doc> {
+        match self.inline_comment {
+            None => self.token.to_docs(config, doc_ref),
+            Some(inline_comment) => self
+                .token
+                .to_docs(config, doc_ref)
+                .cons(text!(" "))
+                .cons(text!(inline_comment, 0, InlineCommentPosition::End)),
+        }
+    }
+}
+
 impl Code for Delimiter<'_> {
     fn to_docs(&self, config: &impl FormattingConfig, doc_ref: &mut usize) -> Rc<Doc> {
         match self {
@@ -352,12 +393,14 @@ impl<'a> Code for Expression<'a> {
                             .collect::<Vec<_>>();
                         let inner =
                             join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config, doc_ref);
-                        pre_delim
-                            .to_docs(config, doc_ref)
-                            .cons(nl!(" ").cons(inner).nest(config.indent()))
-                            .cons(nl!(" "))
-                            .cons(post_delim.to_docs(config, doc_ref))
-                            .to_group(ShouldBreak::Yes, doc_ref)
+                        delimited_content_to_docs(
+                            pre_delim,
+                            inner,
+                            post_delim,
+                            config,
+                            doc_ref,
+                            ShouldBreak::Yes,
+                        )
                     }
                 }
                 TermExpr {
@@ -408,12 +451,14 @@ impl<'a> Code for Expression<'a> {
                             .collect::<Vec<_>>();
                         let inner =
                             join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::No, config, doc_ref);
-                        pre_delim
-                            .to_docs(config, doc_ref)
-                            .cons(nl!("").cons(inner).nest(config.indent()))
-                            .cons(nl!(""))
-                            .cons(post_delim.to_docs(config, doc_ref))
-                            .to_group(ShouldBreak::No, doc_ref)
+                        delimited_content_to_docs(
+                            pre_delim,
+                            inner,
+                            post_delim,
+                            config,
+                            doc_ref,
+                            ShouldBreak::No,
+                        )
                     }
                 }
                 _ => panic!("Term with not matching delimiters found"),
@@ -982,6 +1027,50 @@ fn has_forced_line_breaks(doc: &Rc<Doc>, inside_a_group_with_should_break: bool)
         Doc::Group(group_props, _) => {
             has_forced_line_breaks(&group_props.0, matches!(group_props.1, ShouldBreak::Yes))
         }
+    }
+}
+
+/// Delimited content requires special care with comments at the end of it...
+fn delimited_content_to_docs(
+    left_delim: &CommentedToken<'_>,
+    inner: Rc<Doc>,
+    right_delim: &CommentedToken<'_>,
+    config: &impl FormattingConfig,
+    doc_ref: &mut usize,
+    should_break: ShouldBreak,
+) -> Rc<Doc> {
+    let nl = || match left_delim.token {
+        Token::LParen => nl!(""),
+        Token::LBrace => nl!(" "),
+        _ => unreachable!("Non parenthesis argument as the delimiter"),
+    };
+    if let Some(right_delim_leading_comments) = &right_delim.leading_comments {
+        let mut leading_comments_it = right_delim_leading_comments.iter();
+        let mut leading_comments = text!(leading_comments_it.next().unwrap());
+        for comment in leading_comments_it {
+            leading_comments = leading_comments.cons(nl!("")).cons(text!(comment, 0));
+        }
+        let leading_comments = leading_comments
+            .nest_hanging()
+            .to_group(ShouldBreak::Yes, &mut 0);
+        left_delim
+            .to_docs(config, doc_ref)
+            .cons(
+                nl().cons(inner)
+                    .cons(nl!(""))
+                    .cons(leading_comments)
+                    .nest(config.indent()),
+            )
+            .cons(nl())
+            .cons(right_delim.to_docs_without_leading_comments(config, doc_ref))
+            .to_group(ShouldBreak::Yes, doc_ref)
+    } else {
+        left_delim
+            .to_docs(config, doc_ref)
+            .cons(nl().cons(inner).nest(config.indent()))
+            .cons(nl())
+            .cons(right_delim.to_docs_without_leading_comments(config, doc_ref))
+            .to_group(should_break, doc_ref)
     }
 }
 
