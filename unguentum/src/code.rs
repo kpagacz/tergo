@@ -914,11 +914,12 @@ fn should_break_args(args: &Args) -> ShouldBreak {
     // break all arguments
 
     if args.args.len() >= 2
-        && args
-            .args
-            .iter()
-            .take(args.args.len() - 1)
-            .any(|arg| arg.0.iter().any(contains_closure))
+        && args.args.iter().take(args.args.len() - 1).any(|arg| {
+            arg.0.iter().any(|expr| {
+            matches!(expr, Expression::Term(term_expr) if !is_embracing_operator_closure(term_expr))
+                || matches!(expr, Expression::FunctionDef(..))
+        })
+        })
     {
         ShouldBreak::Yes
     } else {
