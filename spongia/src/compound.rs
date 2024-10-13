@@ -96,8 +96,17 @@ pub(crate) fn if_expression<'a, 'b: 'a>(
 
 fn if_conditional<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, IfConditional<'a>> {
     map(
-        tuple((if_token, lparen, expr, rparen, expr)),
-        |(keyword, left_delimiter, condition, right_delimiter, body)| IfConditional {
+        tuple((
+            if_token,
+            lparen,
+            many0(newline),
+            expr,
+            many0(newline),
+            rparen,
+            many0(newline),
+            expr,
+        )),
+        |(keyword, left_delimiter, _, condition, _, right_delimiter, _, body)| IfConditional {
             keyword,
             left_delimiter,
             condition: Box::new(condition),

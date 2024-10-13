@@ -234,6 +234,7 @@ comparison_test!(
     Config::default()
 );
 comparison_test!(apostrophes_after_dollar, "079", Config::default());
+comparison_test!(multiline_if_condition, "080", Config::default());
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
