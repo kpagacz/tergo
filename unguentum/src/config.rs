@@ -17,4 +17,5 @@ pub trait FormattingConfig: std::fmt::Display {
     fn space_before_complex_rhs_in_formulas(&self) -> bool;
     fn strip_suffix_whitespace_in_function_defs(&self) -> bool;
     fn function_line_breaks(&self) -> FunctionLineBreaks;
+    fn insert_newline_in_quote_call(&self) -> bool;
 }

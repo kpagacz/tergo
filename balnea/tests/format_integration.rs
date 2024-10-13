@@ -93,7 +93,6 @@ fn short_line_plus_indent() -> Config {
     config.indent = 2;
     config
 }
-#[allow(clippy::field_reassign_with_default)]
 fn long_line_config() -> Config {
     let mut config = Config::default();
     config.embracing_op_no_nl = true;
@@ -235,6 +234,7 @@ comparison_test!(
 );
 comparison_test!(apostrophes_after_dollar, "079", Config::default());
 comparison_test!(multiline_if_condition, "080", Config::default());
+comparison_test!(function_definition_inside_quote, "081", Config::default());
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

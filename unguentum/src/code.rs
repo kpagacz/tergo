@@ -10,7 +10,7 @@ use crate::format::{
     query_inline_position, CommonProperties, Doc, GroupDocProperties, InlineCommentPosition,
     ShouldBreak,
 };
-use std::rc::Rc;
+use std::{ops::Deref, rc::Rc};
 use tokenizer::Token;
 
 pub(crate) trait Code {
@@ -642,17 +642,53 @@ impl<'a> Code for Expression<'a> {
             }
             Expression::FunctionCall(function_call) => {
                 let (function_ref, args) = (&function_call.function_ref, &function_call.args);
+                let is_function_ref_quote = {
+                    if let Expression::Symbol(token) = function_ref.as_ref() {
+                        if let Token::Symbol(text) = &token.token {
+                            *text == "quote"
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                };
                 let group_ref = *doc_ref + 1;
                 *doc_ref += 1;
-                group!(
-                    function_ref
-                        .to_docs(config, doc_ref)
-                        .cons(args_to_docs_with_conditional_nest(
-                            args, config, doc_ref, group_ref
-                        )),
-                    should_break_args(args),
-                    group_ref
-                )
+                let inner_docs =
+                    args_to_docs_with_conditional_nest(args, config, doc_ref, group_ref);
+                if is_function_ref_quote
+                    && args.args.len() == 1
+                    && args.args[0].0.is_some()
+                    && has_forced_line_breaks(&inner_docs, false)
+                {
+                    // Special case for the quote function call
+                    // in such cases:
+                    // quote(a <- function() {
+                    //   TRUE
+                    //   TRUE
+                    // })
+                    // It should be
+                    // quote(
+                    //   a <- function() {
+                    //     TRUE
+                    //     TRUE
+                    //   }
+                    // )
+                    // One of the few case it makes some miniscule
+                    // sense to have more indent
+                    group!(
+                        function_ref.to_docs(config, doc_ref).cons(inner_docs),
+                        ShouldBreak::Yes,
+                        group_ref
+                    )
+                } else {
+                    group!(
+                        function_ref.to_docs(config, doc_ref).cons(inner_docs),
+                        should_break_args(args),
+                        group_ref
+                    )
+                }
             }
             Expression::SubsetExpression(subset_expression) => {
                 let (object_ref, args) = (&subset_expression.object_ref, &subset_expression.args);
@@ -902,6 +938,30 @@ fn is_embracing_operator_closure(term: &TermExpr) -> bool {
     }
 }
 
+/// Forced line breaks are line breaks inside a group
+/// with ShouldBreak::Yes
+fn has_forced_line_breaks(doc: &Rc<Doc>, inside_a_group_with_should_break: bool) -> bool {
+    match doc.deref() {
+        Doc::Nil => false,
+        Doc::Cons(first, second, _) => {
+            has_forced_line_breaks(first, inside_a_group_with_should_break)
+                || has_forced_line_breaks(second, inside_a_group_with_should_break)
+        }
+        Doc::Text(_, _, _) => false,
+        Doc::Nest(_, inner, _) => has_forced_line_breaks(inner, inside_a_group_with_should_break),
+        Doc::NestIfBreak(_, inner, _, _) => {
+            has_forced_line_breaks(inner, inside_a_group_with_should_break)
+        }
+        Doc::NestHanging(inner, _) => {
+            has_forced_line_breaks(inner, inside_a_group_with_should_break)
+        }
+        Doc::Break(_) => inside_a_group_with_should_break,
+        Doc::Group(group_props, _) => {
+            has_forced_line_breaks(&group_props.0, matches!(group_props.1, ShouldBreak::Yes))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -938,6 +998,10 @@ mod tests {
 
         fn function_line_breaks(&self) -> FunctionLineBreaks {
             FunctionLineBreaks::Hanging
+        }
+
+        fn insert_newline_in_quote_call(&self) -> bool {
+            true
         }
     }
     impl std::fmt::Display for MockConfig {

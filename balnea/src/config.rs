@@ -5,11 +5,50 @@ use serde::Deserialize;
 pub struct Config {
     pub indent: i32,
     pub line_length: i32,
+    /// Embracing operator {{ }} does not have line breaks
     pub embracing_op_no_nl: bool,
+    /// To allow new lines after assignment or not
+    /// Ex. a <-
+    ///       TRUE
+    /// or
+    /// a <- TRUE
     pub allow_nl_after_assignment: bool,
+    /// Whether to put a space before complex right hand sides of
+    /// the formula operator. Example:
+    /// ~ a + b, but ~a
     pub space_before_complex_rhs_in_formula: bool,
+    /// Whether to keep the whitespace before the ending
+    /// bracket of a function definition
     pub strip_suffix_whitespace_in_function_defs: bool,
+    /// The type of line breaking inside function definitions'
+    /// arguments. Example:
+    /// Single:
+    /// function(
+    ///   a
+    /// ) {}
+    /// Double:
+    /// function(
+    ///     a
+    /// ) {}
+    /// Hanging:
+    /// function(a,
+    ///          b) {}
     pub function_line_breaks: FunctionLineBreaks,
+    /// Whether to insert the new line after
+    /// the opening parenthesis of a call to quote
+    /// for very long calls. Example:
+    /// quote(a <- function(call) {
+    ///   TRUE
+    ///   TRUE
+    /// })
+    /// vs
+    /// quote(
+    ///   a <- function(call) {
+    ///     TRUE
+    ///     TRUE
+    ///   }
+    /// )
+    pub insert_newline_in_quote_call: bool,
 }
 
 impl FormattingConfig for Config {
@@ -40,6 +79,10 @@ impl FormattingConfig for Config {
     fn function_line_breaks(&self) -> FunctionLineBreaks {
         self.function_line_breaks
     }
+
+    fn insert_newline_in_quote_call(&self) -> bool {
+        self.insert_newline_in_quote_call
+    }
 }
 
 impl Default for Config {
@@ -52,6 +95,7 @@ impl Default for Config {
             space_before_complex_rhs_in_formula: true,
             strip_suffix_whitespace_in_function_defs: true,
             function_line_breaks: FunctionLineBreaks::Hanging,
+            insert_newline_in_quote_call: true,
         }
     }
 }
@@ -65,6 +109,7 @@ impl std::fmt::Display for Config {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 impl Config {
     pub fn new(
         indent: i32,
@@ -74,6 +119,7 @@ impl Config {
         space_before_complex_rhs_in_formula: bool,
         strip_suffix_whitespace_in_function_defs: bool,
         function_line_breaks: FunctionLineBreaks,
+        insert_newline_in_quote_call: bool,
     ) -> Self {
         Self {
             indent,
@@ -83,6 +129,7 @@ impl Config {
             space_before_complex_rhs_in_formula,
             strip_suffix_whitespace_in_function_defs,
             function_line_breaks,
+            insert_newline_in_quote_call,
         }
     }
 }

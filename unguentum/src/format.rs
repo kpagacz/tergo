@@ -244,7 +244,10 @@ fn fits(mut remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                                     return true;
                                 }
                             }
-                            _ => return true,
+                            _ => {
+                                trace!("Fits returned true");
+                                return true;
+                            }
                         }
                     } else {
                         remaining_width -= *s_len as i32;
@@ -392,6 +395,10 @@ mod tests {
 
         fn function_line_breaks(&self) -> FunctionLineBreaks {
             FunctionLineBreaks::Hanging
+        }
+
+        fn insert_newline_in_quote_call(&self) -> bool {
+            true
         }
     }
     impl std::fmt::Display for MockConfig {
