@@ -91,7 +91,7 @@ impl std::fmt::Display for Doc {
             Doc::NestHanging(body, _) => write!(f, "NestHanging({body})"),
             Doc::Break(newline) => f.write_fmt(format_args!("NL({})", newline)),
             Doc::Group(inside, common_props) => f.write_fmt(format_args!(
-                "GROUP{}Pos{:?}SB:{:?}<{}>",
+                "GROUP{}:CommPos{:?}:SB{:?}<{}>",
                 common_props.1, common_props.0, inside.1, inside.0
             )),
         }

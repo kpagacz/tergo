@@ -1,7 +1,7 @@
 /// Representation of a token.
 ///
 /// This represents a single token in an R program along with the line on which it occurs
-/// and the column offset. Additionally, it store the comments that are associated
+/// and the column offset. Additionally, it stores the comments that are associated
 /// with the token.
 #[derive(Debug, Clone)]
 pub struct CommentedToken<'a> {
@@ -11,10 +11,9 @@ pub struct CommentedToken<'a> {
     pub line: u32,
     /// The column offset of the start of this token.
     pub offset: usize,
-    /// Preceding comments. The tuple contains the start and end offset (exclusive) of the comment
-    /// in the array of tokens.
+    /// Preceding comments.
     pub leading_comments: Option<Vec<&'a str>>,
-    /// Trailing inline comment. The offset is the index of the comment in the array of tokens.
+    /// Trailing inline comment.
     pub inline_comment: Option<&'a str>,
 }
 

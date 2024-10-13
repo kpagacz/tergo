@@ -36,7 +36,7 @@ macro_rules! comparison_test {
                 result == expected,
                 "Formatted text is not what expected. Result \
                  was:\n{}===\nExpected:\n{}===\n\nFirst line of difference was at line \
-                 {}:\nResult:   {}\nExpected: {}\n",
+                 {}:\nResult   :{}\nExpected :{}\n",
                 result,
                 expected,
                 if let Some(first_difference_line) = first_difference_line {

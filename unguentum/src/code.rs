@@ -383,6 +383,24 @@ impl<'a> Code for Expression<'a> {
                         pre_delim
                             .to_docs(config, doc_ref)
                             .cons(post_delim.to_docs(config, doc_ref))
+                    } else if term.len() == 1 && matches!(term[0], Expression::Term(..)) {
+                        // Special case for these scenarios
+                        // ({
+                        //   TRUE
+                        //   # Comment
+                        // })
+                        // In these cases we delegate the line breaks to the inner term.
+                        let docs = term
+                            .iter()
+                            .map(|t| t.to_docs(config, doc_ref))
+                            .collect::<Vec<_>>();
+                        let inner =
+                            join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::No, config, doc_ref);
+                        pre_delim
+                            .to_docs(config, doc_ref)
+                            .cons(inner)
+                            .cons(post_delim.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::No, doc_ref)
                     } else {
                         let docs = term
                             .iter()
@@ -444,7 +462,6 @@ impl<'a> Code for Expression<'a> {
                             .cons(rhs.to_docs(config, doc_ref))
                             .nest(config.indent()),
                     ),
-                // .to_group(ShouldBreak::No, doc_ref),
                 Token::Dollar
                 | Token::NsGet
                 | Token::NsGetInt
@@ -759,10 +776,9 @@ impl Code for Args<'_> {
             .reduce(|first, second| first.cons(nl!(" ")).cons(second));
 
         if let Some(inside_delims) = inside_delims {
-            let nested_inside_delims = nl!("").cons(inside_delims).nest(config.indent());
             self.left_delimeter
                 .to_docs(config, doc_ref)
-                .cons(nested_inside_delims)
+                .cons(nl!("").cons(inside_delims).nest(config.indent()))
                 .cons(nl!(""))
                 .cons(self.right_delimeter.to_docs(config, doc_ref))
         } else {
