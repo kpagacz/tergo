@@ -22,20 +22,20 @@ pub(crate) enum InlineCommentPosition {
     No,
     Middle,
     End,
+    InGroup,
 }
 
 impl Add for InlineCommentPosition {
     type Output = InlineCommentPosition;
 
     fn add(self, rhs: Self) -> Self::Output {
+        use InlineCommentPosition::*;
         match (self, rhs) {
-            (InlineCommentPosition::No, InlineCommentPosition::No) => InlineCommentPosition::No,
-            (InlineCommentPosition::No, InlineCommentPosition::Middle) => {
-                InlineCommentPosition::Middle
-            }
-            (InlineCommentPosition::No, InlineCommentPosition::End) => InlineCommentPosition::End,
-            (InlineCommentPosition::Middle, _) => InlineCommentPosition::Middle,
-            (InlineCommentPosition::End, _) => InlineCommentPosition::Middle,
+            (No, No) => No,
+            (End, _) | (Middle, _) | (No, Middle) => Middle,
+            (No, End) => End,
+            (InGroup, position) => position,
+            (No, InGroup) => No,
         }
     }
 }
@@ -86,13 +86,13 @@ impl std::fmt::Display for Doc {
             Doc::Text(text, _, _) => f.write_fmt(format_args!("'{}'", text)),
             Doc::Nest(indent, body, _) => f.write_fmt(format_args!("Nest{}({})", indent, body)),
             Doc::NestIfBreak(indent, body, _, watched) => {
-                write!(f, "NestIfBreak{indent}<if{watched}>({body})")
+                write!(f, "NestIfBreakRef{watched}Ind{indent}({body})")
             }
             Doc::NestHanging(body, _) => write!(f, "NestHanging({body})"),
             Doc::Break(newline) => f.write_fmt(format_args!("NL({})", newline)),
             Doc::Group(inside, common_props) => f.write_fmt(format_args!(
-                "SB:<ref{}>{:?}<{}>",
-                common_props.1, inside.1, inside.0
+                "GROUP{}Pos{:?}SB:{:?}<{}>",
+                common_props.1, common_props.0, inside.1, inside.0
             )),
         }
     }
@@ -130,7 +130,14 @@ impl DocAlgebra for Rc<Doc> {
 
     fn to_group(self, should_break: ShouldBreak, doc_ref: &mut usize) -> Rc<Doc> {
         *doc_ref += 1;
-        let properties = CommonProperties(query_inline_position(&self), *doc_ref);
+        let properties = CommonProperties(
+            match query_inline_position(&self) {
+                InlineCommentPosition::Middle => InlineCommentPosition::InGroup,
+                InlineCommentPosition::InGroup => InlineCommentPosition::No,
+                position => position,
+            },
+            *doc_ref,
+        );
         Rc::new(Doc::Group(
             GroupDocProperties(self, should_break),
             properties,
@@ -193,19 +200,19 @@ pub(crate) enum Mode {
 pub(crate) type Triple = (i32, Mode, Rc<Doc>);
 
 fn fits(mut remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
+    trace!("Judging fits for {docs:?}");
     while remaining_width >= 0 {
         match docs.pop_front() {
-            None => return true,
+            None => {
+                trace!("Fits returned true");
+                return true;
+            }
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
                 (_, _, Doc::Nil) => continue,
-                (i, m, Doc::Cons(first, second, CommonProperties(inline_comment_pos, _))) => {
-                    if inline_comment_pos == &InlineCommentPosition::Middle {
-                        return false;
-                    } else {
-                        docs.push_front((i, m, Rc::clone(second)));
-                        docs.push_front((i, m, Rc::clone(first)));
-                        continue;
-                    }
+                (i, m, Doc::Cons(first, second, _)) => {
+                    docs.push_front((i, m, Rc::clone(second)));
+                    docs.push_front((i, m, Rc::clone(first)));
+                    continue;
                 }
                 (i, m, Doc::Nest(step, doc, _)) => {
                     docs.push_front((i + step, m, Rc::clone(doc)));
@@ -255,7 +262,7 @@ fn fits(mut remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
                 (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, _))) => {
                     if inline_comment_pos == &InlineCommentPosition::Middle {
-                        trace!("Fits false for {groupped_doc:?}");
+                        trace!("Fits returned false due to inline comment {inline_comment_pos:?}");
                         return false;
                     } else {
                         docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
@@ -265,6 +272,7 @@ fn fits(mut remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
             },
         }
     }
+    trace!("Fits returned false");
     false
 }
 

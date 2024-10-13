@@ -36,7 +36,7 @@ macro_rules! comparison_test {
                 result == expected,
                 "Formatted text is not what expected. Result \
                  was:\n{}===\nExpected:\n{}===\n\nFirst line of difference was at line \
-                 {}:\nResult: {}\nExpected: {}\n",
+                 {}:\nResult:   {}\nExpected: {}\n",
                 result,
                 expected,
                 if let Some(first_difference_line) = first_difference_line {
@@ -222,6 +222,17 @@ comparison_test!(closure_as_a_function_argument3, "072", Config::default());
 comparison_test!(bop_with_dollar, "073", Config::default());
 comparison_test!(comment_to_a_closure, "074", Config::default());
 comparison_test!(stop_formatting, "075", Config::default());
+comparison_test!(closure_as_an_arg_in_calls, "076", Config::default());
+comparison_test!(
+    closure_as_an_arg_in_calls_with_inline_comment,
+    "077",
+    Config::default()
+);
+comparison_test!(
+    closure_as_an_arg_in_calls_with_multiple_inline_comments,
+    "078",
+    Config::default()
+);
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
