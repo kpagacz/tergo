@@ -233,6 +233,7 @@ comparison_test!(
     "078",
     Config::default()
 );
+comparison_test!(apostrophes_after_dollar, "079", Config::default());
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

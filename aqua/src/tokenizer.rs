@@ -1,4 +1,4 @@
-use log::{trace, warn};
+use log::{debug, trace};
 
 use crate::tokens::{
     CommentedToken,
@@ -247,7 +247,7 @@ impl<'a> Tokenizer<'a> {
                             self.number_literal(&mut tokens);
                         }
                         _ => {
-                            warn!(
+                            debug!(
                                 "Found not alphabetic and non-numeric character after a dot. \
                                  Treating it as an identifier."
                             );
@@ -421,10 +421,16 @@ impl<'a> Tokenizer<'a> {
 
     fn identifier(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
-        while self.it < self.source.len() && self.source[self.it].is_alphabetic()
+        let mut in_backticks = false;
+        while self.it < self.source.len() && in_backticks
+            || self.source[self.it].is_alphabetic()
             || self.source[self.it] == '.'
             || self.source[self.it] == '_'
+            || self.source[self.it] == '`'
         {
+            if self.source[self.it] == '`' {
+                in_backticks = !in_backticks;
+            }
             self.next();
         }
         match &self.raw_source[start_it..self.it] {

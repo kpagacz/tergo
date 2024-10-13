@@ -5,7 +5,7 @@ use std::{
 };
 
 use clap::{arg, Parser};
-use log::{info, trace};
+use log::{info, trace, warn};
 use tergo_lib::{config::Config, tergo_format};
 
 #[derive(Parser, Debug)]
@@ -87,7 +87,7 @@ fn format_r_files(path: &Path, config_path: &Path) {
         match format_file_in_place(&file, &config) {
             Ok(_) => info!("Formatted: {:?}", &file),
             Err(e) => {
-                info!("Failed to format {:?}. Error: {e:?}", &file);
+                warn!("Failed to format {:?}. Error: {e:?}", &file);
                 trace!("Error was: {e:?}");
             }
         }
