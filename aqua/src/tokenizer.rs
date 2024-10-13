@@ -158,6 +158,11 @@ impl<'a> Tokenizer<'a> {
                             self.push_token(LowerEqual, &mut tokens);
                             self.next();
                         }
+                        '<' => {
+                            self.push_token(SuperAssign, &mut tokens);
+                            self.next();
+                            self.next();
+                        }
                         _ => self.push_token(LowerThan, &mut tokens),
                     }
                     self.next();
@@ -312,6 +317,10 @@ impl<'a> Tokenizer<'a> {
                         }
                         [':', ..] => {
                             self.push_token(NsGet, &mut tokens);
+                            self.next()
+                        }
+                        ['=', ..] => {
+                            self.push_token(ColonAssign, &mut tokens);
                             self.next()
                         }
                         _ => self.push_token(Colon, &mut tokens),

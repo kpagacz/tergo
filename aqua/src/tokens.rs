@@ -93,6 +93,8 @@ pub enum Token<'a> {
 
     // Binary operators
     LAssign,
+    SuperAssign,
+    ColonAssign,
     RAssign,
     OldAssign,
     Equal,

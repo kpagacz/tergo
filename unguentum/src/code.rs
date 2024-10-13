@@ -109,6 +109,8 @@ impl<'a> Code for Token<'a> {
             Token::Function => text!("function"),
             Token::Lambda => text!("\\"),
             Token::LAssign => text!("<-"),
+            Token::SuperAssign => text!("<<-"),
+            Token::ColonAssign => text!(":="),
             Token::RAssign => text!("->"),
             Token::OldAssign => text!("="),
             Token::Equal => text!("=="),
@@ -402,13 +404,18 @@ impl<'a> Code for Expression<'a> {
                 .to_docs(config, doc_ref)
                 .cons(expr.to_docs(config, doc_ref)),
             Expression::Bop(op, lhs, rhs) => match op.token {
-                Token::OldAssign | Token::LAssign if !config.allow_nl_after_assignment() => lhs
-                    .to_docs(config, doc_ref)
-                    .cons(text!(" "))
-                    .cons(op.to_docs(config, doc_ref))
-                    .cons(text!(" ").cons(rhs.to_docs(config, doc_ref)))
-                    .to_group(ShouldBreak::No, doc_ref),
+                Token::OldAssign | Token::LAssign | Token::ColonAssign | Token::SuperAssign
+                    if !config.allow_nl_after_assignment() =>
+                {
+                    lhs.to_docs(config, doc_ref)
+                        .cons(text!(" "))
+                        .cons(op.to_docs(config, doc_ref))
+                        .cons(text!(" ").cons(rhs.to_docs(config, doc_ref)))
+                        .to_group(ShouldBreak::No, doc_ref)
+                }
                 Token::LAssign
+                | Token::SuperAssign
+                | Token::ColonAssign
                 | Token::RAssign
                 | Token::OldAssign
                 | Token::Equal

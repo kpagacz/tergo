@@ -197,6 +197,8 @@ fn precedence(token: &CommentedToken) -> u8 {
     match &token.token {
         Help => 1,
         LAssign => 5,
+        SuperAssign => 5,
+        ColonAssign => 5,
         OldAssign => 6,
         RAssign => 7,
         Pipe => 8,
@@ -240,6 +242,8 @@ fn is_binary_operator(token: &CommentedToken) -> bool {
             | NsGet
             | NsGetInt
             | LAssign
+            | SuperAssign
+            | ColonAssign
             | OldAssign
             | Power
             | Pipe
