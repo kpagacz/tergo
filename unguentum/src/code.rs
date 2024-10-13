@@ -927,69 +927,6 @@ fn should_break_args(args: &Args) -> ShouldBreak {
     }
 }
 
-fn contains_closure(expr: &Expression) -> bool {
-    match expr {
-        Expression::Symbol(_)
-        | Expression::Literal(_)
-        | Expression::Formula(_, _)
-        | Expression::Newline(_)
-        | Expression::Whitespace(_)
-        | Expression::EOF(_)
-        | Expression::Break(_)
-        | Expression::Continue(_)
-        | Expression::Comment(_) => false,
-        Expression::Term(term) => {
-            if is_embracing_operator_closure(term) {
-                false
-            } else if let Some(pre_delim) = term.pre_delimiters {
-                matches!(pre_delim.token, Token::LBrace)
-            } else {
-                term.term.iter().any(contains_closure)
-            }
-        }
-        Expression::Unary(_, expr) => contains_closure(expr),
-        Expression::Bop(_, expr1, expr2) => contains_closure(expr1) || contains_closure(expr2),
-        Expression::FunctionDef(func_def) => {
-            func_def
-                .arguments
-                .args
-                .iter()
-                .any(|arg| arg.0.iter().any(contains_closure))
-                || contains_closure(&func_def.body)
-        }
-        Expression::LambdaFunction(_) => false,
-        Expression::IfExpression(if_expr) => {
-            contains_closure(&if_expr.if_conditional.condition)
-                || contains_closure(&if_expr.if_conditional.body)
-                || if_expr.else_ifs.iter().any(|else_if| {
-                    contains_closure(&else_if.if_conditional.body)
-                        || contains_closure(&else_if.if_conditional.condition)
-                })
-                || if_expr
-                    .trailing_else
-                    .iter()
-                    .any(|trailing_else| contains_closure(&trailing_else.body))
-        }
-        Expression::WhileExpression(while_loop) => {
-            contains_closure(&while_loop.condition) || contains_closure(&while_loop.body)
-        }
-        Expression::RepeatExpression(_) => true,
-        Expression::FunctionCall(call) => call
-            .args
-            .args
-            .iter()
-            .any(|arg| arg.0.iter().any(contains_closure)),
-        Expression::SubsetExpression(subset) => subset
-            .args
-            .args
-            .iter()
-            .any(|arg| arg.0.iter().any(contains_closure)),
-        Expression::ForLoopExpression(for_loop) => {
-            contains_closure(&for_loop.collection) || contains_closure(&for_loop.body)
-        }
-    }
-}
-
 fn is_embracing_operator_closure(term: &TermExpr) -> bool {
     match (term.pre_delimiters, term.term.first()) {
         (None, _) | (Some(_), None) => false,
