@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["aqua", "spongia", "balnea", "unguentum", "sapo", "scopa"]
+members = ["aqua", "spongia", "balnea", "unguentum", "tergo", "scopa"]
 resolver = "2"

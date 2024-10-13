@@ -6,9 +6,12 @@ The following directories contain the following projects:
 
 | Directory Name | Project description |
 | --------------:|:------------------- |
-| lib | `tergo-lib` is a Rust library that exports the basic functionality of the formatter as a Rust library |
-| sapo (latin soap) | `tergo` is a command line interface (CLI) that uses the `tergo-lib` library to format R code |
-| scopa (latin broom) | `scopa` is a Visual Studio Code extension that acts as a code formatter for R language |
+| aqua (latin water) | `aqua` houses a Rust library that implements a basic R tokenizer |
+| balnea (latin bath) | `balnea` contains a Rust library that acts as an entrypoint to general formatting workflows |
+| tergo (latin to clean) | `tergo` contains a command line interface (CLI) that uses the `unguentum` library to format R code |
+| scopa (latin broom) | `scopa` conains a Visual Studio Code extension that acts as a code formatter for R language |
+| spongia (lating sponge) | `spongia` contains a Rust library that implements an imperfect R parser |
+| unguentum (latin perfume) | `unguentum` houses a Rust library that implements all the formatting tools |
 
 ## License
 
