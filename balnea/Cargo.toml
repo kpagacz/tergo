@@ -11,9 +11,9 @@ license = "MIT"
 path = "src/lib.rs"
 
 [dependencies]
-tokenizer = { package = "tergo-tokenizer", path = "../tokenizer", version = "0.1.0" }
-parser = { package = "tergo-parser", path = "../parser", version = "0.1.0" }
-formatter = { package = "tergo-formatter", path = "../formatter", version = "0.1.0" }
+tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.1.0" }
+parser = { package = "tergo-parser", path = "../spongia", version = "0.1.0" }
+formatter = { package = "tergo-formatter", path = "../unguentum", version = "0.1.0" }
 log = "0.4.21"
 env_logger = "0.11.3"
 serde = { version = "1.0.210", features = ["derive"] }

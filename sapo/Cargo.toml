@@ -9,5 +9,5 @@ description = "Format code written in R"
 clap = { version = "4.5.17", features = ["derive"] }
 env_logger = "0.11.5"
 log = "0.4.22"
-tergo-lib = { path = "../lib", version = "0.1.0" }
+tergo-lib = { path = "../balnea", version = "0.1.0" }
 toml = "0.8.19"

@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["tokenizer", "parser", "lib", "formatter", "sapo", "scopa"]
+members = ["aqua", "spongia", "balnea", "unguentum", "sapo", "scopa"]
 resolver = "2"
