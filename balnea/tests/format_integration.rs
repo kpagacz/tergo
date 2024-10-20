@@ -243,6 +243,11 @@ comparison_test!(
 );
 comparison_test!(comment_in_parentheses, "084", Config::default());
 comparison_test!(in_parentheses_term_does_not_fit, "085", Config::default());
+comparison_test!(
+    function_calls_should_not_stick_to_one_line,
+    "086",
+    Config::default()
+);
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

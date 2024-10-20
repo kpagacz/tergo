@@ -7,10 +7,19 @@ use log::trace;
 
 use crate::config::FormattingConfig;
 
+/// ShouldBreak indicates whether a group should break
+/// regardless of the fits calculations.
+/// It does not propagate to the parents, so
+/// a Yes should break will not trigger a break
+/// in its ancestors.
+///
+/// ShouldBreak::Yes -> break always
+/// ShouldBreak::No -> break depending on fits calculations
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum ShouldBreak {
     Yes,
     No,
+    Propagate,
 }
 
 /// ShouldBreak is a linebreak that propagates to the parents
@@ -74,6 +83,10 @@ pub(crate) enum Doc {
     // )
     NestIfBreak(i32, Rc<Doc>, CommonProperties, usize), // indent size, indented doc, props, possibly broken doc
     NestHanging(Rc<Doc>, CommonProperties),
+    // This docs has fixed size, which means the fits calculations
+    // will return the fixed inner length for this element instead
+    // of its calculated length
+    FitsUntilLBracket(Rc<Doc>, CommonProperties), // inner docs, the fixed length, common props
     Break(&'static str),
     Group(GroupDocProperties, CommonProperties),
 }
@@ -89,6 +102,7 @@ impl std::fmt::Display for Doc {
                 write!(f, "NestIfBreakRef{watched}Ind{indent}({body})")
             }
             Doc::NestHanging(body, _) => write!(f, "NestHanging({body})"),
+            Doc::FitsUntilLBracket(body, _) => write!(f, "FitsUntilLB({body})"),
             Doc::Break(newline) => f.write_fmt(format_args!("NL({})", newline)),
             Doc::Group(inside, common_props) => f.write_fmt(format_args!(
                 "GROUP{}:CommPos{:?}:SB{:?}<{}>",
@@ -106,6 +120,7 @@ pub(crate) fn query_inline_position(doc: &Doc) -> InlineCommentPosition {
         Doc::Nest(_, _, props) => props.0,
         Doc::NestIfBreak(_, _, props, _) => props.0,
         Doc::NestHanging(_, props) => props.0,
+        Doc::FitsUntilLBracket(_, props) => props.0,
         Doc::Break(_) => InlineCommentPosition::No,
         Doc::Group(_, props) => props.0,
     }
@@ -117,6 +132,7 @@ pub trait DocAlgebra {
     fn nest(self, indent: i32) -> Rc<Doc>;
     fn nest_if_break(self, indent: i32, observed_doc: usize) -> Rc<Doc>;
     fn nest_hanging(self) -> Rc<Doc>;
+    fn fits_until_l_bracket(self) -> Rc<Doc>;
 }
 
 impl DocAlgebra for Rc<Doc> {
@@ -157,6 +173,11 @@ impl DocAlgebra for Rc<Doc> {
     fn nest_hanging(self) -> Rc<Doc> {
         let properties = CommonProperties(query_inline_position(&self), 0);
         Rc::new(Doc::NestHanging(self, properties))
+    }
+
+    fn fits_until_l_bracket(self) -> Rc<Doc> {
+        let properties = CommonProperties(query_inline_position(&self), 0);
+        Rc::new(Doc::FitsUntilLBracket(self, properties))
     }
 }
 
@@ -199,16 +220,21 @@ pub(crate) enum Mode {
 
 pub(crate) type Triple = (i32, Mode, Rc<Doc>);
 
-fn fits(mut remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
+fn fits(mut remaining_width: i32, mut docs: VecDeque<Triple>) -> bool {
     trace!("Judging fits for {docs:?}");
     while remaining_width >= 0 {
         match docs.pop_front() {
             None => {
-                trace!("Fits returned true");
+                trace!("Got None docs Fits returned true");
                 return true;
             }
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
                 (_, _, Doc::Nil) => continue,
+                (i, m, Doc::FitsUntilLBracket(inner, _)) => {
+                    docs.push_front((i, m, Rc::clone(inner)));
+                    trace!("Delegating fits to fits until l bracket");
+                    return fits_until_l_bracket(remaining_width, docs);
+                }
                 (i, m, Doc::Cons(first, second, _)) => {
                     docs.push_front((i, m, Rc::clone(second)));
                     docs.push_front((i, m, Rc::clone(first)));
@@ -226,33 +252,84 @@ fn fits(mut remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
                     docs.push_front((i, m, Rc::clone(doc)));
                     continue;
                 }
-                // Special case for the embracing operator
-                (_, _, Doc::Text(text, s_len, _)) if &**text == "{" => {
-                    if docs.front().is_some() {
-                        let (_, _, inner_doc) = docs.front().unwrap();
-                        match &**inner_doc {
-                            Doc::Text(inner_text, _, _) => {
-                                if &**inner_text == "{" {
-                                    trace!("Found embracing operator while trying to fit the line");
-                                    docs.pop_front();
-                                    remaining_width -= 2 * *s_len as i32;
-                                    continue;
-                                } else {
-                                    trace!(
-                                        "Found a non-embracing left brace. Returning true from fit"
-                                    );
-                                    return true;
-                                }
-                            }
-                            _ => {
-                                trace!("Fits returned true");
-                                return true;
-                            }
-                        }
+                (_, _, Doc::Text(_, s_len, _)) => {
+                    remaining_width -= *s_len as i32;
+                    continue;
+                }
+                (_, Mode::Flat, Doc::Break(s)) => {
+                    remaining_width -= s.len() as i32;
+                    continue;
+                }
+                (_, Mode::Break, Doc::Break(_)) => unreachable!(),
+                (
+                    i,
+                    _,
+                    Doc::Group(
+                        GroupDocProperties(inner_docs, should_break),
+                        CommonProperties(inline_comment_pos, _),
+                    ),
+                ) => {
+                    if inline_comment_pos == &InlineCommentPosition::Middle {
+                        trace!("Fits returned false due to inline comment {inline_comment_pos:?}");
+                        return false;
+                    } else if matches!(should_break, ShouldBreak::Propagate) {
+                        trace!("Fits returned false due to propagating should break");
+                        return false;
                     } else {
-                        remaining_width -= *s_len as i32;
+                        docs.push_front((i, Mode::Flat, Rc::clone(inner_docs)));
                         continue;
                     }
+                }
+            },
+        }
+    }
+    trace!("Fits returned false");
+    false
+}
+
+fn fits_until_l_bracket(mut remaining_width: i32, mut docs: VecDeque<Triple>) -> bool {
+    trace!("Judging fits until l bracket for {docs:?}");
+    while remaining_width >= 0 {
+        match docs.pop_front() {
+            None => {
+                trace!("Got None docs fits until l bracket returned true");
+                return true;
+            }
+            Some((indent, mode, doc)) => match (indent, mode, &*doc) {
+                (_, _, Doc::Nil) => continue,
+                (i, m, Doc::FitsUntilLBracket(inner, _)) => {
+                    docs.push_front((i, m, Rc::clone(inner)));
+                    return fits_until_l_bracket(remaining_width, docs);
+                }
+                (i, m, Doc::Cons(first, second, _)) => {
+                    docs.push_front((i, m, Rc::clone(second)));
+                    docs.push_front((i, m, Rc::clone(first)));
+                    continue;
+                }
+                (i, m, Doc::Nest(step, doc, _)) => {
+                    docs.push_front((i + step, m, Rc::clone(doc)));
+                    continue;
+                }
+                (i, m, Doc::NestIfBreak(step, doc, _, _)) => {
+                    docs.push_front((i + step, m, Rc::clone(doc)));
+                    continue;
+                }
+                (i, m, Doc::NestHanging(doc, _)) => {
+                    docs.push_front((i, m, Rc::clone(doc)));
+                    continue;
+                }
+                (_, _, Doc::Text(text, s_len, _)) if &**text == "{" => {
+                    // Special case fot the embracing op
+                    if let Some((_, _, next_doc)) = docs.front() {
+                        if let Doc::Text(text, _, _) = &**next_doc {
+                            if &**text == "{" {
+                                remaining_width -= *s_len as i32;
+                                continue;
+                            }
+                        }
+                    }
+                    // Normal case
+                    return remaining_width > 0;
                 }
                 (_, _, Doc::Text(_, s_len, _)) => {
                     remaining_width -= *s_len as i32;
@@ -275,7 +352,7 @@ fn fits(mut remaining_width: i32, docs: &mut VecDeque<Triple>) -> bool {
             },
         }
     }
-    trace!("Fits returned false");
+    trace!("Fits until l bracket returned false");
     false
 }
 
@@ -334,16 +411,20 @@ pub(crate) fn format_to_sdoc(
                         Rc::new(format_to_sdoc(consumed + length, docs, config, broken_docs)),
                     )
                 }
+                (i, m, Doc::FitsUntilLBracket(inner, _)) => {
+                    docs.push_front((i, m, Rc::clone(inner)));
+                    format_to_sdoc(consumed, docs, config, broken_docs)
+                }
                 (i, Mode::Break, Doc::Break(_)) => SimpleDoc::Line(
                     i as usize,
                     Rc::new(format_to_sdoc(i, docs, config, broken_docs)),
                 ),
                 (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, doc_ref))) => {
-                    let mut group_docs =
-                        VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
+                    let group_docs = VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
                     if groupped_doc.1 == ShouldBreak::Yes
+                        || groupped_doc.1 == ShouldBreak::Propagate
                         || matches!(inline_comment_pos, InlineCommentPosition::Middle)
-                        || !fits(line_length - consumed, &mut group_docs)
+                        || !fits(line_length - consumed, group_docs)
                     {
                         docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));
                         broken_docs.insert(*doc_ref);

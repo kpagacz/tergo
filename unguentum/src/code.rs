@@ -301,7 +301,8 @@ impl<'a> Code for Expression<'a> {
             | Expression::Continue(token)
             | Expression::Break(token) => token.to_docs(config, doc_ref),
             Expression::Term(term_expr) => match &**term_expr {
-                // Case for the embracing operator
+                // Special case for the embracing operator
+                // {{ }} which should not break
                 TermExpr {
                     pre_delimiters: Some(pre_delim),
                     term,
@@ -335,7 +336,10 @@ impl<'a> Code for Expression<'a> {
                                         inner_term_expr
                                             .pre_delimiters
                                             .as_ref()
-                                            .unwrap()
+                                            .expect(
+                                                "Already checked this pre delimiter to be an l \
+                                                 brace",
+                                            )
                                             .to_docs(config, doc_ref),
                                     )
                                     .cons(text!(" "))
@@ -365,12 +369,13 @@ impl<'a> Code for Expression<'a> {
                                     .cons(nl!(" ").cons(inner).nest(config.indent()))
                                     .cons(nl!(" "))
                                     .cons(post_delim.to_docs(config, doc_ref))
-                                    .to_group(ShouldBreak::Yes, doc_ref)
+                                    .to_group(ShouldBreak::Propagate, doc_ref)
                             }
                         }
                         _ => unreachable!("Already checked that term[0] is a Term"),
                     }
                 }
+                // Normal { }
                 TermExpr {
                     pre_delimiters: Some(pre_delim),
                     term,
@@ -391,15 +396,20 @@ impl<'a> Code for Expression<'a> {
                                     .to_group(ShouldBreak::No, doc_ref)
                             })
                             .collect::<Vec<_>>();
-                        let inner =
-                            join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config, doc_ref);
+                        let inner = join_docs(
+                            docs,
+                            Rc::new(Doc::Nil),
+                            ShouldBreak::Propagate,
+                            config,
+                            doc_ref,
+                        );
                         delimited_content_to_docs(
                             pre_delim,
                             inner,
                             post_delim,
                             config,
                             doc_ref,
-                            ShouldBreak::Yes,
+                            ShouldBreak::Propagate,
                         )
                     }
                 }
@@ -415,7 +425,13 @@ impl<'a> Code for Expression<'a> {
                                 .to_group(ShouldBreak::No, doc_ref)
                         })
                         .collect::<Vec<_>>();
-                    join_docs(docs, Rc::new(Doc::Nil), ShouldBreak::Yes, config, doc_ref)
+                    join_docs(
+                        docs,
+                        Rc::new(Doc::Nil),
+                        ShouldBreak::Propagate,
+                        config,
+                        doc_ref,
+                    )
                 }
                 TermExpr {
                     pre_delimiters: Some(pre_delim),
@@ -754,7 +770,7 @@ impl<'a> Code for Expression<'a> {
                 } else {
                     group!(
                         function_ref.to_docs(config, doc_ref).cons(inner_docs),
-                        should_break_args(args),
+                        ShouldBreak::No,
                         group_ref
                     )
                 }
@@ -764,7 +780,7 @@ impl<'a> Code for Expression<'a> {
                 object_ref
                     .to_docs(config, doc_ref)
                     .cons(args.to_docs(config, doc_ref))
-                    .to_group(should_break_args(args), doc_ref)
+                    .to_group(ShouldBreak::No, doc_ref)
             }
             Expression::ForLoopExpression(for_loop) => {
                 let (keyword, left_delim, identifier, in_keyword, collection, right_delim, body) = (
@@ -851,97 +867,77 @@ fn args_to_docs_with_conditional_nest(
     doc_ref: &mut usize,
     observed_doc: usize,
 ) -> Rc<Doc> {
-    let inside_delims = args
-        .args
-        .iter()
-        .map(|arg| {
-            arg.to_docs(config, doc_ref)
-                .to_group(ShouldBreak::No, doc_ref)
-        })
-        .reduce(|first, second| first.cons(nl!(" ")).cons(second));
-
-    if let Some(inside_delims) = inside_delims {
-        let nested_inside_delims = nl!("")
-            .cons(inside_delims)
-            .nest_if_break(config.indent(), observed_doc);
-        args.left_delimeter
+    match args.args.split_last() {
+        Some((last_arg, other_args)) => {
+            let other_args = other_args
+                .iter()
+                .map(|arg| {
+                    arg.to_docs(config, doc_ref)
+                        .to_group(ShouldBreak::No, doc_ref)
+                })
+                .collect::<Vec<_>>();
+            let last_arg = std::iter::once(
+                if is_expression_bracketed_term_or_function_def(&last_arg.0) {
+                    last_arg
+                        .to_docs(config, doc_ref)
+                        .to_group(ShouldBreak::No, doc_ref)
+                        .fits_until_l_bracket()
+                } else {
+                    last_arg
+                        .to_docs(config, doc_ref)
+                        .to_group(ShouldBreak::No, doc_ref)
+                },
+            );
+            let inside_delims = other_args
+                .into_iter()
+                .chain(last_arg)
+                .reduce(|first, second| first.cons(nl!(" ")).cons(second))
+                .expect(
+                    "There is at least last_arg doc, otherwise we should be in the None match arm",
+                );
+            let nested_inside_delims = nl!("")
+                .cons(inside_delims)
+                .nest_if_break(config.indent(), observed_doc);
+            args.left_delimeter
+                .to_docs(config, doc_ref)
+                .cons(nested_inside_delims)
+                .cons(nl!(""))
+                .cons(args.right_delimeter.to_docs(config, doc_ref))
+        }
+        None => args
+            .left_delimeter
             .to_docs(config, doc_ref)
-            .cons(nested_inside_delims)
-            .cons(nl!(""))
-            .cons(args.right_delimeter.to_docs(config, doc_ref))
-    } else {
-        args.left_delimeter
-            .to_docs(config, doc_ref)
-            .cons(args.right_delimeter.to_docs(config, doc_ref))
+            .cons(args.right_delimeter.to_docs(config, doc_ref)),
     }
 }
 
-fn should_break_args(args: &Args) -> ShouldBreak {
-    // Tidyverse has some crazy breaking rules regarding curly braces
-    // breaking. See this: https://style.tidyverse.org/syntax.html#indenting
-    // Specifically, these are good examples:
-    //
-    // test_that("call1 returns an ordered factor", {
-    //   expect_s3_class(call1(x, y), c("factor", "ordered"))
-    // })
-    //
-    // tryCatch(
-    //   {
-    //     x <- scan()
-    //     cat("Total: ", sum(x), "\n", sep = "")
-    //   },
-    //   interrupt = function(e) {
-    //     message("Aborted by user")
-    //   }
-    // )
-    //
-    // The first one is just wack, because there are breaks inside the arguments,
-    // but the inside of the parenthesis behaves like if it wasn't broken.
-    // Notice that there is only single level of indent in the closure as well. Wack.
-    //
-    // And the second one does not try to emulate what the first one does,
-    // it just does the breaking normally.
-    //
-    // I am going to create some custom rules for this behaviour (lots of ifs basically)
-    // to specify what is the desired behaviour:
-    // * if there is only one argument then support this:
-    // f({
-    //   2
-    // }) (let the algorithm calculate the fits normally)
-    // * if there are >= two arguments, and only the last one contains closures, let things happen
-    // normally (so this wack behaviour from the first example is supported)
-    // * if there are >= two arguments and not only the last one contains closures,
-    // break all arguments
-
-    if args.args.len() >= 2
-        && args.args.iter().take(args.args.len() - 1).any(|arg| {
-            arg.0.iter().any(|expr| {
-            matches!(expr, Expression::Term(term_expr) if !is_embracing_operator_closure(term_expr))
-                || matches!(expr, Expression::FunctionDef(..))
-        })
-        })
-    {
-        ShouldBreak::Yes
-    } else {
-        ShouldBreak::No
-    }
+fn is_expression_bracketed_term_or_function_def(expr: &Option<Expression>) -> bool {
+    expr.as_ref().is_some_and(|expr| match expr {
+        Expression::Term(term) => {
+            term.pre_delimiters
+                .is_some_and(|pre_delim| matches!(pre_delim.token, Token::LBrace))
+                && !is_term_embracing_op(term)
+        }
+        Expression::FunctionDef(_) => true,
+        _ => false,
+    })
 }
 
-fn is_embracing_operator_closure(term: &TermExpr) -> bool {
-    match (term.pre_delimiters, term.term.first()) {
-        (None, _) | (Some(_), None) => false,
-        (Some(pre), Some(first)) => {
-            if !matches!(pre.token, Token::LBrace) {
-                return false;
-            }
-            if let Expression::Term(term) = first {
-                term.pre_delimiters.is_some()
-                    && matches!(term.pre_delimiters.unwrap().token, Token::LBrace)
-            } else {
-                false
+fn is_term_embracing_op(term: &TermExpr) -> bool {
+    if let Some(pre_delim) = term.pre_delimiters {
+        if matches!(pre_delim.token, Token::LBrace)
+            && !term.term.is_empty()
+            && matches!(term.term[0], Expression::Term(_))
+        {
+            let first_expr = &term.term[0];
+            if let Expression::Term(inner_term) = first_expr {
+                return inner_term
+                    .pre_delimiters
+                    .is_some_and(|pre_delim| matches!(pre_delim.token, Token::LBrace));
             }
         }
     }
+    false
 }
 
 /// Forced line breaks are line breaks inside a group
@@ -961,10 +957,15 @@ fn has_forced_line_breaks(doc: &Rc<Doc>, inside_a_group_with_should_break: bool)
         Doc::NestHanging(inner, _) => {
             has_forced_line_breaks(inner, inside_a_group_with_should_break)
         }
-        Doc::Break(_) => inside_a_group_with_should_break,
-        Doc::Group(group_props, _) => {
-            has_forced_line_breaks(&group_props.0, matches!(group_props.1, ShouldBreak::Yes))
+        Doc::FitsUntilLBracket(inner, _) => {
+            has_forced_line_breaks(inner, inside_a_group_with_should_break)
         }
+        Doc::Break(_) => inside_a_group_with_should_break,
+        Doc::Group(group_props, _) => has_forced_line_breaks(
+            &group_props.0,
+            matches!(group_props.1, ShouldBreak::Yes)
+                || matches!(group_props.1, ShouldBreak::Propagate),
+        ),
     }
 }
 
