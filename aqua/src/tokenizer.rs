@@ -42,6 +42,11 @@ impl<'a> Tokenizer<'a> {
     /// ```
     ///
     pub fn new(input: &'a str) -> Self {
+        let source = input.chars().collect::<Vec<_>>();
+        assert!(
+            source.len() == input.len(),
+            "Non-ASCII characters found in the input"
+        );
         Self {
             line: 0,
             offset: 0,
@@ -433,6 +438,7 @@ impl<'a> Tokenizer<'a> {
         let mut in_backticks = false;
         while self.it < self.source.len() && in_backticks
             || self.source[self.it].is_alphabetic()
+            || self.source[self.it].is_ascii_digit()
             || self.source[self.it] == '.'
             || self.source[self.it] == '_'
             || self.source[self.it] == '`'

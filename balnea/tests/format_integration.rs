@@ -248,6 +248,9 @@ comparison_test!(
     "086",
     Config::default()
 );
+comparison_test!(function_calls_with_just_comments, "087", Config::default());
+comparison_test!(inline_comment_in_a_function_call, "088", Config::default());
+comparison_test!(non_ascii_chars, "089", Config::default());
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

@@ -178,17 +178,25 @@ impl Code for CommentedToken<'_> {
                 .token
                 .to_docs(config, doc_ref)
                 .cons(text!(" "))
-                .cons(text!(inline_comment, 0, InlineCommentPosition::End)),
+                .cons(text!(inline_comment, 0, InlineCommentPosition::End))
+                .to_group(ShouldBreak::Propagate, doc_ref),
             (Some(leading_comments), None) => {
                 let mut leading_comments_it = leading_comments.iter();
-                let mut leading_comments = text!(leading_comments_it.next().unwrap());
+                let mut leading_comments = text!(
+                    leading_comments_it.next().unwrap(),
+                    0,
+                    InlineCommentPosition::End
+                );
                 for comment in leading_comments_it {
-                    leading_comments = leading_comments.cons(nl!("")).cons(text!(comment, 0));
+                    leading_comments = leading_comments.cons(nl!("")).cons(text!(
+                        comment,
+                        0,
+                        InlineCommentPosition::End
+                    ));
                 }
                 let leading_comments = leading_comments
                     .nest_hanging()
                     .to_group(ShouldBreak::Yes, &mut 0);
-
                 leading_comments
                     .cons(nl!(""))
                     .cons(
@@ -207,7 +215,6 @@ impl Code for CommentedToken<'_> {
                 let leading_comments = leading_comments
                     .nest_hanging()
                     .to_group(ShouldBreak::Yes, &mut 0);
-
                 leading_comments
                     .cons(nl!(""))
                     .cons(
@@ -217,7 +224,7 @@ impl Code for CommentedToken<'_> {
                             .cons(text!(inline_comment, 0, InlineCommentPosition::End))
                             .to_group(ShouldBreak::No, &mut 0),
                     )
-                    .to_group(ShouldBreak::Yes, &mut 0)
+                    .to_group(ShouldBreak::Propagate, &mut 0)
             }
         }
     }
@@ -904,10 +911,34 @@ fn args_to_docs_with_conditional_nest(
                 .cons(nl!(""))
                 .cons(args.right_delimeter.to_docs(config, doc_ref))
         }
-        None => args
-            .left_delimeter
-            .to_docs(config, doc_ref)
-            .cons(args.right_delimeter.to_docs(config, doc_ref)),
+        None => match args.right_delimeter {
+            Delimiter::SingleBracket(commented_token) | Delimiter::Paren(commented_token) => {
+                if commented_token.leading_comments.is_some() {
+                    args.left_delimeter
+                        .to_docs(config, doc_ref)
+                        .cons(nl!("").nest(config.indent()))
+                        .cons(args.right_delimeter.to_docs(config, doc_ref))
+                        .to_group(ShouldBreak::Yes, doc_ref)
+                } else {
+                    args.left_delimeter
+                        .to_docs(config, doc_ref)
+                        .cons(args.right_delimeter.to_docs(config, doc_ref))
+                }
+            }
+            Delimiter::DoubleBracket((first_commented_token, _)) => {
+                if first_commented_token.leading_comments.is_some() {
+                    args.left_delimeter
+                        .to_docs(config, doc_ref)
+                        .cons(nl!("").nest(config.indent()))
+                        .cons(args.right_delimeter.to_docs(config, doc_ref))
+                        .to_group(ShouldBreak::Yes, doc_ref)
+                } else {
+                    args.left_delimeter
+                        .to_docs(config, doc_ref)
+                        .cons(args.right_delimeter.to_docs(config, doc_ref))
+                }
+            }
+        },
     }
 }
 

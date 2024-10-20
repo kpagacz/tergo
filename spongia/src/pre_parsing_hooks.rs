@@ -13,7 +13,33 @@ pub fn pre_parse<'a>(tokens: &'a mut [CommentedToken<'a>]) -> Vec<&'a CommentedT
     let mut tokens_without_comments = vec![];
     while it < tokens.len() {
         if let Token::Comment(comment) = tokens[it].token {
-            let mut comments = vec![comment];
+            let mut comments = vec![];
+            // Pop all newlines except the last one to collapse whitespace
+            // before comments. This handles such cases as:
+            // TRUE
+            //
+            //
+            // # Leading comment
+            // FALSE
+            if it > 1
+                && matches!(tokens[it - 1].token, Token::Newline)
+                && matches!(tokens[it - 2].token, Token::Newline)
+            {
+                comments.push("");
+            }
+            comments.push(comment);
+            while let Some(&last_added) = tokens_without_comments.last() {
+                let last_token: &CommentedToken<'a> = &tokens[last_added];
+                if matches!(last_token.token, Token::Newline) {
+                    tokens_without_comments.pop();
+                } else {
+                    break;
+                }
+            }
+            if it > 0 {
+                tokens_without_comments.push(it - 1);
+            }
+
             it += 1;
             loop {
                 match tokens[it].token {
