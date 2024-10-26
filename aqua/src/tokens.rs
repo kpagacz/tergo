@@ -7,8 +7,6 @@
 pub struct CommentedToken<'a> {
     /// The actual token stored in this struct.
     pub token: Token<'a>,
-    /// The line of the start of this token.
-    pub line: u32,
     /// The column offset of the start of this token.
     pub offset: usize,
     /// Preceding comments.
@@ -26,10 +24,9 @@ impl<'a> Deref for CommentedToken<'a> {
 }
 
 impl<'a> CommentedToken<'a> {
-    pub fn new(token: Token<'a>, line: u32, offset: usize) -> Self {
+    pub fn new(token: Token<'a>, offset: usize) -> Self {
         Self {
             token,
-            line,
             offset,
             leading_comments: None,
             inline_comment: None,
@@ -38,14 +35,12 @@ impl<'a> CommentedToken<'a> {
 
     pub fn with_comments(
         token: Token<'a>,
-        line: u32,
         offset: usize,
         leading_comments: Option<Vec<&'a str>>,
         inline_comment: Option<&'a str>,
     ) -> Self {
         Self {
             token,
-            line,
             offset,
             leading_comments,
             inline_comment,
@@ -146,7 +141,7 @@ macro_rules! commented_tokens {
     ($($args:expr),*) => {{
         vec![
         $(
-            CommentedToken::new($args, 0, 0),
+            CommentedToken::new($args, 0),
         )*
         ]
     }}
@@ -170,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let token = CommentedToken::new(Token::Symbol("a"), 0, 0);
+        let token = CommentedToken::new(Token::Symbol("a"), 0);
         let displayed = format!("{}", token);
         assert_eq!("Symbol(\"a\")", displayed);
     }

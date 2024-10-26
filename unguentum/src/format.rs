@@ -424,6 +424,7 @@ pub(crate) fn format_to_sdoc(
                     if groupped_doc.1 == ShouldBreak::Yes
                         || groupped_doc.1 == ShouldBreak::Propagate
                         || matches!(inline_comment_pos, InlineCommentPosition::Middle)
+                        || matches!(inline_comment_pos, InlineCommentPosition::InGroup)
                         || !fits(line_length - consumed, group_docs)
                     {
                         docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));

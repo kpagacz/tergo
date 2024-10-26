@@ -1,3 +1,5 @@
+use std::str::CharIndices;
+
 use log::{debug, trace};
 
 use crate::tokens::{
@@ -9,10 +11,10 @@ use crate::tokens::{
 ///
 /// Transforms an R program into an array of language tokens.
 pub struct Tokenizer<'a> {
-    line: u32,
     offset: usize,
     it: usize,
-    source: Vec<char>,
+    current_char: char,
+    source: CharIndices<'a>,
     raw_source: &'a str,
 }
 
@@ -42,16 +44,11 @@ impl<'a> Tokenizer<'a> {
     /// ```
     ///
     pub fn new(input: &'a str) -> Self {
-        let source = input.chars().collect::<Vec<_>>();
-        assert!(
-            source.len() == input.len(),
-            "Non-ASCII characters found in the input"
-        );
         Self {
-            line: 0,
             offset: 0,
             it: 0,
-            source: input.chars().collect::<Vec<_>>(),
+            current_char: '\0',
+            source: input.char_indices(),
             raw_source: input,
         }
     }
@@ -74,19 +71,20 @@ impl<'a> Tokenizer<'a> {
     ///
     pub fn tokenize(&mut self) -> Vec<CommentedToken> {
         let mut tokens = vec![];
-        while self.it < self.source.len() {
-            match self.source[self.it] {
+        self.next();
+        while self.it < self.raw_source.len() {
+            match self.current_char {
                 ' ' | '\t' => {
                     self.next();
                 }
                 '\r' => {
                     self.next();
                     self.push_token(Newline, &mut tokens);
-                    self.next_line();
+                    self.next();
                 }
                 '\n' => {
                     self.push_token(Newline, &mut tokens);
-                    self.next_line();
+                    self.next();
                 }
                 ';' => {
                     self.push_token(Semicolon, &mut tokens);
@@ -239,8 +237,8 @@ impl<'a> Tokenizer<'a> {
                 }
                 '!' => {
                     self.next();
-                    match self.source[self.it..] {
-                        ['=', ..] => {
+                    match self.current_char {
+                        '=' => {
                             self.push_token(NotEqual, &mut tokens);
                             self.next();
                         }
@@ -279,7 +277,7 @@ impl<'a> Tokenizer<'a> {
                         _ => {
                             let custom_binary_start = self.it;
                             self.next();
-                            while self.source[self.it] != '%' {
+                            while self.current_char != '%' {
                                 self.next();
                             }
                             let custom_binary_end = self.it;
@@ -314,116 +312,130 @@ impl<'a> Tokenizer<'a> {
                 }
                 ':' => {
                     self.next();
-                    match self.source[self.it..] {
-                        [':', ':', ..] => {
+                    let next = self.lookahead();
+
+                    match (self.current_char, next) {
+                        // :::
+                        (':', Some(':')) => {
                             self.push_token(NsGetInt, &mut tokens);
                             self.next();
                             self.next();
                         }
-                        [':', ..] => {
+                        // ::
+                        (':', _) => {
                             self.push_token(NsGet, &mut tokens);
                             self.next()
                         }
-                        ['=', ..] => {
+                        // :=
+                        ('=', _) => {
                             self.push_token(ColonAssign, &mut tokens);
                             self.next()
                         }
+                        // :
                         _ => self.push_token(Colon, &mut tokens),
                     }
                 }
                 _ => unreachable!(),
             }
         }
-        tokens.push(CommentedToken::new(EOF, self.line, self.offset));
+        tokens.push(CommentedToken::new(EOF, self.offset));
         trace!("Tokenized: {:?}", tokens);
         tokens
     }
 
     fn push_token(&mut self, token: Token<'a>, tokens: &mut Vec<CommentedToken<'a>>) {
-        tokens.push(CommentedToken::new(token, self.line, self.offset));
+        tokens.push(CommentedToken::new(token, self.offset));
     }
 
     fn string_literal(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
-        let delimiter = self.source[self.it];
-        let (start_line, start_offset) = (self.line, self.offset);
+        let delimiter = self.current_char;
+        let start_offset = self.offset;
         let start_it = self.it;
+        let mut previous_char = self.current_char;
         self.next();
-        while self.source[self.it] != delimiter || self.source[self.it - 1] == '\\' {
-            if self.source[self.it] == '\n' {
-                self.next_line();
-            } else {
-                self.next();
-            }
+        while self.current_char != delimiter || previous_char == '\\' {
+            previous_char = self.current_char;
+            self.next();
         }
         tokens.push(CommentedToken::new(
             Literal(&self.raw_source[start_it..=self.it]),
-            start_line,
             start_offset,
         ));
     }
 
     fn parse_decimal(&mut self) {
-        while self.it < self.source.len() && self.source[self.it].is_ascii_digit() {
+        while self.it < self.raw_source.len() && self.current_char.is_ascii_digit() {
             self.next();
         }
     }
 
     fn parse_hexadecimal(&mut self) {
-        while self.it < self.source.len() && self.source[self.it].is_ascii_hexdigit() {
+        while self.it < self.raw_source.len() && self.current_char.is_ascii_hexdigit() {
             self.next();
         }
     }
 
     fn number_literal(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
-        match self.source[self.it..] {
+        let next = self.lookahead();
+        match (self.current_char, next) {
             // Hexadecimal
-            ['0', 'x', ..] | ['0', 'X', ..] => {
+            // 0x.., 0X..
+            ('0', Some(next)) if next == 'x' || next == 'X' => {
                 self.next();
                 self.next();
                 self.parse_hexadecimal();
-                if let ['.', ..] = self.source[self.it..] {
+                if self.current_char == '.' {
                     self.next();
                     self.parse_hexadecimal();
-                    match self.source[self.it..] {
-                        ['p', ..] | ['P', ..] => {
-                            self.next();
-                            self.parse_hexadecimal();
-                        }
-                        _ => {}
+                    if self.current_char == 'p' || self.current_char == 'P' {
+                        self.next();
+                        self.parse_hexadecimal();
                     }
                 }
             }
             // Decimal
             _ => {
                 self.parse_decimal();
-                match self.source[self.it..] {
-                    ['.', ..] => {
+                let next = self.lookahead();
+                match (self.current_char, next) {
+                    ('.', _) => {
                         self.next();
                         self.parse_decimal();
-                        match self.source[self.it..] {
-                            ['e', '+', ..] | ['E', '+', ..] | ['e', '-', ..] | ['E', '-', ..] => {
+                        let next = self.lookahead();
+                        match (self.current_char, next) {
+                            ('e', Some(next)) if next == '+' || next == '-' => {
                                 self.next();
                                 self.next();
                                 self.parse_decimal();
                             }
-                            ['e', ..] | ['E', ..] => {
+                            ('E', Some(next)) if next == '+' || next == '-' => {
+                                self.next();
+                                self.next();
+                                self.parse_decimal();
+                            }
+                            ('e', _) | ('E', _) => {
                                 self.next();
                                 self.parse_decimal();
                             }
                             _ => {}
                         }
                     }
-                    ['e', '+', ..] | ['E', '+', ..] | ['e', '-', ..] | ['E', '-', ..] => {
+                    ('e', Some(next)) if next == '+' || next == '-' => {
                         self.next();
                         self.next();
                         self.parse_decimal();
                     }
-                    ['e', ..] | ['E', ..] => {
+                    ('E', Some(next)) if next == '+' || next == '-' => {
+                        self.next();
                         self.next();
                         self.parse_decimal();
                     }
-                    ['L', ..] => {
+                    ('e', _) | ('E', _) => {
+                        self.next();
+                        self.parse_decimal();
+                    }
+                    ('L', _) => {
                         self.next();
                     }
                     _ => {}
@@ -436,14 +448,14 @@ impl<'a> Tokenizer<'a> {
     fn identifier(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
         let mut in_backticks = false;
-        while self.it < self.source.len() && in_backticks
-            || self.source[self.it].is_alphabetic()
-            || self.source[self.it].is_ascii_digit()
-            || self.source[self.it] == '.'
-            || self.source[self.it] == '_'
-            || self.source[self.it] == '`'
+        while self.it < self.raw_source.len() && in_backticks
+            || self.current_char.is_alphabetic()
+            || self.current_char.is_ascii_digit()
+            || self.current_char == '.'
+            || self.current_char == '_'
+            || self.current_char == '`'
         {
-            if self.source[self.it] == '`' {
+            if self.current_char == '`' {
                 in_backticks = !in_backticks;
             }
             self.next();
@@ -457,7 +469,7 @@ impl<'a> Tokenizer<'a> {
 
     fn identifier_or_reserved(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
-        while self.it < self.source.len() && !SYMBOL_ENDING.contains(&self.source[self.it]) {
+        while self.it < self.raw_source.len() && !SYMBOL_ENDING.contains(&self.current_char) {
             self.next();
         }
 
@@ -479,14 +491,13 @@ impl<'a> Tokenizer<'a> {
 
     fn comment(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
-        while self.it < self.source.len() && self.source[self.it] != '\n' {
+        while self.it < self.raw_source.len() && self.current_char != '\n' {
             self.next();
         }
 
         match tokens.last() {
             Some(CommentedToken {
                 token: Newline,
-                line: _,
                 offset: _,
                 leading_comments: _,
                 inline_comment: _,
@@ -497,21 +508,21 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn next(&mut self) {
-        self.it += 1;
-        self.offset += 1;
-    }
-
-    fn next_line(&mut self) {
-        self.it += 1;
-        self.line += 1;
-        self.offset = 0;
+        if let Some((new_offset, new_char)) = self.source.next() {
+            self.offset = new_offset;
+            self.it = new_offset;
+            self.current_char = new_char;
+        } else {
+            self.offset = self.source.offset();
+            self.it = self.source.offset();
+        }
     }
 
     fn lookahead(&self) -> Option<char> {
-        if self.it + 1 < self.source.len() {
-            Some(self.source[self.it + 1])
-        } else {
-            None
-        }
+        self.source
+            .clone()
+            .peekable()
+            .next()
+            .map(|(_, new_char)| new_char)
     }
 }

@@ -28,8 +28,8 @@ mod tests {
     #[test]
     fn test_displaying_tokens() {
         let tokens = [
-            CommentedToken::new(Token::Symbol("a"), 1, 0),
-            CommentedToken::new(Token::Symbol("b"), 1, 1),
+            CommentedToken::new(Token::Symbol("a"), 1),
+            CommentedToken::new(Token::Symbol("b"), 1),
         ];
         let displayed = format!("{}", TokensBuffer(&[&tokens[0], &tokens[1]]));
         assert_eq!("Symbol(\"a\") Symbol(\"b\")", displayed);

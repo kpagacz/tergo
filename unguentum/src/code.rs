@@ -179,7 +179,7 @@ impl Code for CommentedToken<'_> {
                 .to_docs(config, doc_ref)
                 .cons(text!(" "))
                 .cons(text!(inline_comment, 0, InlineCommentPosition::End))
-                .to_group(ShouldBreak::Propagate, doc_ref),
+                .to_group(ShouldBreak::No, doc_ref),
             (Some(leading_comments), None) => {
                 let mut leading_comments_it = leading_comments.iter();
                 let mut leading_comments = text!(

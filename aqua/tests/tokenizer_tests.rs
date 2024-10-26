@@ -325,3 +325,14 @@ fn custom_binary_operators() {
         let _ = tokenizer.tokenize();
     }
 }
+
+#[test]
+fn non_ascii_characters() {
+    log_init();
+
+    let examples = vec!["\"PARTY TIME! 🎉🎉🎉\""];
+    for example in examples {
+        let mut tokenizer = Tokenizer::new(example);
+        let _ = tokenizer.tokenize();
+    }
+}
