@@ -1,5 +1,6 @@
 #![allow(clippy::field_reassign_with_default)]
-use tergo_lib::{config::Config, tergo_format};
+use formatter::config::{AllowNlAfterAssignment, EmbracingOpNoNl, Indent, LineLength};
+use tergo_lib::{tergo_format, Config};
 
 fn log_init() {
     let _ = env_logger::builder().is_test(true).try_init();
@@ -69,35 +70,35 @@ fn simple_bops_indents_and_new_lines() {
     let input = include_str!(concat!("./test_cases/003.R"));
     let expected = include_str!(concat!("./test_cases/003-0-line-length.expected"));
     let mut config = Config::default();
-    config.allow_nl_after_assignment = true;
-    config.embracing_op_no_nl = true;
-    config.indent = 0;
-    config.line_length = 0;
+    config.allow_nl_after_assignment = AllowNlAfterAssignment(true);
+    config.embracing_op_no_nl = EmbracingOpNoNl(true);
+    config.indent = Indent(0);
+    config.line_length = LineLength(0);
     assert_eq!(tergo_format(input, Some(&config)).unwrap(), expected);
 
-    config.line_length = 4;
+    config.line_length = LineLength(4);
     let input = include_str!(concat!("./test_cases/003.R"));
     let expected = include_str!(concat!("./test_cases/003-3-line-length.expected"));
     assert_eq!(tergo_format(input, Some(&config)).unwrap(), expected);
 }
 fn short_line_config() -> Config {
     let mut config = Config::default();
-    config.indent = 0;
-    config.line_length = 4;
-    config.embracing_op_no_nl = true;
-    config.allow_nl_after_assignment = true;
+    config.indent = Indent(0);
+    config.line_length = LineLength(4);
+    config.embracing_op_no_nl = EmbracingOpNoNl(true);
+    config.allow_nl_after_assignment = AllowNlAfterAssignment(true);
     config
 }
 fn short_line_plus_indent() -> Config {
     let mut config = short_line_config();
-    config.indent = 2;
+    config.indent = Indent(2);
     config
 }
 fn long_line_config() -> Config {
     let mut config = Config::default();
-    config.embracing_op_no_nl = true;
-    config.indent = 0;
-    config.line_length = 120;
+    config.embracing_op_no_nl = EmbracingOpNoNl(true);
+    config.indent = Indent(0);
+    config.line_length = LineLength(120);
     config
 }
 comparison_test!(simple_bop_with_parenthesis, "004");
@@ -207,7 +208,7 @@ comparison_test!(
 );
 comparison_test!(multi_bop_with_two_parts_fit_in_one_line, "068", {
     let mut config = Config::default();
-    config.line_length = 3;
+    config.line_length = LineLength(3);
     config
 });
 comparison_test!(closure_as_a_function_argument, "069", Config::default());
@@ -288,7 +289,7 @@ comparison_test!(
 );
 comparison_test!(tidyverse_embracing, "tidyverse_style_guide_008", {
     let mut config = Config::default();
-    config.line_length = 80;
+    config.line_length = LineLength(80);
     config
 });
 comparison_test!(
@@ -347,7 +348,7 @@ comparison_test!(
     "tidyverse_style_guide_019",
     {
         let mut config = Config::default();
-        config.line_length = 80;
+        config.line_length = LineLength(80);
         config
     }
 );
@@ -358,7 +359,7 @@ comparison_test!(
 );
 comparison_test!(tidyverse_hanging_indent, "tidyverse_style_guide_021", {
     let mut config = Config::default();
-    config.line_length = 40;
+    config.line_length = LineLength(40);
     config
 });
 comparison_test!(
@@ -366,7 +367,7 @@ comparison_test!(
     "tidyverse_style_guide_022",
     {
         let mut config = Config::default();
-        config.line_length = 40;
+        config.line_length = LineLength(40);
         config
     }
 );
@@ -375,13 +376,13 @@ comparison_test!(
     "tidyverse_style_guide_023",
     {
         let mut config = Config::default();
-        config.line_length = 40;
+        config.line_length = LineLength(40);
         config
     }
 );
 comparison_test!(tidyverse_pipes, "tidyverse_style_guide_024", {
     let mut config = Config::default();
-    config.line_length = 40;
+    config.line_length = LineLength(40);
     config
 });
 comparison_test!(
@@ -389,7 +390,7 @@ comparison_test!(
     "tidyverse_style_guide_025",
     {
         let mut config = Config::default();
-        config.line_length = 40;
+        config.line_length = LineLength(40);
         config
     }
 );

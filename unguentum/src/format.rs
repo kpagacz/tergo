@@ -442,51 +442,12 @@ pub(crate) fn format_to_sdoc(
 
 #[cfg(test)]
 mod tests {
-    use crate::config::FunctionLineBreaks;
+    use crate::config::Config;
 
     use super::*;
 
     fn log_init() {
         let _ = env_logger::builder().is_test(true).try_init();
-    }
-
-    struct MockConfig;
-
-    impl FormattingConfig for MockConfig {
-        fn line_length(&self) -> i32 {
-            120
-        }
-        fn indent(&self) -> i32 {
-            0
-        }
-        fn embracing_op_no_nl(&self) -> bool {
-            true
-        }
-
-        fn allow_nl_after_assignment(&self) -> bool {
-            true
-        }
-
-        fn space_before_complex_rhs_in_formulas(&self) -> bool {
-            true
-        }
-
-        fn strip_suffix_whitespace_in_function_defs(&self) -> bool {
-            true
-        }
-
-        fn function_line_breaks(&self) -> FunctionLineBreaks {
-            FunctionLineBreaks::Hanging
-        }
-
-        fn insert_newline_in_quote_call(&self) -> bool {
-            true
-        }
-    }
-    impl std::fmt::Display for MockConfig {
-        fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            unimplemented!()
-        }
     }
 
     #[test]
@@ -497,7 +458,7 @@ mod tests {
             Mode::Flat,
             Rc::new(Doc::Text(Rc::from("Test"), 4, CommonProperties::default())),
         )]);
-        let mock_config = MockConfig {};
+        let mock_config = Config::default();
         let mut s = HashSet::default();
         let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config, &mut s));
 
@@ -526,7 +487,7 @@ mod tests {
                 CommonProperties::default(),
             )),
         )]);
-        let mock_config = MockConfig {};
+        let mock_config = Config::default();
         let mut s = HashSet::default();
         let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config, &mut s));
 

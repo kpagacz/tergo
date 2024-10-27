@@ -6,7 +6,7 @@ use std::{
 
 use clap::{arg, Parser};
 use log::{debug, info, trace, warn};
-use tergo_lib::{config::Config, tergo_format};
+use tergo_lib::{Config, tergo_format};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -28,10 +28,19 @@ enum Error {
 fn get_config(path: &Path) -> Config {
     match std::fs::read_to_string(path) {
         Ok(config_file) => {
-            let config: Config = toml::from_str(&config_file).unwrap_or_else(|_| Config::default());
+            let config: Config = toml::from_str(&config_file).unwrap_or_else(|_| {
+                warn!(
+                    "Failed to deserialize the configuration file to Config. Using the default \
+                     configuration."
+                );
+                Config::default()
+            });
             config
         }
-        Err(_) => Config::default(),
+        Err(_) => {
+            debug!("Configuration file not found. Using the default configuration.");
+            Config::default()
+        }
     }
 }
 

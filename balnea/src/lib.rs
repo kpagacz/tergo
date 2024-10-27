@@ -1,5 +1,4 @@
-pub mod config;
-use config::Config;
+pub use formatter::config::Config;
 use formatter::format_code;
 use log::trace;
 use parser::{

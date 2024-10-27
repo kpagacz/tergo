@@ -62,9 +62,3 @@ pub fn format_code<T: config::FormattingConfig>(
     // Add a new line because trimming whitespace removes the trailing line
     formatted
 }
-
-// TODO:
-// * multiline function definitions...
-// https://style.tidyverse.org/functions.html#multi-line-function-defintions
-// Scary prospect. I still have only a rough idea on how to implement
-// the hanging indent

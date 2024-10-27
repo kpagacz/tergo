@@ -1047,56 +1047,18 @@ fn delimited_content_to_docs(
 #[cfg(test)]
 mod tests {
     use crate::{
-        config::FunctionLineBreaks,
+        config::Config,
         format::{format_to_sdoc, simple_doc_to_string, Mode},
     };
 
     use super::*;
 
-    struct MockConfig;
-
-    impl FormattingConfig for MockConfig {
-        fn line_length(&self) -> i32 {
-            120
-        }
-        fn indent(&self) -> i32 {
-            0
-        }
-        fn embracing_op_no_nl(&self) -> bool {
-            true
-        }
-
-        fn allow_nl_after_assignment(&self) -> bool {
-            true
-        }
-
-        fn space_before_complex_rhs_in_formulas(&self) -> bool {
-            true
-        }
-
-        fn strip_suffix_whitespace_in_function_defs(&self) -> bool {
-            true
-        }
-
-        fn function_line_breaks(&self) -> FunctionLineBreaks {
-            FunctionLineBreaks::Hanging
-        }
-
-        fn insert_newline_in_quote_call(&self) -> bool {
-            true
-        }
-    }
-    impl std::fmt::Display for MockConfig {
-        fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            unimplemented!()
-        }
-    }
     use std::collections::{HashSet, VecDeque};
 
     #[test]
     fn joining_docs_with_newlines_produces_newlines() {
         let docs = [text!("test"), text!("test2")];
-        let mock_config = MockConfig {};
+        let mock_config = Config::default();
         let mut doc = VecDeque::from([(
             0,
             Mode::Flat,
@@ -1118,7 +1080,7 @@ mod tests {
     #[test]
     fn joinin_docs_with_newlines_does_nothing_for_just_one_doc() {
         let docs = [text!("test")];
-        let mock_config = MockConfig {};
+        let mock_config = Config::default();
         let mut doc = VecDeque::from([(
             0,
             Mode::Flat,

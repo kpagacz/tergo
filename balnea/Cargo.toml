@@ -1,6 +1,6 @@
 [package]
 name = "tergo-lib"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "A tool to format R code"
 license = "MIT"
@@ -11,9 +11,9 @@ license = "MIT"
 path = "src/lib.rs"
 
 [dependencies]
-tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.2.0" }
-parser = { package = "tergo-parser", path = "../spongia", version = "0.2.0" }
-formatter = { package = "tergo-formatter", path = "../unguentum", version = "0.2.0" }
+tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.2.1" }
+parser = { package = "tergo-parser", path = "../spongia", version = "0.2.1" }
+formatter = { package = "tergo-formatter", path = "../unguentum", version = "0.2.1" }
 log = "0.4.21"
 env_logger = "0.11.3"
 serde = { version = "1.0.210", features = ["derive"] }
