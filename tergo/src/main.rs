@@ -9,6 +9,7 @@ use log::{debug, info, trace, warn};
 use tergo_lib::{config::Config, tergo_format};
 
 #[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
 struct Cli {
     #[arg(default_value = ".")]
     path: String,
@@ -96,6 +97,9 @@ fn format_r_files(path: &Path, config_path: &Path) {
 }
 
 fn main() {
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
     env_logger::init();
     let cli = Cli::parse();
 

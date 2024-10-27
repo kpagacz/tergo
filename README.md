@@ -2,7 +2,7 @@
 
 ## Projects
 
-The following directories contain the following projects:
+The following directories contain the projects:
 
 | Directory Name | Project description |
 | --------------:|:------------------- |
@@ -12,8 +12,6 @@ The following directories contain the following projects:
 | spongia (lating sponge) | `spongia` contains a Rust library that implements an imperfect **R parser** |
 | tergo (latin to clean) | `tergo` contains **a command line interface (CLI)** that uses the `balnea` library to format R code |
 | unguentum (latin perfume) | `unguentum` houses a Rust library that implements all the **formatting tools** |
-
-## License
 
 ## Authors
 

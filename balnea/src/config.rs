@@ -18,7 +18,11 @@ pub struct Config {
     /// ~ a + b, but ~a
     pub space_before_complex_rhs_in_formula: bool,
     /// Whether to keep the whitespace before the ending
-    /// bracket of a function definition
+    /// bracket of a function definition in cases such as this:
+    /// function() {
+    ///   TRUE
+    ///
+    /// }
     pub strip_suffix_whitespace_in_function_defs: bool,
     /// The type of line breaking inside function definitions'
     /// arguments. Example:
