@@ -4,6 +4,7 @@ version = "0.2.1"
 edition = "2021"
 license = "MIT"
 description = "Format code written in R"
+repository = "https://github.com/kpagacz/tergo/"
 
 [dependencies]
 clap = { version = "4.5.17", features = ["derive"] }

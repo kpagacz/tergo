@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Konrad Pagacz konrad.pagacz@gmail.com"]
 description = "R language tokenizer"
 license = "MIT"
+repository = "https://github.com/kpagacz/tergo/tree/main/aqua"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
