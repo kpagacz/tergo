@@ -5,3 +5,4 @@ out/
 test.r
 dist/
 scopa.wasm
+.azuredevopspat

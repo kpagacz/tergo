@@ -1,3 +1,5 @@
+use tergo_lib::tergo_format;
+
 wit_bindgen::generate!({
     world: "tergo"
 });
@@ -5,8 +7,8 @@ wit_bindgen::generate!({
 struct Tergo;
 
 impl Guest for Tergo {
-    fn format(_code: String) -> Result<String, String> {
-        Ok("Hi formatted code".to_owned())
+    fn format(code: String) -> Result<String, String> {
+        tergo_format(&code, None)
     }
 }
 
