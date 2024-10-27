@@ -11,10 +11,13 @@ env:
 
 jobs:
   build:
-    runs-on: rust:latest
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
+      - name: Update Rust build tools
+        run: |
+          rustup update
       - name: Build
         run: cargo build --verbose --release
       - name: Run tests
