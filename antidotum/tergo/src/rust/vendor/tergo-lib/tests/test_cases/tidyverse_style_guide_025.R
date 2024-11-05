@@ -1,0 +1,11 @@
+# Good
+iris |>
+  summarise(
+    Sepal.Length = mean(Sepal.Length),
+    Sepal.Width = mean(Sepal.Width),
+    .by = Species
+  )
+
+# Bad
+iris |>
+  summarise(Sepal.Length = mean(Sepal.Length), Sepal.Width = mean(Sepal.Width), .by = Species)

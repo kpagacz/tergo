@@ -1,0 +1,14 @@
+model_list <- add_expr(
+  list(), 
+  substitute(expr = {
+  TRUE
+  "A VERY VERY LONG STRINGA VERY VERY LONG STRINA VERY VERY LONG STRINA VERY VERY LONG STRINA VERY VERY LONG STRINA VERY VERY LONG STRINGGGGG"
+}, env = list(
+  data_model_fit = as.name(data_model_fit),
+  aval_var = aval_var,
+  split_covariates = split_covariates,
+  id_var = id_var,
+  arm_var = arm_var,
+  visit_var = visit_var,
+  cor_struct = cor_struct
+)))

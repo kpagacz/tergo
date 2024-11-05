@@ -1,0 +1,9 @@
+# Good
+sqrt(x^2 + y^2)
+df$z
+x <- 1:10
+
+# Bad
+sqrt(x ^ 2 + y ^ 2)
+df $ z
+x <- 1 : 10

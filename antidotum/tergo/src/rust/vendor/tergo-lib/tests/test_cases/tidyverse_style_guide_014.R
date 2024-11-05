@@ -1,0 +1,7 @@
+# Good
+package?stats
+?mean
+
+# Bad
+package ? stats
+? mean

@@ -1,0 +1,9 @@
+# Good
+while (TRUE) {
+  show(x)
+}
+
+# Bad
+while (TRUE) {
+  show(x)
+}
