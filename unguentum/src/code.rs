@@ -729,6 +729,7 @@ impl<'a> Code for Expression<'a> {
                 let (keyword, body) = (&repeat_expression.repeat_keyword, &repeat_expression.body);
                 keyword
                     .to_docs(config, doc_ref)
+                    .cons(text!(" "))
                     .cons(body.to_docs(config, doc_ref))
                     .to_group(ShouldBreak::No, doc_ref)
             }

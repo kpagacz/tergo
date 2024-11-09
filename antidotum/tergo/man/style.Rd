@@ -4,8 +4,26 @@
 \alias{style}
 \title{Style a package}
 \usage{
-style()
+style(config_file = "tergo.toml", configuration = list())
+}
+\arguments{
+\item{config_file}{(\code{character}) the path to the configuration file}
+
+\item{configuration}{(\code{list}) the configuration for formatting}
 }
 \description{
 Style a package
+}
+\details{
+Configuration is read from a file named \code{tergo.toml} in the root of the
+package. The precedence of the configuration is (from the highest to lowest):
+\enumerate{
+\item The configuration passed to the function.
+\item The configuration file.
+}
+}
+\examples{
+style()
+style(config_file = "tergo.toml", configuration = list())
+
 }

@@ -4,9 +4,11 @@
 \alias{style_file}
 \title{Style a file}
 \usage{
-style_file(configuration = list())
+style_file(file, configuration = list())
 }
 \arguments{
+\item{file}{(\code{character}) the file to format}
+
 \item{configuration}{(\code{list}) the configuration for formatting}
 }
 \description{

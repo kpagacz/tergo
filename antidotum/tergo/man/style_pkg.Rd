@@ -4,9 +4,13 @@
 \alias{style_pkg}
 \title{Style a package}
 \usage{
-style_pkg(configuration = list())
+style_pkg(path = ".", config_file = "tergo.toml", configuration = list())
 }
 \arguments{
+\item{path}{(\code{character}) the path to the package}
+
+\item{config_file}{(\code{character}) the path to the configuration file}
+
 \item{configuration}{(\code{list}) the configuration for formatting}
 }
 \description{

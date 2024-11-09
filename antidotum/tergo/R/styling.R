@@ -1,31 +1,80 @@
 #' Style a package
 #'
+#' @details
+#' Configuration is read from a file named `tergo.toml` in the root of the
+#' package. The precedence of the configuration is (from the highest to lowest):
+#' 1. The configuration passed to the function.
+#' 2. The configuration file.
+#'
+#' @param config_file (`character`) the path to the configuration file
+#' @param configuration (`list`) the configuration for formatting
+#'
+#' @examples
+#' style()
+#' style(config_file = "tergo.toml", configuration = list())
+#'
 #' @export
-style <- function() {
-  # TODO
-  # 1. Read a configuration file
-  # 2. List files
-  # 3. Call formatting
-  "styled"
+style <- function(config_file = "tergo.toml", configuration = list()) {
+  # Read a configuration file
+  wd <- getwd()
+  config <- NULL
+
+  repeat {
+    if (file.exists(file.path(wd, config_file))) {
+      config <- file.path(wd, config_file)
+      break
+    }
+    # OS agnostic file path splitting
+    if (strsplit(wd, split = .Platform$file.sep) |> length() == 1) {
+      break
+    }
+    wd <- dirname(wd)
+  }
+  if (!is.null(config)) {
+    config <- get_config(config)
+  } else {
+    config <- get_default_config()
+  }
+  config[names(configuration)] <- configuration
+
+  # Find package root. If not found, then just list files in the current directory
+  package_root <- getwd()
+  while (!file.exists(file.path(package_root, "DESCRIPTION"))) {
+    package_root <- dirname(package_root)
+    if (strsplit(package_root, split = .Platform$file.sep) |> length() == 1) {
+      package_root <- getwd()
+      break
+    }
+  }
+  files <- list.files(package_root, recursive = TRUE, full.names = TRUE)
+  files <- Filter(function(file) any(endsWith(file, c("R", "r"))), files)
+
+  # Format
+  for (file in files) {
+    style_file(file, configuration)
+  }
 }
 
 #' Style a package
 #'
+#' @inheritParams style
+#' @param path (`character`) the path to the package
+#'
 #' @export
-#' @param configuration (`list`) the configuration for formatting
-style_pkg <- function(configuration = list()) {}
+style_pkg <- function(path = ".", config_file = "tergo.toml", configuration = list()) {}
 
 #' Style a file
 #'
-#' @param configuration (`list`) the configuration for formatting
-#' @export
-style_file <- function(configuration = list()) {}
-
-#' Style text
+#' @inheritParams style
+#' @param file (`character`) the file to format
 #'
-#' This function is vectorized.
-#'
-#' @param text (`character`) the text to format
-#' @param configuration (`list`) the configuration for formatting
 #' @export
-style_text <- function(text, configuration = list()) {}
+style_file <- function(file, configuration = list()) {
+  if (!file.exists(file)) {
+    stop("File " + file + " does not exist")
+  }
+  size <- file.info(file)$size
+  code <- readChar(con = file, nchars = size)
+  formatted <- format_code(code, configuration)
+  write(x = formatted, file = file)
+}

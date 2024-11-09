@@ -12,8 +12,8 @@ Config/rextendr/version: 0.3.1
 SystemRequirements: Cargo (Rust's package manager), rustc
 Biarch: true
 Suggests:
-    rextendr (== 0.3.1)
-    roxygen2
+    rextendr (== 0.3.1),
+    roxygen2,
     devtools
 URL: https://github.com/kpagacz/tergo/tree/main/antidotum/tergo
 BugReports: https://github.com/kpagacz/tergo/issues

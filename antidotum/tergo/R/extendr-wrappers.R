@@ -16,7 +16,22 @@ NULL
 #'
 #' @return (`character`) the formatted code
 #' @keywords internal
-format_code <- function(source_code) .Call(wrap__format_code, source_code)
+format_code <- function(source_code, configuration) .Call(wrap__format_code, source_code, configuration)
+
+#' Parse the config file and return the configuration
+#'
+#' @param path_to_config (`character(1)`) the file path of the configuration
+#' file
+#'
+#' @return (`list`)
+#' @keywords internal
+get_config <- function(path) .Call(wrap__get_config, path)
+
+#' Get the default configuration
+#'
+#' @return `list` with the default configuration
+#' @keywords internal
+get_default_config <- function() .Call(wrap__get_default_config)
 
 
 # nolint end

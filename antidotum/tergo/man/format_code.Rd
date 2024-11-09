@@ -4,7 +4,7 @@
 \alias{format_code}
 \title{Format code}
 \usage{
-format_code(source_code)
+format_code(source_code, configuration)
 }
 \arguments{
 \item{source_code}{(\code{character}) the R code to format}
