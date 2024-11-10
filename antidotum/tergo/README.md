@@ -8,13 +8,13 @@ There is plenty of formatting libraries for R. Just to name a few:
 - [`formatR`](https://github.com/yihui/formatR/tree/master)
 
 Unfortunately, all of them suffer from one major drawback. They are slow.
-If you care about speed and efficiency of your styling tool, and so much
+If you care about speed and efficiency of your styling tool, and not so much
 about the full-blown configurability, you should use `tergo`. Some
 use-cases include:
 
 - Save money on your CI infrastructure by checking the style with `tergo`
 instead of slow running alternatives. Save tens of hours on your monthly bill!
-- If you are developing a user interface that needs to style the code for
+- You are developing a user interface that needs to style the code for
 the user to see and other styling libraries don't cut it in terms of speed
 and efficiency.
 

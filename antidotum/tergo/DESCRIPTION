@@ -1,6 +1,6 @@
 Package: tergo
 Title: Style Your Code Fast
-Version: 0.0.0.9000
+Version: 0.1.4
 Authors@R:
     c(
       person("Konrad", "Pagacz", , "konrad.pagacz@gmail.com", role = c("aut", "cre")),
@@ -22,6 +22,7 @@ Suggests:
     roxygen2,
     devtools,
     pkgdown
-URL: https://r.tergo.pagacz.io
+URL: https://r.tergo.pagacz.io,
+    https://github.com/kpagacz/tergo
 BugReports: https://github.com/kpagacz/tergo/issues
 
