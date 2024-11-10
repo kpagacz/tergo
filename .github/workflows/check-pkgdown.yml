@@ -1,9 +1,12 @@
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: ["main"]
 
-name: Build pkgdown site and push
+name: Check pkgdown site building
+
+permissions: read-all
 
 jobs:
   pkgdown:
@@ -17,11 +20,6 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: cf-pages
-
-      - name: Hard reset to the ref that triggered the workflow
-        run: git reset --hard $GITHUB_REF
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -36,9 +34,6 @@ jobs:
 
       - uses: r-lib/actions/setup-tinytex@v2
 
-      - name: Run pkgdown and push to cf-pages
+      - name: Run pkgdown
         run: |
           Rscript -e "pkgdown::build_site()"
-          git add --all
-          git commit -m "$GITHUB_REF_NAME"
-          git push --force origin cf-pages
