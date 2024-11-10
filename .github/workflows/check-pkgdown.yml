@@ -1,12 +1,12 @@
 on:
   push:
     branches: [main, master]
-    tags-ignore:
-      - "**"
+    tags:
+      - "!**"
   pull_request:
     branches: ["main"]
-    tags-ignore:
-      - "**"
+    tags:
+      - "!**"
 
 name: Check pkgdown site building
 
