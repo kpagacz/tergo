@@ -21,7 +21,9 @@ jobs:
           ref: cf-pages
 
       - name: Hard reset to the ref that triggered the workflow
-        run: git reset --hard tags/$GITHUB_REF_NAME
+        run: |
+          git fetch --all
+          git reset --hard tags/$GITHUB_REF_NAME
 
       - uses: r-lib/actions/setup-pandoc@v2
 
