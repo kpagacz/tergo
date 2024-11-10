@@ -31,9 +31,11 @@ jobs:
         with:
           extra-packages: any::pkgdown, local::.
           needs: website
+          working-directory: "./antidotum/tergo"
 
       - uses: r-lib/actions/setup-tinytex@v2
 
       - name: Run pkgdown
+        working-directory: ./antidotum/tergo
         run: |
           Rscript -e "pkgdown::build_site()"
