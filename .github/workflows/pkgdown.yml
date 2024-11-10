@@ -44,5 +44,7 @@ jobs:
         run: |
           Rscript -e "pkgdown::build_site()"
           git add --all
+          git config --global user.email "github-ci@pagacz.io"
+          git config --global user.name "Github Minion"
           git commit -m "$GITHUB_REF_NAME"
           git push --force origin cf-pages
