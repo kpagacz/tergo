@@ -19,8 +19,10 @@ jobs:
       matrix:
         config:
           - { os: macos-latest, r: "release" }
+          - { os: macos-latest, r: "oldrel-1" }
 
           - { os: windows-latest, r: "release" }
+          - { os: windows-latest, r: "oldrel-1" }
           # use 4.0 or 4.1 to check with rtools40's older compiler
           - { os: windows-latest, r: "oldrel-4" }
 
