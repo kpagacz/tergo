@@ -57,11 +57,19 @@ style_pkg <- function(path = ".", config_file = "tergo.toml", configuration = li
     }
   }
   files <- list.files(package_root, recursive = TRUE, full.names = TRUE)
-  files <- Filter(function(file) any(endsWith(file, c("R", "r"))), files)
+  files <- Filter(function(file) any(endsWith(file, c(".R", ".r"))), files)
 
   # Format
   for (file in files) {
-    style_file(file, configuration)
+    tryCatch(
+      expr = {
+        style_file(file, configuration)
+      },
+      error = function(err) {
+        cat(sprintf("Error formatting the file: %s", file))
+        print(err)
+      }
+    )
   }
 }
 
@@ -100,3 +108,4 @@ style_file <- function(file, configuration = list()) {
 style_text <- function(text, configuration = list()) {
   vapply(X = text, FUN = function(code) format_code(code, configuration), FUN.VALUE = character(1), USE.NAMES = FALSE)
 }
+

@@ -30,7 +30,6 @@ SYSINFO_MACHINE <- Sys.info()[["machine"]]
 HAS_32BIT_R <- dir.exists(file.path(R.home(), "bin", "i386"))
 USE_UCRT <- identical(R.version$crt, "ucrt")
 
-
 # Utilities ---------------------------------------------------------------
 
 #' Read a field of the package's DESCRIPTION file
@@ -65,7 +64,6 @@ get_desc_field <- function(field, prefix = DESC_FIELD_PREFIX, optional = TRUE) {
 # this variable is defined by get_desc_field(). It's no problem as long as the
 # default is not used before it exists!
 DESC_FIELD_PREFIX <- paste0("Config/", get_desc_field("Package", prefix = ""), "/")
-
 
 safe_system2 <- function(cmd, args) {
   result <- list(success = FALSE, output = "")
@@ -117,7 +115,9 @@ check_cargo <- function() {
     m <- regmatches(version, regexec(ptn, version))[[1]]
 
     if (length(m) != 2) {
-      stop(errorCondition("cargo version returned unexpected result", class = c("string2path_error_cargo_check", "error")))
+      stop(
+        errorCondition("cargo version returned unexpected result", class = c("string2path_error_cargo_check", "error"))
+      )
     }
 
     if (package_version(m[2]) < package_version(msrv)) {
@@ -152,11 +152,8 @@ check_cargo <- function() {
 
 ### Check cargo toolchain ###
 
-cargo_check_result <- tryCatch(
-  check_cargo(),
-  # Defer errors if it's raised by functions here
-  string2path_error_cargo_check = function(e) e$message
-)
+cargo_check_result <- tryCatch(check_cargo(), # Defer errors if it's raised by functions here
+string2path_error_cargo_check = function(e) e$message)
 
 # If cargo is confirmed fine, exit here. But, even if the cargo is not available
 # or too old, it's not the end of the world. There might be a pre-compiled
@@ -166,7 +163,9 @@ if (isTRUE(cargo_check_result)) {
   quit("no", status = 0)
 }
 
-cat(sprintf("
+cat(
+  sprintf(
+    "
 -------------- ERROR: CONFIGURATION FAILED --------------------
 
 [cargo check result]
@@ -176,5 +175,9 @@ Please refer to <https://www.rust-lang.org/tools/install> to install Rust.
 
 ---------------------------------------------------------------
 
-", cargo_check_result))
+",
+    cargo_check_result
+  )
+)
 quit("no", status = 2)
+
