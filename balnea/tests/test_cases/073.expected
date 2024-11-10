@@ -5,4 +5,3 @@ teal.widgets::standard_layout(
     teal.widgets::verbatim_popup_ui(ns("rcode"), "Show R code")
   )
 )
-
