@@ -1,3 +1,0 @@
-test_that("call1 returns an ordered factor", {
-  expect_s3_class(call1(x, y), c("factor", "ordered"))
-})

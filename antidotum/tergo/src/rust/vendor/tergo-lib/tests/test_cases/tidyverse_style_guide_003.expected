@@ -1,6 +1,0 @@
-# Good
-mean(x, na.rm = TRUE)
-
-# Bad
-mean(x, na.rm = TRUE)
-mean(x, na.rm = TRUE)

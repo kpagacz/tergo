@@ -1,7 +1,0 @@
-# Good
-height <- (feet * 12) + inches
-mean(x, na.rm = TRUE)
-
-# Bad
-height<-feet*12+inches
-mean(x, na.rm=TRUE)

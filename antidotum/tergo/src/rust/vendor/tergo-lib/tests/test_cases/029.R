@@ -1,6 +1,0 @@
-while (TRUE) 
-
-{
-  FALSE
-  TRUE
-}

@@ -1,6 +1,0 @@
-# Good
-function(x) {}
-
-# Bad
-function (x) {}
-function(x){}
