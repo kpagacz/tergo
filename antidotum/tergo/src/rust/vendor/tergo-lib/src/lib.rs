@@ -1,4 +1,5 @@
 pub use formatter::config::Config;
+pub use formatter::config::FunctionLineBreaks;
 use formatter::format_code;
 use log::trace;
 use parser::{
