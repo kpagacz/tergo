@@ -3,13 +3,14 @@ on:
     branches: [main]
     paths:
       - "antidotum/**"
+      - ".github/**"
 
 name: Version bump
 
 permissions: read-all
 
 jobs:
-  pkgdown:
+  version-bump:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
