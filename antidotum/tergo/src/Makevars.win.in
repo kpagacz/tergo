@@ -8,8 +8,8 @@ VENDORING = @VENDORING@
 OFFLINE_OPTION = @OFFLINE_OPTION@
 
 LIBDIR = ./rust/target/$(TARGET)/release
-PKG_LIBS = -L$(LIBDIR) -lstring2path -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll
-STATLIB = $(LIBDIR)/libstring2path.a
+PKG_LIBS = -L$(LIBDIR) -ltergo -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll
+STATLIB = $(LIBDIR)/libtergo.a
 
 all: C_clean
 
