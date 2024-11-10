@@ -1,0 +1,10 @@
+---
+reference:
+  - title: Styling
+    desc: Functions to style R code
+    contents:
+      - starts_with("style")
+  - title: Configuration
+    desc: Configuration functions
+    contents:
+      - get_default_config

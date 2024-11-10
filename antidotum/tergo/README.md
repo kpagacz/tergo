@@ -33,7 +33,7 @@ Requires [Rust tooling](https://www.rust-lang.org/tools/install):
 if (!require(remotes)) {
   install.packages("remotes")
 }
-remotes::install_github("kpagacz/tergo@v0.1.3", subdir = "antidotum/tergo")
+remotes::install_github("kpagacz/tergo@latest", subdir = "antidotum/tergo")
 ```
 
 ### From R-Universe
@@ -60,7 +60,7 @@ tergo::style()
 
 `tergo` reads the configuration from a TOML file (`tergo.toml`) in your package root.
 See [the library documentation for possible values and their
-explanation](/balnea/README.md).
+explanation](https://github.com/kpagacz/tergo/blob/cf-pages/balnea/README.md).
 
 ### As an argument to styling functions
 
@@ -69,4 +69,4 @@ you modify the styling behaviour without a configuration file.
 
 The keys and the possible values are the same as in the TOML file.
 See [the library documentation for possible values and their
-explanation](/balnea/README.md).
+explanation](https://github.com/kpagacz/tergo/blob/cf-pages/balnea/README.md).

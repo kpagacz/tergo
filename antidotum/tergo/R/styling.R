@@ -9,11 +9,10 @@
 #' @param config_file (`character`) the path to the configuration file
 #' @param configuration (`list`) the path to the configuration for formatting
 #'
+#' @export
 #' @examples
 #' style()
 #' style(config_file = "tergo.toml", configuration = list())
-#'
-#' @export
 style <- function(config_file = "tergo.toml", configuration = list()) {
   style_pkg(path = getwd(), config_file = config_file, configuration = configuration)
 }
@@ -108,4 +107,3 @@ style_file <- function(file, configuration = list()) {
 style_text <- function(text, configuration = list()) {
   vapply(X = text, FUN = function(code) format_code(code, configuration), FUN.VALUE = character(1), USE.NAMES = FALSE)
 }
-

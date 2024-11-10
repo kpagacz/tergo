@@ -126,8 +126,13 @@ fn get_config(path: &str) -> extendr_api::List {
 
 /// Get the default configuration
 ///
+/// This configuration is used by the styling functions
+/// if no value is provided for the configuration keys.
+///
 /// @return `list` with the default configuration
-/// @keywords internal
+/// @export
+/// @examples
+/// get_default_config()
 #[extendr]
 fn get_default_config() -> extendr_api::List {
     let config = Config::default();

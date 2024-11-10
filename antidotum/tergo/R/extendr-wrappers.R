@@ -29,8 +29,11 @@ get_config <- function(path) .Call(wrap__get_config, path)
 
 #' Get the default configuration
 #'
+#' This configuration is used by the styling functions
+#' if no value is provided for the configuration keys.
+#'
 #' @return `list` with the default configuration
-#' @keywords internal
+#' @export
 get_default_config <- function() .Call(wrap__get_default_config)
 
 

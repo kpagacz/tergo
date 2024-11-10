@@ -21,8 +21,8 @@ Suggests:
     rextendr (== 0.3.1),
     roxygen2,
     devtools,
-    pkgdown
+    pkgdown,
+    desc
 URL: https://r.tergo.pagacz.io,
     https://github.com/kpagacz/tergo
 BugReports: https://github.com/kpagacz/tergo/issues
-

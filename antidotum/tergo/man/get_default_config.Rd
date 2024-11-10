@@ -10,6 +10,6 @@ get_default_config()
 \code{list} with the default configuration
 }
 \description{
-Get the default configuration
+This configuration is used by the styling functions
+if no value is provided for the configuration keys.
 }
-\keyword{internal}
