@@ -12,7 +12,7 @@
 [package]
 edition = "2021"
 name = "tergo-formatter"
-version = "0.2.1"
+version = "0.2.3"
 build = false
 autobins = false
 autoexamples = false
@@ -21,6 +21,7 @@ autobenches = false
 description = "Formatter for tergo"
 readme = false
 license = "MIT"
+repository = "https://github.com/kpagacz/tergo/tree/main/unguentum"
 
 [lib]
 name = "tergo_formatter"

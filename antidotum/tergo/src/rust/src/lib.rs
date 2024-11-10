@@ -1,6 +1,5 @@
 use extendr_api::prelude::*;
-use tergo_lib::Config;
-use tergo_lib::FunctionLineBreaks;
+use tergo_lib::{Config, FunctionLineBreaks};
 
 /// Format code
 ///

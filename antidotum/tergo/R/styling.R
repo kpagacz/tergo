@@ -7,7 +7,7 @@
 #' 2. The configuration file.
 #'
 #' @param config_file (`character`) the path to the configuration file
-#' @param configuration (`list`) the configuration for formatting
+#' @param configuration (`list`) the path to the configuration for formatting
 #'
 #' @examples
 #' style()
@@ -15,8 +15,18 @@
 #'
 #' @export
 style <- function(config_file = "tergo.toml", configuration = list()) {
+  style_pkg(path = getwd(), config_file = config_file, configuration = configuration)
+}
+
+#' Style a package
+#'
+#' @inheritParams style
+#' @param path (`character`) the path to the package
+#'
+#' @export
+style_pkg <- function(path = ".", config_file = "tergo.toml", configuration = list()) {
   # Read a configuration file
-  wd <- getwd()
+  wd <- path
   config <- NULL
 
   repeat {
@@ -55,14 +65,6 @@ style <- function(config_file = "tergo.toml", configuration = list()) {
   }
 }
 
-#' Style a package
-#'
-#' @inheritParams style
-#' @param path (`character`) the path to the package
-#'
-#' @export
-style_pkg <- function(path = ".", config_file = "tergo.toml", configuration = list()) {}
-
 #' Style a file
 #'
 #' @inheritParams style
@@ -77,4 +79,24 @@ style_file <- function(file, configuration = list()) {
   code <- readChar(con = file, nchars = size)
   formatted <- format_code(code, configuration)
   write(x = formatted, file = file)
+}
+
+#' Style text
+#'
+#' @details
+#' This function is vectorized.
+#'
+#' @inheritParams style
+#' @param text(`character`) the text to style
+#'
+#' @return (`character`) the text formatted as R code
+#' @export
+#' @examples
+#' code <- "function(){}"
+#' style_text(code)
+#'
+#' code <- c("function(){}", "A<-7")
+#' style_text(code)
+style_text <- function(text, configuration = list()) {
+  vapply(X = text, FUN = function(code) format_code(code, configuration), FUN.VALUE = character(1))
 }
