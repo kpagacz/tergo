@@ -16,7 +16,7 @@ local_version=$(get_local_version "tergo-tokenizer")
 crates_version=$(get_crates_version "tergo-tokenizer")
 echo "tergo-tokenizer: local=$local_version, crates=$crates_version"
 if [[ $local_version != $crates_version ]]; then
-  echo "Publishing tergo-tokenizer"
+  echo "Publishing tergo-tokenizer $local_version"
   cargo publish -p tergo-tokenizer
 fi
 
@@ -24,7 +24,7 @@ local_version=$(get_local_version "tergo-parser")
 crates_version=$(get_crates_version "tergo-parser")
 echo "tergo-parser: local=$local_version, crates=$crates_version"
 if [[ $local_version != $crates_version ]]; then
-  echo "Publishing tergo-parser"
+  echo "Publishing tergo-parser $local_version"
   cargo publish -p tergo-parser
 fi
 
@@ -32,7 +32,7 @@ local_version=$(get_local_version "tergo-formatter")
 crates_version=$(get_crates_version "tergo-formatter")
 echo "tergo-formatter: local=$local_version, crates=$crates_version"
 if [[ $local_version != $crates_version ]]; then
-  echo "Publishing tergo-formatter"
+  echo "Publishing tergo-formatter $local_version"
   cargo publish -p tergo-formatter
 fi
 
@@ -40,7 +40,7 @@ local_version=$(get_local_version "tergo-lib")
 crates_version=$(get_crates_version "tergo-lib")
 echo "tergo-lib: local=$local_version, crates=$crates_version"
 if [[ $local_version != $crates_version ]]; then
-  echo "Publishing tergo-lib"
+  echo "Publishing tergo-lib $local_version"
   cargo publish -p tergo-lib
 fi
 
@@ -48,6 +48,6 @@ local_version=$(get_local_version "tergo")
 crates_version=$(get_crates_version "tergo")
 echo "tergo: local=$local_version, crates=$crates_version"
 if [[ $local_version != $crates_version ]]; then
-  echo "Publishing tergo"
+  echo "Publishing tergo $local_version"
   cargo publish -p tergo
 fi
