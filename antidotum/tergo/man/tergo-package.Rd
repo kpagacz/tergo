@@ -19,5 +19,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Konrad Pagacz \email{konrad.pagacz@gmail.com}
 
+Other contributors:
+\itemize{
+  \item The authors of the dependency Rust crates (see inst/AUTHORS file for details) [contributor]
+}
+
 }
 \keyword{internal}

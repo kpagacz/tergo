@@ -9,7 +9,7 @@ style_file(file, configuration = list())
 \arguments{
 \item{file}{(\code{character}) the file to format}
 
-\item{configuration}{(\code{list}) the configuration for formatting}
+\item{configuration}{(\code{list}) the path to the configuration for formatting}
 }
 \description{
 Style a file

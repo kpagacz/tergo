@@ -7,10 +7,23 @@
 style_text(text, configuration = list())
 }
 \arguments{
-\item{text}{(\code{character}) the text to format}
+\item{configuration}{(\code{list}) the path to the configuration for formatting}
 
-\item{configuration}{(\code{list}) the configuration for formatting}
+\item{text(`character`)}{the text to style}
+}
+\value{
+(\code{character}) the text formatted as R code
 }
 \description{
+Style text
+}
+\details{
 This function is vectorized.
+}
+\examples{
+code <- "function(){}"
+style_text(code)
+
+code <- c("function(){}", "A<-7")
+style_text(code)
 }

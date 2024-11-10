@@ -9,7 +9,7 @@ style(config_file = "tergo.toml", configuration = list())
 \arguments{
 \item{config_file}{(\code{character}) the path to the configuration file}
 
-\item{configuration}{(\code{list}) the configuration for formatting}
+\item{configuration}{(\code{list}) the path to the configuration for formatting}
 }
 \description{
 Style a package

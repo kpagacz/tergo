@@ -28,14 +28,14 @@ if (!require(stringr)) {
 }
 
 ## Update inst/AUTHORS
-VENDOR_PATH <- "src/rust/vendor"
-manifests <- list.files(VENDOR_PATH, pattern = "Cargo\\.toml", recursive = TRUE)
+vendor_path <- "src/rust/vendor"
+manifests <- list.files(vendor_path, pattern = "Cargo\\.toml", recursive = TRUE)
 
 l <- lapply(
   manifests,
   \(x) {
     cat("parsing ", x, "\n")
-    RcppTOML::parseTOML(file.path(VENDOR_PATH, x))$package
+    RcppTOML::parseTOML(file.path(vendor_path, x))$package
   }
 )
 
