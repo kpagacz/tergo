@@ -98,5 +98,5 @@ style_file <- function(file, configuration = list()) {
 #' code <- c("function(){}", "A<-7")
 #' style_text(code)
 style_text <- function(text, configuration = list()) {
-  vapply(X = text, FUN = function(code) format_code(code, configuration), FUN.VALUE = character(1))
+  vapply(X = text, FUN = function(code) format_code(code, configuration), FUN.VALUE = character(1), USE.NAMES = FALSE)
 }

@@ -20,7 +20,8 @@ Depends:
 Suggests:
     rextendr (== 0.3.1),
     roxygen2,
-    devtools
+    devtools,
+    pkgdown
 URL: https://github.com/kpagacz/tergo/tree/main/antidotum/tergo
 BugReports: https://github.com/kpagacz/tergo/issues
 
