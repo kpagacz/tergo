@@ -36,7 +36,7 @@ jobs:
       - name: Bump version
         working-directory: ./antidotum/tergo
         run: |
-          Rscript -e "desc::desc_version_bump('dev')"
+          Rscript -e "desc::desc_bump_version('dev')"
           git config --global user.email "github-ci@pagacz.io"
           git config --global user.name "Github Minion"
           version=$(Rscript -e 'desc::desc_get_version()' | cut -d' ' -f2)
