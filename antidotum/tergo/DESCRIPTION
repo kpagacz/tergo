@@ -7,7 +7,7 @@ Authors@R:
       person(given = "The authors of the dependency Rust crates",
         role = c("ctb"), comment = "see inst/AUTHORS file for details")
     )
-Description: `tergo` styles your R source code.
+Description: Style your code FAST.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -22,6 +22,6 @@ Suggests:
     roxygen2,
     devtools,
     pkgdown
-URL: https://github.com/kpagacz/tergo/tree/main/antidotum/tergo
+URL: https://r.tergo.pagacz.io
 BugReports: https://github.com/kpagacz/tergo/issues
 
