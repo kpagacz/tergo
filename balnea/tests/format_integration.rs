@@ -46,12 +46,12 @@ macro_rules! comparison_test {
                     0
                 },
                 if let Some(first_difference_line) = first_difference_line {
-                    first_difference_line.1.0
+                    first_difference_line.1 .0
                 } else {
                     "Empty unwrap"
                 },
                 if let Some(first_difference_line) = first_difference_line {
-                    first_difference_line.1.1
+                    first_difference_line.1 .1
                 } else {
                     "Empty unwrap"
                 },
@@ -260,6 +260,11 @@ comparison_test!(
 comparison_test!(
     function_def_closure_as_last_argument,
     "091",
+    Config::default()
+);
+comparison_test!(
+    lambda_fuction_def_should_not_break,
+    "092",
     Config::default()
 );
 

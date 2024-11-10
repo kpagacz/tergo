@@ -6,7 +6,7 @@ use std::{
 
 use clap::{arg, Parser};
 use log::{debug, info, trace, warn};
-use tergo_lib::{Config, tergo_format};
+use tergo_lib::{tergo_format, Config};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
