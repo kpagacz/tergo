@@ -152,8 +152,10 @@ check_cargo <- function() {
 
 ### Check cargo toolchain ###
 
-cargo_check_result <- tryCatch(check_cargo(), # Defer errors if it's raised by functions here
-string2path_error_cargo_check = function(e) e$message)
+cargo_check_result <- tryCatch(
+  check_cargo(), # Defer errors if it's raised by functions here
+  string2path_error_cargo_check = function(e) e$message
+)
 
 # If cargo is confirmed fine, exit here. But, even if the cargo is not available
 # or too old, it's not the end of the world. There might be a pre-compiled
@@ -180,4 +182,3 @@ Please refer to <https://www.rust-lang.org/tools/install> to install Rust.
   )
 )
 quit("no", status = 2)
-

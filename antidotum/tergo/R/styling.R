@@ -6,24 +6,47 @@
 #' 1. The configuration passed to the function.
 #' 2. The configuration file.
 #'
-#' @param config_file (`character`) the path to the configuration file
-#' @param configuration (`list`) the path to the configuration for formatting
+#' @param config_file (`character`) The path to the configuration file
+#' @param configuration (`list`) The path to the configuration for formatting
+#' @param ... additional parameters to [tergo::style_pkg()]
 #'
 #' @export
 #' @examples
 #' style()
 #' style(config_file = "tergo.toml", configuration = list())
-style <- function(config_file = "tergo.toml", configuration = list()) {
+style <- function(config_file = "tergo.toml", configuration = list(), ...) {
   style_pkg(path = getwd(), config_file = config_file, configuration = configuration)
 }
 
 #' Style a package
 #'
 #' @inheritParams style
-#' @param path (`character`) the path to the package
+#' @param path (`character`) The path to the package.
+#' @param force (`logical(1`) Whether to format the files even
+#' if no package was found. `TRUE` - format the `.R` and `.r` files
+#' found in the directory (recursive). `FALSE` exit without formatting
+#' anything.
+#' @param extensions (`character`) The extensions of the files to format.
 #'
 #' @export
-style_pkg <- function(path = ".", config_file = "tergo.toml", configuration = list()) {
+style_pkg <- function(path = ".",
+                      config_file = "tergo.toml",
+                      configuration = list(),
+                      force = FALSE,
+                      extensions = c(".R", ".r")) {
+  if (!is.character(path) || length(path) != 1) {
+    stop("Path must be a character")
+  }
+  if (!is.character(config_file) || length(config_file) != 1) {
+    stop("Config file must be a character")
+  }
+  if (!is.logical(force) || length(force) != 1) {
+    stop("Force must be a logical")
+  }
+  if (!is.list(configuration)) {
+    stop("Configuration must be a list")
+  }
+
   # Read a configuration file
   wd <- path
   config <- NULL
@@ -55,9 +78,14 @@ style_pkg <- function(path = ".", config_file = "tergo.toml", configuration = li
       break
     }
   }
-  files <- list.files(package_root, recursive = TRUE, full.names = TRUE)
-  files <- Filter(function(file) any(endsWith(file, c(".R", ".r"))), files)
 
+  if (!file.exists(file.path(package_root, "DESCRIPTION")) && !force) {
+    message("No package detected. Exiting without formatting anything.")
+    return(invisible())
+  }
+
+  files <- list.files(package_root, recursive = TRUE, full.names = TRUE)
+  files <- Filter(function(file) any(endsWith(file, extensions)), files)
   # Format
   for (file in files) {
     tryCatch(

@@ -23,6 +23,6 @@ Suggests:
     devtools,
     pkgdown,
     desc
-URL: https://r.tergo.pagacz.io,
+URL: https://rtergo.pagacz.io,
     https://github.com/kpagacz/tergo
 BugReports: https://github.com/kpagacz/tergo/issues

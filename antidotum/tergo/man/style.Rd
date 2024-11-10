@@ -4,12 +4,14 @@
 \alias{style}
 \title{Style a package}
 \usage{
-style(config_file = "tergo.toml", configuration = list())
+style(config_file = "tergo.toml", configuration = list(), ...)
 }
 \arguments{
-\item{config_file}{(\code{character}) the path to the configuration file}
+\item{config_file}{(\code{character}) The path to the configuration file}
 
-\item{configuration}{(\code{list}) the path to the configuration for formatting}
+\item{configuration}{(\code{list}) The path to the configuration for formatting}
+
+\item{...}{additional parameters to \code{\link[=style_pkg]{style_pkg()}}}
 }
 \description{
 Style a package
@@ -25,5 +27,4 @@ package. The precedence of the configuration is (from the highest to lowest):
 \examples{
 style()
 style(config_file = "tergo.toml", configuration = list())
-
 }

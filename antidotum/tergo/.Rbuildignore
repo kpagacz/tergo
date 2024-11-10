@@ -3,3 +3,4 @@
 ^\.lintr
 ^pre-commit\.sh
 ^update_authors\.R
+^\_pkgdown\.yml

@@ -46,7 +46,7 @@ install.packages('tergo', repos = c('https://kpagacz.r-universe.dev', 'https://c
 
 ## Usage
 
-See the R manual for the reference - <r.tergo.pagacz.io>.
+See the [R manual](rtergo.pagacz.io) for the reference.
 
 To style your package, run:
 

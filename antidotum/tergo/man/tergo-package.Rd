@@ -11,7 +11,7 @@ Style your code FAST.
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://r.tergo.pagacz.io}
+  \item \url{https://rtergo.pagacz.io}
   \item \url{https://github.com/kpagacz/tergo}
   \item Report bugs at \url{https://github.com/kpagacz/tergo/issues}
 }

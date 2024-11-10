@@ -8,7 +8,7 @@ crate-type = ["staticlib"]
 name = "tergo"
 
 [dependencies]
-tergo-lib = "0.2.4"
+tergo-lib = "0.2.5"
 toml = "0.8.19"
 extendr-api = "*"
 
