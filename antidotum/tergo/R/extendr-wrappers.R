@@ -20,7 +20,7 @@ format_code <- function(source_code, configuration) .Call(wrap__format_code, sou
 
 #' Parse the config file and return the configuration
 #'
-#' @param path_to_config (`character(1)`) the file path of the configuration
+#' @param path (`character(1)`) the file path of the configuration
 #' file
 #'
 #' @return (`list`)

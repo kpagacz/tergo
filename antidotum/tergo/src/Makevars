@@ -19,7 +19,7 @@ $(STATLIB):
 	   mkdir -p ./rust/.cargo && \
 	   cp ./cargo_vendor_config.toml ./rust/.cargo/config.toml; \
 	fi
-	 source "/Users/kpagacz/.cargo/env" && cd ./rust && cargo build --jobs 1 --lib --release $(OFFLINE_OPTION); \
+	 . "/Users/kpagacz/.cargo/env" && cd ./rust && cargo build --jobs 1 --lib --release $(OFFLINE_OPTION); \
 	
 
 C_clean:

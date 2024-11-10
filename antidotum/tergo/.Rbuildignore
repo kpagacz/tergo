@@ -1,2 +1,5 @@
 ^LICENSE\.md$
 ^src/\.cargo$
+^\.lintr
+^pre-commit\.sh
+^update_authors\.R

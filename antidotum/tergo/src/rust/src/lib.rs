@@ -77,7 +77,7 @@ fn format_code(source_code: &str, configuration: extendr_api::List) -> String {
 
 /// Parse the config file and return the configuration
 ///
-/// @param path_to_config (`character(1)`) the file path of the configuration
+/// @param path (`character(1)`) the file path of the configuration
 /// file
 ///
 /// @return (`list`)

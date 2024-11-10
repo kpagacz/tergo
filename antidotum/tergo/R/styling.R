@@ -87,7 +87,7 @@ style_file <- function(file, configuration = list()) {
 #' This function is vectorized.
 #'
 #' @inheritParams style
-#' @param text(`character`) the text to style
+#' @param text (`character`) the text to style
 #'
 #' @return (`character`) the text formatted as R code
 #' @export

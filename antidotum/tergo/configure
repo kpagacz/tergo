@@ -30,8 +30,8 @@ AFTER_CARGO_BUILD=''
 # available (e.g. when Rust is installed via apt on Ubuntu), so it might be
 # more straightforward to add `PATH` directly.
 if [ -e "${HOME}/.cargo/env" ]; then
-  source "${HOME}/.cargo/env"
-  BEFORE_CARGO_BUILD="${BEFORE_CARGO_BUILD} source \"${HOME}/.cargo/env\" \\&\\&"
+  . "${HOME}/.cargo/env"
+  BEFORE_CARGO_BUILD="${BEFORE_CARGO_BUILD} . \"${HOME}/.cargo/env\" \\&\\&"
 fi
 
 # Check the Rust installation, and abort if not available

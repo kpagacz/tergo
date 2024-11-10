@@ -7,9 +7,9 @@
 style_text(text, configuration = list())
 }
 \arguments{
-\item{configuration}{(\code{list}) the path to the configuration for formatting}
+\item{text}{(\code{character}) the text to style}
 
-\item{text(`character`)}{the text to style}
+\item{configuration}{(\code{list}) the path to the configuration for formatting}
 }
 \value{
 (\code{character}) the text formatted as R code

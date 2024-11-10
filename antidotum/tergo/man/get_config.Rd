@@ -7,7 +7,7 @@
 get_config(path)
 }
 \arguments{
-\item{path_to_config}{(\code{character(1)}) the file path of the configuration
+\item{path}{(\code{character(1)}) the file path of the configuration
 file}
 }
 \value{
