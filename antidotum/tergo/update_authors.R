@@ -31,10 +31,13 @@ if (!require(stringr)) {
 VENDOR_PATH <- "src/rust/vendor"
 manifests <- list.files(VENDOR_PATH, pattern = "Cargo\\.toml", recursive = TRUE)
 
-l <- lapply(manifests, \(x) {
-  cat("parsing ", x, "\n")
-  RcppTOML::parseTOML(file.path(VENDOR_PATH, x))$package
-})
+l <- lapply(
+  manifests,
+  \(x) {
+    cat("parsing ", x, "\n")
+    RcppTOML::parseTOML(file.path(VENDOR_PATH, x))$package
+  }
+)
 
 names <- vapply(l, \(x) x[["name"]], FUN.VALUE = character(1L))
 
@@ -44,11 +47,15 @@ names <- names[idx]
 
 versions <- vapply(l, \(x) x[["version"]], FUN.VALUE = character(1L))
 
-authors <- vapply(l, \(x) {
-  # Remove email addresses
-  authors <- stringr::str_remove(x[["authors"]], "\\s+<.+>")
-  paste(authors, collapse = ", ")
-}, FUN.VALUE = character(1L))
+authors <- vapply(
+  l,
+  \(x) {
+    # Remove email addresses
+    authors <- stringr::str_remove(x[["authors"]], "\\s+<.+>")
+    paste(authors, collapse = ", ")
+  },
+  FUN.VALUE = character(1L)
+)
 
 licenses <- vapply(l, \(x) x[["license"]], FUN.VALUE = character(1L))
 
@@ -58,21 +65,24 @@ cat("The authors of the dependency Rust crates:
 
 ", file = "inst/AUTHORS")
 
-authors_flattened <- vapply(stringr::str_split(authors, ",\\s+"), \(x) {
-  paste(x, collapse = "\n  ")
-}, FUN.VALUE = character(1L))
+authors_flattened <- vapply(
+  stringr::str_split(authors, ",\\s+"),
+  \(x) {
+    paste(x, collapse = "\n  ")
+  },
+  FUN.VALUE = character(1L)
+)
 
-cat(paste(
-  names, " (version ", versions, "):\n  ",
-  authors_flattened,
-  "\n",
-  sep = "",
-  collapse = "\n"
-), file = "inst/AUTHORS", append = TRUE)
+cat(
+  paste(names, " (version ", versions, "):\n  ", authors_flattened, "\n", sep = "", collapse = "\n"),
+  file = "inst/AUTHORS",
+  append = TRUE
+)
 
 ## Update LICENSE.note
 
-cat("This package contains the Rust source code of the dependencies in src/rust/vendor.tar.xz
+cat(
+  "This package contains the Rust source code of the dependencies in src/rust/vendor.tar.xz
 The authorships and the licenses are listed below. In summary, all libraries are
 distributed either under the MIT license or under MIT/Apache-2.0 dual license [1].
 
@@ -89,13 +99,27 @@ the licenses are the same as listed here.
 
 ===============================
 
-", file = "LICENSE.note")
+",
+  file = "LICENSE.note"
+)
 
-cat(paste(
-  "Name:    ", names, "\n",
-  "Files:   vendor/", names, "/*\n",
-  "Authors: ", authors, "\n",
-  "License: ", licenses, "\n",
-  sep = "",
-  collapse = "\n------------------------------\n\n"
-), file = "LICENSE.note", append = TRUE)
+cat(
+  paste(
+    "Name:    ",
+    names,
+    "\n",
+    "Files:   vendor/",
+    names,
+    "/*\n",
+    "Authors: ",
+    authors,
+    "\n",
+    "License: ",
+    licenses,
+    "\n",
+    sep = "",
+    collapse = "\n------------------------------\n\n"
+  ),
+  file = "LICENSE.note",
+  append = TRUE
+)

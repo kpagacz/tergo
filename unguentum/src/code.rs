@@ -727,11 +727,24 @@ impl<'a> Code for Expression<'a> {
             }
             Expression::RepeatExpression(repeat_expression) => {
                 let (keyword, body) = (&repeat_expression.repeat_keyword, &repeat_expression.body);
-                keyword
-                    .to_docs(config, doc_ref)
-                    .cons(text!(" "))
-                    .cons(body.to_docs(config, doc_ref))
-                    .to_group(ShouldBreak::No, doc_ref)
+                let is_body_lbraced = if let Expression::Term(term_expr) = &**body {
+                    let pre_delimiters = &term_expr.pre_delimiters;
+                    pre_delimiters.is_some_and(|delimiter| matches!(delimiter.token, Token::LBrace))
+                } else {
+                    false
+                };
+                if is_body_lbraced {
+                    keyword
+                        .to_docs(config, doc_ref)
+                        .cons(text!(" "))
+                        .cons(body.to_docs(config, doc_ref))
+                        .to_group(ShouldBreak::No, doc_ref)
+                } else {
+                    keyword
+                        .to_docs(config, doc_ref)
+                        .cons(body.to_docs(config, doc_ref))
+                        .to_group(ShouldBreak::No, doc_ref)
+                }
             }
             Expression::FunctionCall(function_call) => {
                 let (function_ref, args) = (&function_call.function_ref, &function_call.args);
@@ -824,7 +837,10 @@ impl<'a> Code for Expression<'a> {
                 let (keyword, args, body) = (&lambda.keyword, &lambda.args, &lambda.body);
                 keyword
                     .to_docs(config, doc_ref)
-                    .cons(args.to_docs(config, doc_ref))
+                    .cons(
+                        args.to_docs(config, doc_ref)
+                            .to_group(ShouldBreak::No, doc_ref),
+                    )
                     .cons(text!(" "))
                     .cons(body.to_docs(config, doc_ref))
                     .to_group(ShouldBreak::No, doc_ref)

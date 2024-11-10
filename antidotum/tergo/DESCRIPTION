@@ -2,9 +2,11 @@ Package: tergo
 Title: Style Your Code Fast
 Version: 0.0.0.9000
 Authors@R:
-    person("Konrad", "Pagacz", , "konrad.pagacz@gmail.com", role = c("aut", "cre")),
-    person(given = "The authors of the dependency Rust crates",
-      role = c("ctb"), comment = "see inst/AUTHORS file for details")
+    c(
+      person("Konrad", "Pagacz", , "konrad.pagacz@gmail.com", role = c("aut", "cre")),
+      person(given = "The authors of the dependency Rust crates",
+        role = c("ctb"), comment = "see inst/AUTHORS file for details")
+    )
 Description: `tergo` styles your R source code.
 License: MIT + file LICENSE
 Encoding: UTF-8
