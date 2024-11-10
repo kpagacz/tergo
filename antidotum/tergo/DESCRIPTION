@@ -15,6 +15,8 @@ RoxygenNote: 7.3.2
 Config/rextendr/version: 0.3.1
 SystemRequirements: Cargo (Rust's package manager), rustc
 Biarch: true
+Depends:
+    R (>= 4.2)
 Suggests:
     rextendr (== 0.3.1),
     roxygen2,
