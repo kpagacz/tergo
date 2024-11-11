@@ -20,7 +20,7 @@ jobs:
         working-directory: ./antidotum/tergo/src/rust
         run: |
           old=$(sha256sum vendor.tar.xz)
-          tar cf - vendor | gzip -n >vendor.tar.xz
+          sh ./vendor.sh
           new=$(sha256sum vendor.tar.xz)
           if [[ $old != $new ]]; then
             echo "SHA256 sums of the vendored dependencies are different $old vs $new"
