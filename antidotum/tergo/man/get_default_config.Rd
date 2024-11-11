@@ -13,3 +13,6 @@ get_default_config()
 This configuration is used by the styling functions
 if no value is provided for the configuration keys.
 }
+\examples{
+get_default_config()
+}

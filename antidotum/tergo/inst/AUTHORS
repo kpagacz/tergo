@@ -132,10 +132,10 @@ serde (version 1.0.214):
 syn (version 2.0.86):
   David Tolnay
 
-tergo-formatter (version 0.2.3):
+tergo-formatter (version 0.2.4):
   
 
-tergo-lib (version 0.2.4):
+tergo-lib (version 0.2.5):
   
 
 tergo-parser (version 0.2.1):

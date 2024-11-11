@@ -34,7 +34,9 @@ get_config <- function(path) .Call(wrap__get_config, path)
 #'
 #' @return `list` with the default configuration
 #' @export
+#' @examples
+#' get_default_config()
 get_default_config <- function() .Call(wrap__get_default_config)
 
-# nolint end
 
+# nolint end
