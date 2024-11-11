@@ -1,0 +1,29 @@
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["main"]
+
+name: Check Latest Dependencies Are Vendored
+
+permissions: read-all
+
+jobs:
+  check-vendor:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure latest dependencies are vendored
+        working-directory: ./antidotum/tergo/src/rust
+        run: |
+          old=$(sha256sum vendor.tar.xz)
+          tar cf - vendor | gzip -n >vendor.tar.xz
+          new=$(sha256sum vendor.tar.xz)
+          if [[ $old != $new ]]; then
+            echo "SHA256 sums of the vendored dependencies are different $old vs $new"
+            echo "Rerun ./antidotum/tergo/src/rust/pre-commit.sh"
+            exit 1
+          fi
