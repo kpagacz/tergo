@@ -24,8 +24,8 @@ use tokenizer::{tokens_buffer::TokensBuffer, Tokenizer};
 /// # Example
 ///
 /// ```rust
-/// use tergo::tergo_format;
-/// use tergo::Config;
+/// use tergo_lib::tergo_format;
+/// use tergo_lib::Config;
 ///
 /// let input = "a <- function(x, y){x+y}";
 /// let config = Config::default();
