@@ -19,11 +19,4 @@ jobs:
       - name: Ensure latest dependencies are vendored
         working-directory: ./antidotum/tergo/src/rust
         run: |
-          old=$(sha256sum vendor.tar.xz)
-          sh ./vendor.sh
-          new=$(sha256sum vendor.tar.xz)
-          if [[ $old != $new ]]; then
-            echo "SHA256 sums of the vendored dependencies are different $old vs $new"
-            echo "Rerun ./antidotum/tergo/src/rust/pre-commit.sh"
-            exit 1
-          fi
+          sh ./check_vendor_updates.sh
