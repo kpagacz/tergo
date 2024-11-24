@@ -1,5 +1,6 @@
 #!bin/bash
 
+cargo update
 cargo vendor
 
 mkdir repo_vendor

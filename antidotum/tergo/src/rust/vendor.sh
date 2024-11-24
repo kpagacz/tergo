@@ -22,6 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+cargo update
 cargo vendor
 
 # c.f. https://reproducible-builds.org/docs/archives/
