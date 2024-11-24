@@ -2,3 +2,4 @@
 
 members = ["aqua", "spongia", "balnea", "unguentum", "tergo", "scopa"]
 resolver = "2"
+exclude = ["antidotum"]
