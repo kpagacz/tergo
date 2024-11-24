@@ -19,5 +19,9 @@ fi
 if ! diff downloaded in_repo; then
   echo "Error: vendored dependencies are not the same"
   echo "Please run 'vendor.sh' and commit the changes"
+  rm in_repo downloaded
   exit 1
 fi
+
+rn in_repo downloaded
+exit 0
