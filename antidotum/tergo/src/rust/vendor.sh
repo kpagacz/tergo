@@ -26,7 +26,12 @@ cargo update
 cargo vendor
 
 # c.f. https://reproducible-builds.org/docs/archives/
-tar cf - vendor | gzip -n >vendor.tar.xz
+tar \
+  --numeric-owner \
+  --xz \
+  --create \
+  --file=vendor.tar.xz \
+  vendor
 
 echo
 echo
