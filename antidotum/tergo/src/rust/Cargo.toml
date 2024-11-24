@@ -13,3 +13,4 @@ toml = "0.8.19"
 extendr-api = "*"
 
 [workspace]
+exclude = ["vendor", "repo_vendor"]

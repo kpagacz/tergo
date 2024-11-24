@@ -1,0 +1,22 @@
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["main"]
+
+name: Check Declared Dependencies Are Vendored
+
+permissions: read-all
+
+jobs:
+  check-vendor:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify declared dependencies are vendored
+        working-directory: ./antidotum/tergo/src/rust
+        run: |
+          sh ./check_vendor_updates.sh
