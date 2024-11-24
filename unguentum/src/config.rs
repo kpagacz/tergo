@@ -21,64 +21,151 @@ pub enum FunctionLineBreaks {
     Single,
 }
 
+/// The configuration for `tergo`.
+///
+/// This configuration can also read from a TOML file.
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
 pub struct Config {
+    /// The number of characters to use for one level of indentation.
+    ///
+    /// Default: 2.
     #[serde(default)]
     pub indent: Indent,
+
+    /// Tha maximum number of characters in a line of the formatted
+    /// code. `tergo` will ensure lines do not exceed this number
+    /// if possible.
+    ///
+    /// Default: 120.
     #[serde(default)]
     pub line_length: LineLength,
-    /// Embracing operator {{ }} does not have line breaks
+
+    /// A logical flag to determine whether to suppress line
+    /// breaks for embracing operator `{{}}`.
+    ///
+    /// If true, the formatter outputs the following code:
+    ///
+    /// ```R
+    ///  data |>
+    ///    group_by({{ by }})
+    /// ````
+    ///
+    /// instead of inserting a new line after each `{`.
+    ///
+    /// Default: true.
     #[serde(default)]
     pub embracing_op_no_nl: EmbracingOpNoNl,
-    /// To allow new lines after assignment or not
-    /// Ex. a <-
-    ///       TRUE
-    /// or
-    /// a <- TRUE
+
+    /// A logical flag indicating whether to insert new lines after
+    /// the assignment operator `<-` in cases where the code
+    /// does not fit a single line (so a line break is needed somewhere).
+    ///
+    /// The formatter outputs the following:
+    ///
+    /// ```R
+    /// a <- TRUE # for allow_nl_after_assignment = false
+    /// # or
+    /// a <-
+    ///   TRUE # for allow_nl_after_assignment = true
+    /// ```
+    ///
+    /// in cases where the code does not fit in a single line.
+    ///
+    /// Default: false.
     #[serde(default)]
     pub allow_nl_after_assignment: AllowNlAfterAssignment,
-    /// Whether to put a space before complex right hand sides of
+
+    /// A logical flag indicating whether to put a space before complex right hand sides of
     /// the formula operator. Example:
-    /// ~ a + b, but ~a
+    ///
+    /// ```R
+    /// # If space_before_complex_rhs_in_formula = true
+    /// ~ a + b
+    /// ~a
+    ///
+    /// # If space_before_complex_rhs_in_formula = false
+    /// ~a + b
+    /// ~a
+    /// ```
+    ///
+    /// Default: true.
     #[serde(default)]
     pub space_before_complex_rhs_in_formula: SpaceBeforeComplexRhsInFormulas,
-    /// Whether to keep the whitespace before the ending
+
+    /// A logical flag indicating whether to keep the whitespace before the ending
     /// bracket of a function definition in cases such as this:
+    ///
+    /// ```R
     /// function() {
     ///   TRUE
     ///
     /// }
+    /// ```
+    ///
+    /// If true, `tergo` will remove the whitespace:
+    ///
+    /// ```R
+    /// function() {
+    ///   TRUE
+    /// }
+    /// ```
+    ///
+    /// Default: true.
     #[serde(default)]
     pub strip_suffix_whitespace_in_function_defs: StripSuffixWhitespaceInFunctionDefs,
+
     /// The type of line breaking inside function definitions'
-    /// arguments. Example:
-    /// Single:
+    /// arguments. Possible values are: `single`, `double`, `hanging`.
+    /// Single puts a single level of indent for the arguments, double
+    /// puts a double level of indent and hanging puts the arguments
+    /// in the same column as the first argument to the function.
+    ///
+    /// Examples:
+    ///
+    /// ```R
+    /// # Single:
     /// function(
     ///   a
     /// ) {}
-    /// Double:
+    ///
+    /// # Double:
     /// function(
     ///     a
     /// ) {}
-    /// Hanging:
+    ///
+    /// # Hanging:
     /// function(a,
     ///          b) {}
+    /// ```
+    ///
+    /// Default: `hanging`.
     #[serde(default)]
     pub function_line_breaks: FunctionLineBreaks,
-    /// Whether to insert the new line after
-    /// the opening parenthesis of a call to quote
-    /// for very long calls. Example:
+
+    /// A logical flag indicating whether to insert a new line after
+    /// the opening parenthesis of a call to quote for very long calls.
+    ///
+    /// Examples:
+    ///
+    /// ```R
+    /// # If insert_newline_in_quote_call = false
     /// quote(a <- function(call) {
     ///   TRUE
     ///   TRUE
     /// })
-    /// vs
+    ///
+    /// # vs
+    ///
+    /// # If insert_newline_in_quote_call = true
     /// quote(
     ///   a <- function(call) {
     ///     TRUE
     ///     TRUE
     ///   }
     /// )
+    /// ```
+    ///
+    /// Default: true.
     #[serde(default)]
     pub insert_newline_in_quote_call: InsertNewlineInQuoteCall,
 }

@@ -8,6 +8,30 @@ use parser::{
 };
 use tokenizer::{tokens_buffer::TokensBuffer, Tokenizer};
 
+/// Format the input code with the given configuration.
+///
+/// # Arguments
+///
+/// * `input` - The input code to format.
+/// * `config` - The configuration to use for formatting.
+///   If not provided, the default configuration will be used.
+///   An instance of [Config].
+///
+/// # Returns
+///
+/// The formatted code.
+///
+/// # Example
+///
+/// ```rust
+/// use tergo::tergo_format;
+/// use tergo::Config;
+///
+/// let input = "a <- function(x, y){x+y}";
+/// let config = Config::default();
+///
+/// let formatted = tergo_format(input, Some(&config)).unwrap();
+/// ```
 pub fn tergo_format(input: &str, config: Option<&Config>) -> Result<String, String> {
     let default_config = Config::default();
     let config = config.unwrap_or(&default_config);

@@ -48,5 +48,6 @@ For `tergo`'s manual.
 ## Configuration
 
 You can configure `tergo` via a `tergo.toml` file.
-See [`tergo-lib` documentation](../balnea/README.md) for more
-details about possible configuration keys and values.
+See [`tergo-lib` README](../balnea/README.md) or
+[`tergo-lib` documentation](https://docs.rs/tergo-lib/latest/tergo_lib/struct.Config.html)
+for more details about possible configuration keys and values.
