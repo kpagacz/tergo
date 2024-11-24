@@ -21,7 +21,7 @@ $(STATLIB):
 	# vendoring (Note: to avoid NOTE of "Found the following hidden files and
 	# directories", .cargo needs to be created here)
 	if [ "$(VENDORING)" = "yes" ]; then \
-	  $(TAR) --extract --xz -f ./rust/vendor.tar.xz -C ./rust && \
+	  $(TAR) --extract --x -f ./rust/vendor.tar.xz -C ./rust && \
 	    mkdir -p ./rust/.cargo && \
 	    cp ./cargo_vendor_config.toml ./rust/.cargo/config.toml; \
 	fi
