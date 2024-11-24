@@ -1,6 +1,6 @@
 Package: tergo
 Title: Style Your Code Fast
-Version: 0.1.4.9002
+Version: 0.1.4.9003
 Authors@R:
     c(
       person("Konrad", "Pagacz", , "konrad.pagacz@gmail.com", role = c("aut", "cre")),
