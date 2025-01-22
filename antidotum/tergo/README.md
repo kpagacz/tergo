@@ -20,6 +20,8 @@ and efficiency.
 
 `tergo` is **REALLY FAST**.
 
+![](./man/figures/median_tergo.png)
+
 ## Installation
 
 ### From Github sources
