@@ -21,10 +21,10 @@ and efficiency.
 `tergo` is **REALLY FAST**.
 
 <div style="display: flex; justify-content: space-between; gap: 1rem;">
-  <img src="./man/figures/median_tergo.png" alt="Mean" 
-       style="width: 50%; object-fit: contain;">
+  <img src="./man/figures/mean_tergo.png" alt="Mean" 
+       style="width: 40%; object-fit: contain;">
   <img src="./man/figures/median_tergo.png" alt="Median" 
-       style="width: 50%; object-fit: contain;">
+       style="width: 40%; object-fit: contain;">
 </div>
 
 
