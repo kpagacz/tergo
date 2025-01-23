@@ -1,0 +1,16 @@
+{
+    "dialog-state": {
+        "query": "wasmparser = ",
+        "path": "~/Documents/tergo",
+        "regex": false,
+        "caseSensitive": false,
+        "wholeWord": false,
+        "filePatterns": [],
+        "useGitGrep": true,
+        "excludeGitIgnore": false,
+        "excludeFilePatterns": [],
+        "resultsCount": 0,
+        "errorCount": 0,
+        "replaceErrors": ""
+    }
+}

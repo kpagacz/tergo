@@ -135,3 +135,4 @@ style_file <- function(file, configuration = list()) {
 style_text <- function(text, configuration = list()) {
   vapply(X = text, FUN = function(code) format_code(code, configuration), FUN.VALUE = character(1), USE.NAMES = FALSE)
 }
+

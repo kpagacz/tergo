@@ -1,4 +1,4 @@
-# Mac M1
+
 # Dependencies: git2r, styler, tergo, microbenchmark
 # install.packages(c("git2r", "tergo", "styler", "microbenchmark"))
 
@@ -13,8 +13,6 @@ pacs <- c(
 )
 
 results <- list()
-results2 <- list()
-
 for (pac in names(pacs)) {
   pac_path <- file.path(bench_path, pac)
   pac_path_styler <- file.path(pac_path, "styler")
@@ -31,45 +29,20 @@ for (pac in names(pacs)) {
     tergo = {
       tergo::style_pkg(pac_path_tergo)
     },
-    times = 1,
-    unit = "s"
-  )
-
-  results2[[pac]] <- microbenchmark::microbenchmark(
-    styler = {
-      styler::style_pkg(pac_path_styler, filetype = "R", dry = "off")
-    },
-    tergo = {
-      tergo::style_pkg(pac_path_tergo)
-    },
-    times = 1,
-    unit = "s"
+    times = 5
   )
 }
 
-results_df <- do.call(
-  rbind,
-  lapply(names(results), function(x) cbind(summary(results[[x]])[, c("expr", "median")], package = x))
-)
+results_df <- do.call(rbind, lapply(names(results), function(x) cbind(summary(results[[x]])[, c("expr", "median", "mean")], package = x)))
 
-gg <- ggplot2::ggplot(results_df, ggplot2::aes(x = package, y = median)) +
-  ggplot2::geom_bar(ggplot2::aes(fill = expr), stat = "identity", position = "dodge") +
-  ggplot2::ggtitle("First Run - Seconds to Style the Whole package x - styler vs tergo") +
-  ggplot2::coord_flip() +
-  ggplot2::labs(y = "seconds")
-
-ggplot2::ggsave("man/figures/first_run.png", gg)
-
-results2_df <- do.call(
-  rbind,
-  lapply(names(results), function(x) cbind(summary(results2[[x]])[, c("expr", "median")], package = x))
-)
-
-gg2 <- ggplot2::ggplot(results2_df, ggplot2::aes(x = package, y = median)) +
+ggplot2::ggplot(results_df, ggplot2::aes(x = package, y = median)) +
   ggplot2::geom_bar(ggplot2::aes(fill = expr), stat = "identity", position = "dodge") +
   ggplot2::coord_flip() +
-  ggplot2::ggtitle("Second Run - Seconds to Style the Whole package x - styler vs tergo") +
-  ggplot2::labs(y = "seconds")
+  ggplot2::ggtitle("Median Seconds to Style the Whole package x - styler vs tergo")
 
-ggplot2::ggsave("man/figures/second_run.png", gg2)
+
+ggplot2::ggplot(results_df, ggplot2::aes(x = package, y = mean)) +
+  ggplot2::geom_bar(ggplot2::aes(fill = expr), stat = "identity", position = "dodge") +
+  ggplot2::coord_flip() +
+  ggplot2::ggtitle("Mean Seconds to Style the Whole package x - styler vs tergo")
 
