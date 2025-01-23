@@ -20,11 +20,11 @@ and efficiency.
 
 `tergo` is **REALLY FAST**, first run is more **x100 faster** or for bigger repositories even **x1000 faster**.
 
-![First Run](./man/figures/first_run.png")
+![First Run](./man/figures/first_run.png)
 
 Yes, tergo is there but it takes less than 0.1 seconds so is not visible!!!
 
-![Second Run](./man/figures/second_run.png")
+![Second Run](./man/figures/second_run.png)
 
 Benchmarking code is available in `inst/bench.R`.
 
