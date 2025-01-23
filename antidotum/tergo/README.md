@@ -24,8 +24,6 @@ and efficiency.
 
 Yes, tergo is there but it takes less than 0.1 seconds so is not visible!!!
 
-![Second Run](./man/figures/second_run.png)
-
 Benchmarking code is available in `inst/bench.R`.
 
 ## Installation
