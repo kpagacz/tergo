@@ -54,7 +54,7 @@ results_df <- do.call(
 
 gg <- ggplot2::ggplot(results_df, ggplot2::aes(x = package, y = median)) +
   ggplot2::geom_bar(ggplot2::aes(fill = expr), stat = "identity", position = "dodge") +
-  ggplot2::ggtitle("First Run - Seconds to Style the Whole package x - styler vs tergo") +
+  ggplot2::ggtitle("First Run\nSeconds to Style the Whole package x\nstyler vs tergo") +
   ggplot2::coord_flip() +
   ggplot2::labs(y = "seconds")
 
@@ -68,7 +68,7 @@ results2_df <- do.call(
 gg2 <- ggplot2::ggplot(results2_df, ggplot2::aes(x = package, y = median)) +
   ggplot2::geom_bar(ggplot2::aes(fill = expr), stat = "identity", position = "dodge") +
   ggplot2::coord_flip() +
-  ggplot2::ggtitle("Second Run - Seconds to Style the Whole package x - styler vs tergo") +
+  ggplot2::ggtitle("Second Run\nSeconds to Style the Whole package x\nstyler vs tergo") +
   ggplot2::labs(y = "seconds")
 
 ggplot2::ggsave("man/figures/second_run.png", gg2)
