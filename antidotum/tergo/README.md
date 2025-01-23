@@ -18,7 +18,7 @@ instead of slow running alternatives. Save tens of hours on your monthly bill!
 the user to see and other styling libraries don't cut it in terms of speed
 and efficiency.
 
-`tergo` is **REALLY FAST**, first run is more **x100 faster** or for bigger repositories even **x1000 faster**.
+`tergo` is **Faster than Blink of an Eye**, first run is more **x100 faster** or for bigger repositories even **x1000 faster**.
 
 ![First Run](./man/figures/first_run.png)
 
