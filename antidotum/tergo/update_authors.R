@@ -33,9 +33,7 @@ manifests <- list.files(vendor_path, pattern = "Cargo\\.toml", recursive = TRUE)
 
 l <- lapply(
   manifests,
-  \(
-    x
-  ) {
+  \(x) {
     cat("parsing ", x, "\n")
     RcppTOML::parseTOML(file.path(vendor_path, x))$package
   }
@@ -51,9 +49,7 @@ versions <- vapply(l, \(x) x[["version"]], FUN.VALUE = character(1L))
 
 authors <- vapply(
   l,
-  \(
-    x
-  ) {
+  \(x) {
     # Remove email addresses
     authors <- stringr::str_remove(x[["authors"]], "\\s+<.+>")
     paste(authors, collapse = ", ")
@@ -71,9 +67,7 @@ cat("The authors of the dependency Rust crates:
 
 authors_flattened <- vapply(
   stringr::str_split(authors, ",\\s+"),
-  \(
-    x
-  ) {
+  \(x) {
     paste(x, collapse = "\n  ")
   },
   FUN.VALUE = character(1L)
@@ -129,3 +123,4 @@ cat(
   file = "LICENSE.note",
   append = TRUE
 )
+

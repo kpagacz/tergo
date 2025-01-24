@@ -1,101 +1,99 @@
-#' Style the current package (RStudio addin)
+#' Check for required RStudio API package
 #'
-#' @keywords internal
-style_pkg_addin <- function() {
+#' Ensures the `rstudioapi` package is available, as it is required for addin functionality.
+check_rstudioapi <- function() {
   if (!requireNamespace("rstudioapi", quietly = TRUE)) {
     stop("The 'rstudioapi' package is required for this addin.")
   }
+}
 
-  # possibly detect current project directory
+#' Style the current package (RStudio addin)
+#'
+#' Automatically styles all R code in the current project/package using
+#' \code{\link[tergo]{style_pkg}}. If not called within a project, it
+#' defaults to the current working directory.
+#'
+#' @keywords internal
+style_pkg_addin <- function() {
+  check_rstudioapi()
+
+  # Detect current project directory (fallback to working directory)
   project_path <- rstudioapi::getActiveProject()
   if (is.null(project_path)) {
-    # fallback if not in a project
     project_path <- getwd()
   }
 
-  # call your styling function
-  tergo::style_pkg(path = project_path)
+  # Attempt styling silently
+  result <- try(tergo::style_pkg(path = project_path), silent = TRUE)
 
-  rstudioapi::showDialog(
-    title = "Package styling complete",
-    message = paste0("Package at '", project_path, "' has been styled.")
-  )
+  if (inherits(result, "try-error")) {
+    stop("tergo::style_pkg failed to style the package.")
+  }
 
   invisible(NULL)
 }
 
 #' Style the active file (RStudio addin)
 #'
-#' This function will look for the currently active file in the
-#' RStudio editor, style it, and then overwrite its contents
-#' with the formatted code.
+#' Styles the currently active file in the RStudio editor and saves the formatted code.
 #'
 #' @keywords internal
 style_active_file_addin <- function() {
-  if (!requireNamespace("rstudioapi", quietly = TRUE)) {
-    stop("The 'rstudioapi' package is required for this addin.")
-  }
+  check_rstudioapi()
 
-  # Get the context of the source editor
-  context <- rstudioapi::getSourceEditorContext()
+  # Get the source editor context
+  context <- rstudioapi::getActiveDocumentContext()
   file_path <- context$path
 
-  # If no path is available (e.g., an unsaved document), handle gracefully
+  # Ensure the file is saved before attempting to style
   if (is.null(file_path) || file_path == "") {
     rstudioapi::showDialog(title = "Cannot style", message = "Please save the document before styling.")
     return(invisible(NULL))
   }
 
-  # Call your package's styling function on this file
-  # Adjust 'configuration' as needed, or supply your own config list
-  tergo::style_file(file = file_path)
+  # Attempt styling silently
+  result <- try(tergo::style_file(file_path), silent = TRUE)
 
-  # Optionally, if you prefer to do in-memory replacement (instead of rewriting the file),
-  # you can read the newly styled code and set the document contents.
-  # styled_code <- readLines(file_path)
-  # rstudioapi::setDocumentContents(paste(styled_code, collapse = "\n"), id = context$id)
-
-  # Provide user feedback
-  rstudioapi::showDialog(title = "Styling complete", message = paste0("The file '", file_path, "' has been styled."))
+  if (inherits(result, "try-error")) {
+    stop(sprintf("tergo::style_file failed to style the %s file.", file_path))
+  }
 
   invisible(NULL)
 }
 
 #' Style the selected text (RStudio addin)
 #'
-#' This addin will retrieve the current text selection(s) in the
-#' RStudio editor, run it through `style_text()`, and then replace
-#' the selected text with the formatted version.
+#' Styles the selected text in the RStudio editor, replacing it with the formatted version.
 #'
 #' @keywords internal
 style_selection_addin <- function() {
-  if (!requireNamespace("rstudioapi", quietly = TRUE)) {
-    stop("The 'rstudioapi' package is required for this addin.")
-  }
+  check_rstudioapi()
 
+  # Get the source editor context
   context <- rstudioapi::getSourceEditorContext()
 
-  # Handle cases where there is no selection or an empty selection
+  # Check if there are any selections
   if (length(context$selection) == 0) {
     rstudioapi::showDialog(title = "No selection found", message = "Please select some code before using this addin.")
     return(invisible(NULL))
   }
 
-  # It’s possible there are multiple selection regions.
-  # We'll loop through each region and style it.
-  for (i in seq_along(context$selection)) {
-    sel <- context$selection[[i]]
+  text <- context$selection[[1L]]$text
+  range <- context$selection[[1L]]$range
 
-    # If the selection is empty, skip
-    if (nzchar(sel$text)) {
-      # Style the selected text using your styling function
-      styled_text <- tergo::style_text(sel$text)
-      # Replace that region with the styled text
-      rstudioapi::modifyRange(sel$range, styled_text, id = context$id)
-    }
+  result <- try(
+    expr = {
+      styled_text <- tergo::style_text(text)
+      rstudioapi::modifyRange(range, styled_text, id = context$id)
+    },
+    silent = TRUE
+  )
+
+  # Show dialog only if all selections were successfully styled
+  if (inherits(result, "try-error")) {
+    stop("tergo::style_text failed to style the text.")
   }
 
-  rstudioapi::showDialog(title = "Styling Complete", message = "The selected text has been styled.")
-
-  invisible(NULL)
+  invisible(rstudioapi::documentSave(context$id))
 }
+
