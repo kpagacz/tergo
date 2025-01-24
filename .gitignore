@@ -15,4 +15,6 @@ Cargo.lock
 
 # MacOS
 .DS_Store
+
 .Rproj.user
+tergo.Rproj
