@@ -9,7 +9,7 @@ use tergo_lib::{Config, FunctionLineBreaks};
 /// @keywords internal
 #[extendr]
 #[allow(clippy::too_many_arguments)]
-fn format_code(source_code: &str, configuration: extendr_api::List) -> String {
+fn format_code(source_code: &str, configuration: extendr_api::List) -> extendr_api::List {
     let configuration = configuration.into_hashmap();
     let default_config = Config::default();
     let config = Config::new(
@@ -72,7 +72,17 @@ fn format_code(source_code: &str, configuration: extendr_api::List) -> String {
             .unwrap_or(default_config.insert_newline_in_quote_call.0),
     );
 
-    tergo_lib::tergo_format(source_code, Some(&config)).unwrap()
+
+    let result = match tergo_lib::tergo_format(source_code, Some(&config)) {
+        Ok(formatted_code) => {
+            list!("success", formatted_code)
+        }
+        Err(error) => {
+            list!("error", error)
+        }
+    };
+    
+    return result;
 }
 
 /// Parse the config file and return the configuration

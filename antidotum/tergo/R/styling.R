@@ -6,8 +6,8 @@
 #' 1. The configuration passed to the function.
 #' 2. The configuration file.
 #'
-#' @param config_file (`character`) The path to the configuration file
-#' @param configuration (`list`) The path to the configuration for formatting
+#' @param config_file (`character`) The path to the configuration file. Default `"tergo.toml"`.
+#' @param configuration (`list`) The path to the configuration for formatting. Default `list()`.
 #' @param ... additional parameters to [tergo::style_pkg()]
 #'
 #' @export
@@ -21,62 +21,72 @@ style <- function(config_file = "tergo.toml", configuration = list(), ...) {
 #' Style a package
 #'
 #' @inheritParams style
-#' @param path (`character`) The path to the package.
-#' @param force (`logical(1`) Whether to format the files even
+#' @param path (`character`) The path to the package. Default `"."`.
+#' @param force (`logical(1)`) Whether to format the files even
 #' if no package was found. `TRUE` - format the `.R` and `.r` files
 #' found in the directory (recursive). `FALSE` exit without formatting
-#' anything.
-#' @param extensions (`character`) The extensions of the files to format.
+#' anything. Default `FALSE`.
+#' @param extensions (`character`) The extensions of the files to format. Default `c(".R", ".r")`.
+#' @param verbose (`logical(1)`) Whether per file status and run statistics should be printed. Default `interactive()`.
 #'
 #' @export
 style_pkg <- function(path = ".",
                       config_file = "tergo.toml",
                       configuration = list(),
                       force = FALSE,
-                      extensions = c(".R", ".r")) {
+                      extensions = c(".R", ".r"),
+                      verbose = interactive()) {
+  # Input Validation
   if (!is.character(path) || length(path) != 1) {
-    stop("Path must be a character")
+    stop("Path must be a single character string.")
   }
   if (!is.character(config_file) || length(config_file) != 1) {
-    stop("Config file must be a character")
+    stop("Config file must be a single character string.")
   }
   if (!is.logical(force) || length(force) != 1) {
-    stop("Force must be a logical")
+    stop("Force must be a single logical value.")
   }
   if (!is.list(configuration)) {
-    stop("Configuration must be a list")
+    stop("Configuration must be a list.")
+  }
+  if (!is.logical(verbose) || length(verbose) != 1) {
+    stop("verbose must be a single logical value.")
   }
 
-  # Read a configuration file
+  # Read Configuration File
   wd <- path
   config <- NULL
 
   repeat {
-    if (file.exists(file.path(wd, config_file))) {
-      config <- file.path(wd, config_file)
+    config_path <- file.path(wd, config_file)
+    if (file.exists(config_path)) {
+      config <- config_path
       break
     }
-    # OS agnostic file path splitting
-    if (strsplit(wd, split = .Platform$file.sep) |> length() == 1) {
+    # Stop if at the root directory
+    if (dirname(wd) == wd) {
       break
     }
     wd <- dirname(wd)
   }
+
   if (!is.null(config)) {
     config <- get_config(config)
   } else {
     config <- get_default_config()
   }
+  # Update configuration with user-provided settings
   config[names(configuration)] <- configuration
 
-  # Find package root. If not found, then just list files in the current directory
+  # Find Package Root
   package_root <- getwd()
   while (!file.exists(file.path(package_root, "DESCRIPTION"))) {
-    package_root <- dirname(package_root)
-    if (strsplit(package_root, split = .Platform$file.sep) |> length() == 1) {
+    parent_dir <- dirname(package_root)
+    if (parent_dir == package_root) { # Reached root without finding DESCRIPTION
       package_root <- getwd()
       break
     }
+    package_root <- parent_dir
   }
 
   if (!file.exists(file.path(package_root, "DESCRIPTION")) && !force) {
@@ -84,20 +94,40 @@ style_pkg <- function(path = ".",
     return(invisible())
   }
 
-  files <- list.files(package_root, recursive = TRUE, full.names = TRUE)
-  files <- Filter(function(file) any(endsWith(file, extensions)), files)
-  # Format
+  # List Relevant Files
+  files <- list.files(package_root, recursive = TRUE, full.names = TRUE, pattern = "\\.R$", ignore.case = TRUE)
+  #files <- Filter(function(file) any(endsWith(tolower(file), tolower(extensions))), files)
+
+  # Define ANSI Color Codes and Unicode Symbols using Only \u Escapes
+  green_tick <- "\u001B[32m\u2714\u001B[0m" # Green tick
+  red_cross <- "\u001B[31m\u274C\u001B[0m" # Red cross
+
+  success_count <- 0
+
   for (file in files) {
     tryCatch(
-      expr = {
-        style_file(file, configuration)
+      {
+        style_file(file, config)
+        success_count <- success_count + 1
+        # Print Green Tick and File Path
+        if (verbose) cat(sprintf("%s %s\n", basename(file), green_tick))
       },
       error = function(err) {
-        cat(sprintf("Error formatting the file: %s", file))
-        print(err)
+        # Print Red Cross, File Path, and Error Message
+        if (verbose) cat(sprintf("%s %s : %s\n", basename(file), red_cross, err$message))
       }
     )
   }
+
+  if (verbose) {
+    summary_bullet <- "\u25B6" # Black Right-Pointing Triangle
+    cat("\nSummary:\n")
+    cat(sprintf("  %s Files processed : %d\n", summary_bullet, length(files)))
+    cat(sprintf("  %s Successful     : %d\n", green_tick, success_count))
+    cat(sprintf("  %s Failed         : %d\n", red_cross, length(files) - success_count))
+  }
+
+  invisible()
 }
 
 #' Style a file
@@ -113,7 +143,12 @@ style_file <- function(file, configuration = list()) {
   size <- file.info(file)$size
   code <- readChar(con = file, nchars = size)
   formatted <- format_code(code, configuration)
-  write(x = formatted, file = file)
+  if (formatted[[1]] == "success") {
+    formatted[[2]]
+  } else {
+    stop("Failed to style the file.")
+  }
+  write(x = formatted[[2]], file = file)
 }
 
 #' Style text
@@ -133,5 +168,18 @@ style_file <- function(file, configuration = list()) {
 #' code <- c("function(){}", "A<-7")
 #' style_text(code)
 style_text <- function(text, configuration = list()) {
-  vapply(X = text, FUN = function(code) format_code(code, configuration), FUN.VALUE = character(1), USE.NAMES = FALSE)
+  vapply(
+    X = text,
+    FUN = function(code) {
+      formatted <- format_code(code, configuration)
+      if (formatted[[1]] == "success") {
+        formatted[[2]]
+      } else {
+        stop("Failed to style the file.")
+      }
+    },
+    FUN.VALUE = character(1),
+    USE.NAMES = FALSE
+  )
 }
+
