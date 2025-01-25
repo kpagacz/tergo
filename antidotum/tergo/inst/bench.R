@@ -1,7 +1,10 @@
 # Mac M1
 # Dependencies: git2r, styler, tergo, microbenchmark
 # install.packages(c("git2r", "tergo", "styler", "microbenchmark"))
-
+require(git2r)
+require(tergo)
+require(styler)
+require(microbenchmark)
 tempd <- tempdir()
 bench_path <- file.path(tempd, "bench")
 dir.create(bench_path)
