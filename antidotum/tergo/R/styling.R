@@ -95,8 +95,8 @@ style_pkg <- function(path = ".",
   }
 
   # List Relevant Files
-  files <- list.files(package_root, recursive = TRUE, full.names = TRUE, pattern = "\\.R$", ignore.case = TRUE)
-  #files <- Filter(function(file) any(endsWith(tolower(file), tolower(extensions))), files)
+  files <- list.files(package_root, recursive = TRUE, full.names = TRUE)
+  files <- Filter(function(file) any(endsWith(file, extensions)), files)
 
   # Define ANSI Color Codes and Unicode Symbols using Only \u Escapes
   green_tick <- "\u001B[32m\u2714\u001B[0m" # Green tick
