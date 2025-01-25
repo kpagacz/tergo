@@ -14,6 +14,7 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Config/rextendr/version: 0.3.1
 SystemRequirements: Cargo (Rust's package manager), rustc
+NeedsCompilation: yes
 Biarch: true
 Depends:
     R (>= 4.2)
