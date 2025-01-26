@@ -513,8 +513,8 @@ impl<'a> Tokenizer<'a> {
             self.it = new_offset;
             self.current_char = new_char;
         } else {
-            self.offset = self.source.offset();
-            self.it = self.source.offset();
+            self.offset = self.raw_source.as_bytes().len();
+            self.it = self.raw_source.as_bytes().len();
         }
     }
 
