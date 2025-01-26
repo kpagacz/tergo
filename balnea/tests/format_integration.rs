@@ -267,6 +267,7 @@ comparison_test!(
     "092",
     Config::default()
 );
+comparison_test!(regression_25, "093", Config::default());
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
