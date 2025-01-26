@@ -4,6 +4,7 @@ Version: 0.1.5.9002
 Authors@R:
     c(
       person("Konrad", "Pagacz", , "konrad.pagacz@gmail.com", role = c("aut", "cre")),
+      person("Maciej", "Nasinski", , "nasinski.maciej@gmail.com", role = c("ctb")),
       person(given = "The authors of the dependency Rust crates",
         role = c("ctb"), comment = "see inst/AUTHORS file for details")
     )
