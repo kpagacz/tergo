@@ -36,7 +36,6 @@ style_pkg <- function(path = ".",
                       force = FALSE,
                       extensions = c(".R", ".r"),
                       verbose = interactive()) {
-  # Input Validation
   if (!is.character(path) || length(path) != 1) {
     stop("Path must be a single character string.")
   }
@@ -75,7 +74,6 @@ style_pkg <- function(path = ".",
   } else {
     config <- get_default_config()
   }
-  # Update configuration with user-provided settings
   config[names(configuration)] <- configuration
 
   # Find Package Root
@@ -98,9 +96,9 @@ style_pkg <- function(path = ".",
   files <- list.files(package_root, recursive = TRUE, full.names = TRUE)
   files <- Filter(function(file) any(endsWith(file, extensions)), files)
 
-  # Define ANSI Color Codes and Unicode Symbols using Only \u Escapes
-  green_tick <- "\u001B[32m\u2714\u001B[0m" # Green tick
-  red_cross <- "\u001B[31m\u274C\u001B[0m" # Red cross
+  # Define ANSI Color Codes and Unicode Symbols
+  green_tick <- "\u001B[32m\u2714\u001B[0m"
+  red_cross <- "\u001B[31m\u274C\u001B[0m"
 
   success_count <- 0
 
@@ -109,11 +107,11 @@ style_pkg <- function(path = ".",
       {
         style_file(file, config)
         success_count <- success_count + 1
-        # Print Green Tick and File Path
+        # Print File Path and Green Tick
         if (verbose) cat(sprintf("%s %s\n", basename(file), green_tick))
       },
       error = function(err) {
-        # Print Red Cross, File Path, and Error Message
+        # Print File Path, Red Cross, and Error Message
         if (verbose) cat(sprintf("%s %s : %s\n", basename(file), red_cross, err$message))
       }
     )
