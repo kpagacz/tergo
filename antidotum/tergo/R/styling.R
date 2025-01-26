@@ -175,7 +175,7 @@ style_text <- function(text, configuration = list()) {
       if (formatted[[1]] == "success") {
         formatted[[2]]
       } else {
-        stop("Failed to style the file.")
+        stop("Failed to style the text.")
       }
     },
     FUN.VALUE = character(1),
