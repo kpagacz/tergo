@@ -18,7 +18,7 @@ SystemRequirements: Cargo (Rust's package manager), rustc
 NeedsCompilation: yes
 Biarch: true
 Depends:
-    R (>= 4.2)
+    R (>= 4.1.0)
 Suggests:
     rextendr (== 0.3.1),
     roxygen2,
