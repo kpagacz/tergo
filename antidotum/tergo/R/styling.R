@@ -121,8 +121,8 @@ style_pkg <- function(path = ".",
     summary_bullet <- "\u25B6" # Black Right-Pointing Triangle
     cat("\nSummary:\n")
     cat(sprintf("  %s Files processed : %d\n", summary_bullet, length(files)))
-    cat(sprintf("  %s Successful     : %d\n", green_tick, success_count))
-    cat(sprintf("  %s Failed         : %d\n", red_cross, length(files) - success_count))
+    cat(sprintf("  %s Successful      : %d\n", green_tick, success_count))
+    cat(sprintf("  %s Failed          : %d\n", red_cross, length(files) - success_count))
   }
 
   invisible()
