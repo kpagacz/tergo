@@ -7,7 +7,7 @@
 #' 2. The configuration file.
 #'
 #' @param config_file (`character`) The path to the configuration file. Default `"tergo.toml"`.
-#' @param configuration (`list`) The path to the configuration for formatting. Default `list()`.
+#' @param configuration (`list`) Configuration for formatting. Default `list()`.
 #' @param ... additional parameters to [tergo::style_pkg()]
 #'
 #' @export
