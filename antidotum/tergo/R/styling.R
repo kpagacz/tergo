@@ -98,6 +98,7 @@ style_pkg <- function(path = ".",
       }
     )
   }
+  message(sprintf("Sucessfully styled %i files.", length(files)))
 }
 
 #' Style a file
