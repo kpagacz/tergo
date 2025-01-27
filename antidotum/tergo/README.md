@@ -13,10 +13,10 @@ about the full-blown configurability, you should use `tergo`. Some
 use-cases include:
 
 - Save money on your CI infrastructure by checking the style with `tergo`
-instead of slow running alternatives. Save tens of hours on your monthly bill!
+  instead of slow running alternatives. Save tens of hours on your monthly bill!
 - You are developing a user interface that needs to style the code for
-the user to see and other styling libraries don't cut it in terms of speed
-and efficiency.
+  the user to see and other styling libraries don't cut it in terms of speed
+  and efficiency.
 
 `tergo` is **Faster than Blink of an Eye**. First run is more **x100 faster** or for bigger repositories even **x1000 faster** than other available solutions.
 
@@ -52,7 +52,7 @@ install.packages('tergo', repos = c('https://kpagacz.r-universe.dev', 'https://c
 
 ## Usage
 
-See the [R manual](rtergo.pagacz.io) for the reference.
+See the [R manual](https://rtergo.pagacz.io) for the reference.
 
 To style your package, run:
 
