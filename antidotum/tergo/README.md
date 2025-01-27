@@ -18,7 +18,13 @@ instead of slow running alternatives. Save tens of hours on your monthly bill!
 the user to see and other styling libraries don't cut it in terms of speed
 and efficiency.
 
-`tergo` is **REALLY FAST**.
+`tergo` is **Faster than Blink of an Eye**. First run is more **x100 faster** or for bigger repositories even **x1000 faster** than other available solutions.
+
+![First Run](./man/figures/first_run.png)
+
+Yes, tergo is there but it takes less than 0.1 seconds so is not visible!!!
+
+Benchmarking code is available in `inst/bench.R`.
 
 ## Installation
 
