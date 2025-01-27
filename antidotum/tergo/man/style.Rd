@@ -7,9 +7,9 @@
 style(config_file = "tergo.toml", configuration = list(), ...)
 }
 \arguments{
-\item{config_file}{(\code{character}) The path to the configuration file}
+\item{config_file}{(\code{character}) The path to the configuration file. Default \code{"tergo.toml"}.}
 
-\item{configuration}{(\code{list}) The path to the configuration for formatting}
+\item{configuration}{(\code{list}) The path to the configuration for formatting. Default \code{list()}.}
 
 \item{...}{additional parameters to \code{\link[=style_pkg]{style_pkg()}}}
 }

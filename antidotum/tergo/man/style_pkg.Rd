@@ -9,22 +9,25 @@ style_pkg(
   config_file = "tergo.toml",
   configuration = list(),
   force = FALSE,
-  extensions = c(".R", ".r")
+  extensions = c(".R", ".r"),
+  verbose = interactive()
 )
 }
 \arguments{
-\item{path}{(\code{character}) The path to the package.}
+\item{path}{(\code{character}) The path to the package. Default \code{"."}.}
 
-\item{config_file}{(\code{character}) The path to the configuration file}
+\item{config_file}{(\code{character}) The path to the configuration file. Default \code{"tergo.toml"}.}
 
-\item{configuration}{(\code{list}) The path to the configuration for formatting}
+\item{configuration}{(\code{list}) The path to the configuration for formatting. Default \code{list()}.}
 
-\item{force}{(\verb{logical(1}) Whether to format the files even
+\item{force}{(\code{logical(1)}) Whether to format the files even
 if no package was found. \code{TRUE} - format the \code{.R} and \code{.r} files
 found in the directory (recursive). \code{FALSE} exit without formatting
-anything.}
+anything. Default \code{FALSE}.}
 
-\item{extensions}{(\code{character}) The extensions of the files to format.}
+\item{extensions}{(\code{character}) The extensions of the files to format. Default \code{c(".R", ".r")}.}
+
+\item{verbose}{(\code{logical(1)}) Whether per file status and run statistics should be printed. Default \code{interactive()}.}
 }
 \description{
 Style a package
