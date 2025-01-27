@@ -12,7 +12,7 @@ use crate::{
         Arg, Args, Delimiter, ElseIfConditional, Expression, ForLoop, FunctionDefinition,
         IfConditional, IfExpression, Lambda, RepeatExpression, TrailingElse, WhileExpression,
     },
-    expressions::expr,
+    expressions::{expr, expr_with_newlines},
     program::statement_or_expr,
     token_parsers::*,
     Input,
@@ -48,10 +48,10 @@ where
         tuple((
             left_delimiter,
             many0(newline),
-            opt(expr),
+            opt(expr_with_newlines),
             many0(tuple((
                 tuple((comma, many0(newline))),
-                tuple((opt(expr), many0(newline))),
+                tuple((opt(expr_with_newlines), many0(newline))),
             ))),
             many0(newline),
             right_delimiter,

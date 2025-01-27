@@ -1,6 +1,6 @@
 [package]
 name = "tergo-formatter"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2021"
 license = "MIT"
 description = "Formatter for tergo"
@@ -10,7 +10,7 @@ repository = "https://github.com/kpagacz/tergo/tree/main/unguentum"
 
 [dependencies]
 tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.2.2" }
-parser = { package = "tergo-parser", path = "../spongia", version = "0.2.2" }
+parser = { package = "tergo-parser", path = "../spongia", version = "0.2.3" }
 log = "0.4.21"
 serde = { version = "1.0.210", features = ["derive"] }
 

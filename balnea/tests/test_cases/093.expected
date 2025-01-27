@@ -1,2 +1,1 @@
-list.files(".", ignore.case
-                    = TRUE)
+list.files(".", ignore.case = TRUE)
