@@ -1,0 +1,17 @@
+Name: Style This Package
+Description: Recursively style R files in the current package.
+Binding: style_pkg_addin
+Interactive: true
+Package: tergo
+
+Name: Style Active File
+Description: Style the currently open file in the RStudio editor using tergo.
+Binding: style_active_file_addin
+Interactive: true
+Package: tergo
+
+Name: Style Selected Text
+Description: Style only the currently highlighted code in the editor using tergo.
+Binding: style_selection_addin
+Interactive: true
+Package: tergo
