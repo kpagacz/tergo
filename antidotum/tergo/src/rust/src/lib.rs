@@ -73,16 +73,14 @@ fn format_code(source_code: &str, configuration: extendr_api::List) -> extendr_a
     );
 
 
-    let result = match tergo_lib::tergo_format(source_code, Some(&config)) {
+    match tergo_lib::tergo_format(source_code, Some(&config)) {
         Ok(formatted_code) => {
             list!("success", formatted_code)
         }
         Err(error) => {
             list!("error", error)
         }
-    };
-    
-    return result;
+    }
 }
 
 /// Parse the config file and return the configuration
