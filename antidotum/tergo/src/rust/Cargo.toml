@@ -1,6 +1,6 @@
 [package]
 name = "tergo"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [lib]
@@ -8,7 +8,7 @@ crate-type = ["staticlib"]
 name = "tergo"
 
 [dependencies]
-tergo-lib = "0.2.5"
+tergo-lib = "0.2.7"
 toml = "0.8.19"
 extendr-api = "*"
 
