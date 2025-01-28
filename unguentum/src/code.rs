@@ -765,7 +765,13 @@ impl<'a> Code for Expression<'a> {
                     args_to_docs_with_conditional_nest(args, config, doc_ref, group_ref);
                 if is_function_ref_quote
                     && args.args.len() == 1
-                    && args.args[0].0.is_some()
+                    && args
+                        .args
+                        .first()
+                        .unwrap()
+                        .0
+                        .as_ref()
+                        .is_some_and(|arg| !is_closure_with_brackets(arg))
                     && has_forced_line_breaks(&inner_docs, false)
                 {
                     // Special case for the quote function call
@@ -781,7 +787,7 @@ impl<'a> Code for Expression<'a> {
                     //     TRUE
                     //   }
                     // )
-                    // One of the few case it makes some miniscule
+                    // One of the few cases it makes some miniscule
                     // sense to have more indent
                     group!(
                         function_ref.to_docs(config, doc_ref).cons(inner_docs),
@@ -1058,6 +1064,15 @@ fn delimited_content_to_docs(
             .cons(nl())
             .cons(right_delim.to_docs_without_leading_comments(config, doc_ref))
             .to_group(should_break, doc_ref)
+    }
+}
+
+fn is_closure_with_brackets(expr: &Expression) -> bool {
+    if let Expression::Term(term) = expr {
+        term.pre_delimiters
+            .is_some_and(|pre_delim| matches!(pre_delim.token, Token::LBrace))
+    } else {
+        false
     }
 }
 
