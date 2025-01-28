@@ -1,6 +1,6 @@
 [package]
 name = "scopa"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [lib]
@@ -9,7 +9,7 @@ path = "./src/lib.rs"
 
 [dependencies]
 wit-bindgen = "0.32.0"
-tergo-lib = { path = "../balnea", version = "0.2.0" }
+tergo-lib = { path = "../balnea", version = "0.2.8" }
 
 [dev-dependencies]
 wasm-tools = "1.217.0"

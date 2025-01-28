@@ -267,6 +267,17 @@ comparison_test!(
     "092",
     Config::default()
 );
+comparison_test!(regression_25, "093", Config::default());
+comparison_test!(
+    function_call_with_one_unnamed_one_named_arg,
+    "094",
+    Config::default()
+);
+comparison_test!(
+    function_call_with_many_newlines_after_arg_names,
+    "095",
+    Config::default()
+);
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

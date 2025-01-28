@@ -10,5 +10,5 @@ repository = "https://github.com/kpagacz/tergo/"
 clap = { version = "4.5.17", features = ["derive"] }
 env_logger = "0.11.5"
 log = "0.4.22"
-tergo-lib = { path = "../balnea", version = "0.2.7" }
+tergo-lib = { path = "../balnea", version = "0.2.8" }
 toml = "0.8.19"

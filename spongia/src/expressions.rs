@@ -309,6 +309,22 @@ pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, 
     }
 }
 
+pub(crate) fn expr_with_newlines<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("expr: {}", TokensBuffer(tokens));
+    let (mut tokens, term) = unary_term(tokens)?;
+    while !tokens.is_empty() && tokens[0].token == Newline {
+        tokens = &tokens[1..];
+    }
+    if !tokens.is_empty() {
+        let parser = ExprParser(0);
+        parser.parse(term, tokens)
+    } else {
+        Ok((tokens, term))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use tokenizer::tokens::commented_tokens;
