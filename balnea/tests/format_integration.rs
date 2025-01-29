@@ -278,6 +278,11 @@ comparison_test!(
     "095",
     Config::default()
 );
+comparison_test!(
+    closure_as_argument_does_not_format_to_a_nl,
+    "096",
+    Config::default()
+);
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
