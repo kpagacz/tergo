@@ -7,8 +7,6 @@
 style_selection_addin()
 }
 \description{
-This addin will retrieve the current text selection(s) in the
-RStudio editor, run it through \code{style_text()}, and then replace
-the selected text with the formatted version.
+Styles the selected text in the RStudio editor, replacing it with the formatted version.
 }
 \keyword{internal}

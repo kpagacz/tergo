@@ -12,7 +12,29 @@ get_default_config()
 \description{
 This configuration is used by the styling functions
 if no value is provided for the configuration keys.
+It can also serve as the base for you custom configuration.
+}
+\details{
+The configuration values:
+\itemize{
+\item indent - the number of spaces to use for indentation.
+\item line_length - the maximum number of characters in a line.
+\item embracing_op_no_nl - whether to allow a newline after an embracing operator.
+\item allow_nl_after_assignment - whether to allow a newline after an assignment operator.
+\item space_before_complex_rhs_in_formula - whether to add a space before a complex right-hand side in a formula.
+\item strip_suffix_whitespace_in_function_defs - whether to strip suffix whitespace in function definitions.
+\item function_line_breaks - the type of line breaks in function definitions when arguments do not
+fit. Possible values are: hanging, double, single.
+\item insert_newline_in_quote_call - whether to insert a newline in calls to \code{quote}.
+}
 }
 \examples{
-get_default_config()
+config <- get_default_config()
+print(config)
+
+# Make the indent 4 spaces
+config$indent <- 4
+
+# Make the maximum line length 80 characters
+config$line_length <- 80
 }

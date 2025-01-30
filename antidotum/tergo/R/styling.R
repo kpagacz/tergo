@@ -6,6 +6,8 @@
 #' 1. The configuration passed to the function.
 #' 2. The configuration file.
 #'
+#' To see possible configuration options, see [get_default_config()].
+#'
 #' @param config_file (`character`) The path to the configuration file. Default `"tergo.toml"`.
 #' @param configuration (`list`) Configuration for formatting. Default `list()`.
 #' @param ... additional parameters to [tergo::style_pkg()]
@@ -20,6 +22,14 @@ style <- function(config_file = "tergo.toml", configuration = list(), ...) {
 
 #' Style a package
 #'
+#' @details
+#' Configuration is read from a file named `tergo.toml` in the root of the
+#' package. The precedence of the configuration is (from the highest to lowest):
+#' 1. The configuration passed to the function.
+#' 2. The configuration file.
+#'
+#' To see possible configuration options, see [get_default_config()].
+#'
 #' @inheritParams style
 #' @param path (`character`) The path to the package. Default `"."`.
 #' @param force (`logical(1)`) Whether to format the files even
@@ -30,6 +40,9 @@ style <- function(config_file = "tergo.toml", configuration = list(), ...) {
 #' @param verbose (`logical(1)`) Whether per file status and run statistics should be printed. Default `interactive()`.
 #'
 #' @export
+#' @examples
+#' style_pkg()
+#' style_pkg(path = "./tergo", config_file = "custom_tergo.toml", verbose = TRUE)
 style_pkg <- function(path = ".",
                       config_file = "tergo.toml",
                       configuration = list(),
@@ -130,10 +143,18 @@ style_pkg <- function(path = ".",
 
 #' Style a file
 #'
+#' @details
+#' To see possible configuration options, see [get_default_config()].
+#'
 #' @inheritParams style
 #' @param file (`character`) the file to format
 #'
 #' @export
+#' @examples
+#' file_conn <- file("./file")
+#' writeLines(c("function(){}", "A<-7"), file_conn)
+#' close(file_conn)
+#' style_file(file = "./file", configuration = list())
 style_file <- function(file, configuration = list()) {
   if (!file.exists(file)) {
     stop("File " + file + " does not exist")
@@ -153,6 +174,7 @@ style_file <- function(file, configuration = list()) {
 #'
 #' @details
 #' This function is vectorized.
+#' To see possible configuration options, see [get_default_config()].
 #'
 #' @inheritParams style
 #' @param text (`character`) the text to style

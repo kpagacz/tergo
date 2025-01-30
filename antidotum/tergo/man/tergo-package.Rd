@@ -22,6 +22,7 @@ Useful links:
 
 Other contributors:
 \itemize{
+  \item Maciej Nasinski \email{nasinski.maciej@gmail.com} [contributor]
   \item The authors of the dependency Rust crates (see inst/AUTHORS file for details) [contributor]
 }
 

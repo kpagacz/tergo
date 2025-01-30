@@ -9,7 +9,7 @@ style(config_file = "tergo.toml", configuration = list(), ...)
 \arguments{
 \item{config_file}{(\code{character}) The path to the configuration file. Default \code{"tergo.toml"}.}
 
-\item{configuration}{(\code{list}) The path to the configuration for formatting. Default \code{list()}.}
+\item{configuration}{(\code{list}) Configuration for formatting. Default \code{list()}.}
 
 \item{...}{additional parameters to \code{\link[=style_pkg]{style_pkg()}}}
 }
@@ -23,6 +23,8 @@ package. The precedence of the configuration is (from the highest to lowest):
 \item The configuration passed to the function.
 \item The configuration file.
 }
+
+To see possible configuration options, see \code{\link[=get_default_config]{get_default_config()}}.
 }
 \examples{
 style()

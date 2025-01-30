@@ -18,7 +18,7 @@ style_pkg(
 
 \item{config_file}{(\code{character}) The path to the configuration file. Default \code{"tergo.toml"}.}
 
-\item{configuration}{(\code{list}) The path to the configuration for formatting. Default \code{list()}.}
+\item{configuration}{(\code{list}) Configuration for formatting. Default \code{list()}.}
 
 \item{force}{(\code{logical(1)}) Whether to format the files even
 if no package was found. \code{TRUE} - format the \code{.R} and \code{.r} files
@@ -31,4 +31,18 @@ anything. Default \code{FALSE}.}
 }
 \description{
 Style a package
+}
+\details{
+Configuration is read from a file named \code{tergo.toml} in the root of the
+package. The precedence of the configuration is (from the highest to lowest):
+\enumerate{
+\item The configuration passed to the function.
+\item The configuration file.
+}
+
+To see possible configuration options, see \code{\link[=get_default_config]{get_default_config()}}.
+}
+\examples{
+style_pkg()
+style_pkg(path = "./tergo", config_file = "custom_tergo.toml", verbose = TRUE)
 }

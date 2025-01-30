@@ -7,6 +7,8 @@
 style_pkg_addin()
 }
 \description{
-Style the current package (RStudio addin)
+Automatically styles all R code in the current project/package using
+\code{\link[tergo]{style_pkg}}. If not called within a project, it
+defaults to the current working directory.
 }
 \keyword{internal}

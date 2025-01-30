@@ -9,8 +9,17 @@ style_file(file, configuration = list())
 \arguments{
 \item{file}{(\code{character}) the file to format}
 
-\item{configuration}{(\code{list}) The path to the configuration for formatting. Default \code{list()}.}
+\item{configuration}{(\code{list}) Configuration for formatting. Default \code{list()}.}
 }
 \description{
 Style a file
+}
+\details{
+To see possible configuration options, see \code{\link[=get_default_config]{get_default_config()}}.
+}
+\examples{
+file_conn <- file("./file")
+writeLines(c("function(){}", "A<-7"), file_conn)
+close(file_conn)
+style_file(file = "./file", configuration = list())
 }

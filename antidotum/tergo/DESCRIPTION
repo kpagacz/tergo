@@ -25,7 +25,10 @@ Suggests:
     rstudioapi (>= 0.7),
     devtools,
     pkgdown,
-    desc
+    desc,
+    knitr,
+    rmarkdown
 URL: https://rtergo.pagacz.io,
     https://github.com/kpagacz/tergo
 BugReports: https://github.com/kpagacz/tergo/issues
+VignetteBuilder: knitr

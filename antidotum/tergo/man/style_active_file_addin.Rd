@@ -7,8 +7,6 @@
 style_active_file_addin()
 }
 \description{
-This function will look for the currently active file in the
-RStudio editor, style it, and then overwrite its contents
-with the formatted code.
+Styles the currently active file in the RStudio editor and saves the formatted code.
 }
 \keyword{internal}

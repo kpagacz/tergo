@@ -9,7 +9,7 @@ style_text(text, configuration = list())
 \arguments{
 \item{text}{(\code{character}) the text to style}
 
-\item{configuration}{(\code{list}) The path to the configuration for formatting. Default \code{list()}.}
+\item{configuration}{(\code{list}) Configuration for formatting. Default \code{list()}.}
 }
 \value{
 (\code{character}) the text formatted as R code
@@ -19,6 +19,7 @@ Style text
 }
 \details{
 This function is vectorized.
+To see possible configuration options, see \code{\link[=get_default_config]{get_default_config()}}.
 }
 \examples{
 code <- "function(){}"
