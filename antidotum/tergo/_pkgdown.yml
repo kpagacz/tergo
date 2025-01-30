@@ -8,3 +8,4 @@ reference:
     desc: Configuration functions
     contents:
       - get_default_config
+  - title:

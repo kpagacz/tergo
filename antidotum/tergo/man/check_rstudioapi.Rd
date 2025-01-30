@@ -9,3 +9,4 @@ check_rstudioapi()
 \description{
 Ensures the \code{rstudioapi} package is available, as it is required for addin functionality.
 }
+\keyword{internal}

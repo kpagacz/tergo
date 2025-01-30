@@ -1,6 +1,7 @@
 #' Check for required RStudio API package
 #'
 #' Ensures the `rstudioapi` package is available, as it is required for addin functionality.
+#' @keywords internal
 check_rstudioapi <- function() {
   if (!requireNamespace("rstudioapi", quietly = TRUE)) {
     stop("The 'rstudioapi' package is required for this addin.")
@@ -96,4 +97,3 @@ style_selection_addin <- function() {
 
   invisible(rstudioapi::documentSave(context$id))
 }
-
