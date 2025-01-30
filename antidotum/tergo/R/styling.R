@@ -151,10 +151,12 @@ style_pkg <- function(path = ".",
 #'
 #' @export
 #' @examples
-#' file_conn <- file("./file")
-#' writeLines(c("function(){}", "A<-7"), file_conn)
-#' close(file_conn)
-#' style_file(file = "./file", configuration = list())
+#' if (interactive()) {
+#'   file_conn <- file("./file")
+#'   writeLines(c("function(){}", "A<-7"), file_conn)
+#'   close(file_conn)
+#'   style_file(file = "./file", configuration = list())
+#' }
 style_file <- function(file, configuration = list()) {
   if (!file.exists(file)) {
     stop("File " + file + " does not exist")
@@ -202,4 +204,3 @@ style_text <- function(text, configuration = list()) {
     USE.NAMES = FALSE
   )
 }
-

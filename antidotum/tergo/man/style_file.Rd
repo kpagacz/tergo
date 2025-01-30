@@ -18,8 +18,10 @@ Style a file
 To see possible configuration options, see \code{\link[=get_default_config]{get_default_config()}}.
 }
 \examples{
-file_conn <- file("./file")
-writeLines(c("function(){}", "A<-7"), file_conn)
-close(file_conn)
-style_file(file = "./file", configuration = list())
+if (interactive()) {
+  file_conn <- file("./file")
+  writeLines(c("function(){}", "A<-7"), file_conn)
+  close(file_conn)
+  style_file(file = "./file", configuration = list())
+}
 }
