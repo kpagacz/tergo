@@ -69,15 +69,14 @@ safe_system2 <- function(cmd, args) {
   result <- list(success = FALSE, output = "")
 
   output_tmp <- tempfile()
-  on.exit(unlink(output_tmp, force = TRUE))
-
   suppressWarnings(ret <- system2(cmd, args, stdout = output_tmp))
-
+  out <- readLines(output_tmp)
+  unlink(output_tmp, force = TRUE)
   if (!identical(ret, 0L)) {
     return(result)
   }
 
-  result$output <- readLines(output_tmp)
+  result$output <- out
   result$success <- TRUE
   result
 }
@@ -182,4 +181,3 @@ Please refer to <https://www.rust-lang.org/tools/install> to install Rust.
   )
 )
 quit("no", status = 2)
-

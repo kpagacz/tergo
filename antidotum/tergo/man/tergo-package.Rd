@@ -6,7 +6,7 @@
 \alias{tergo-package}
 \title{A library to make your source code pretty.}
 \description{
-Style your code FAST.
+Provides a set of functions that allow users for styling their R code according to the `tidyverse` style guide. The package uses a native Rust implementation to ensure the highest performance. Learn more about `tergo` at \url{https://rtergo.pagacz.io}.
 }
 \seealso{
 Useful links:

@@ -6,6 +6,9 @@
 \usage{
 style_active_file_addin()
 }
+\value{
+invisibly returns \code{NULL}.
+}
 \description{
 Styles the currently active file in the RStudio editor and saves the formatted code.
 }

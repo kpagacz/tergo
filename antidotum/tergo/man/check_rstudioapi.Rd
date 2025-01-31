@@ -6,6 +6,9 @@
 \usage{
 check_rstudioapi()
 }
+\value{
+invisibly returns \code{NULL}.
+}
 \description{
 Ensures the \code{rstudioapi} package is available, as it is required for addin functionality.
 }

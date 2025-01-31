@@ -6,6 +6,9 @@
 \usage{
 style_pkg_addin()
 }
+\value{
+invisibly returns \code{NULL}.
+}
 \description{
 Automatically styles all R code in the current project/package using
 \code{\link[tergo]{style_pkg}}. If not called within a project, it

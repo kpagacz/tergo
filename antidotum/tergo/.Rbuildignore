@@ -5,3 +5,4 @@
 ^update_authors\.R
 ^\_pkgdown\.yml
 ^src/rust/repo_vendor/
+^data-raw/

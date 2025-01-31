@@ -29,6 +29,9 @@ anything. Default \code{FALSE}.}
 
 \item{verbose}{(\code{logical(1)}) Whether per file status and run statistics should be printed. Default \code{interactive()}.}
 }
+\value{
+No return values, called for side effects.
+}
 \description{
 Style a package
 }

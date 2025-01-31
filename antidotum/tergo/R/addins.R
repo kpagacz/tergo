@@ -2,10 +2,12 @@
 #'
 #' Ensures the `rstudioapi` package is available, as it is required for addin functionality.
 #' @keywords internal
+#' @return  invisibly returns `NULL`.
 check_rstudioapi <- function() {
   if (!requireNamespace("rstudioapi", quietly = TRUE)) {
     stop("The 'rstudioapi' package is required for this addin.")
   }
+  invisible(NULL)
 }
 
 #' Style the current package (RStudio addin)
@@ -15,6 +17,7 @@ check_rstudioapi <- function() {
 #' defaults to the current working directory.
 #'
 #' @keywords internal
+#' @return invisibly returns `NULL`.
 style_pkg_addin <- function() {
   check_rstudioapi()
 
@@ -39,6 +42,7 @@ style_pkg_addin <- function() {
 #' Styles the currently active file in the RStudio editor and saves the formatted code.
 #'
 #' @keywords internal
+#' @return invisibly returns `NULL`.
 style_active_file_addin <- function() {
   check_rstudioapi()
 
@@ -67,6 +71,7 @@ style_active_file_addin <- function() {
 #' Styles the selected text in the RStudio editor, replacing it with the formatted version.
 #'
 #' @keywords internal
+#' @return invisibly returns `NULL`.
 style_selection_addin <- function() {
   check_rstudioapi()
 
@@ -95,5 +100,6 @@ style_selection_addin <- function() {
     stop("tergo::style_text failed to style the text.")
   }
 
-  invisible(rstudioapi::documentSave(context$id))
+  rstudioapi::documentSave(context$id)
+  invisible(NULL)
 }

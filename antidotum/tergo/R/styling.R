@@ -11,6 +11,7 @@
 #' @param config_file (`character`) The path to the configuration file. Default `"tergo.toml"`.
 #' @param configuration (`list`) Configuration for formatting. Default `list()`.
 #' @param ... additional parameters to [tergo::style_pkg()]
+#' @return No return value, called for side effects.
 #'
 #' @export
 #' @examples
@@ -18,6 +19,7 @@
 #' style(config_file = "tergo.toml", configuration = list())
 style <- function(config_file = "tergo.toml", configuration = list(), ...) {
   style_pkg(path = getwd(), config_file = config_file, configuration = configuration)
+  invisible(NULL)
 }
 
 #' Style a package
@@ -38,6 +40,7 @@ style <- function(config_file = "tergo.toml", configuration = list(), ...) {
 #' anything. Default `FALSE`.
 #' @param extensions (`character`) The extensions of the files to format. Default `c(".R", ".r")`.
 #' @param verbose (`logical(1)`) Whether per file status and run statistics should be printed. Default `interactive()`.
+#' @return No return values, called for side effects.
 #'
 #' @export
 #' @examples
@@ -138,7 +141,7 @@ style_pkg <- function(path = ".",
     cat(sprintf("  %s Failed          : %d\n", red_cross, length(files) - success_count))
   }
 
-  invisible()
+  invisible(NULL)
 }
 
 #' Style a file
@@ -148,15 +151,16 @@ style_pkg <- function(path = ".",
 #'
 #' @inheritParams style
 #' @param file (`character`) the file to format
+#' @return No return value, called for side effects.
 #'
 #' @export
 #' @examples
-#' if (interactive()) {
-#'   file_conn <- file("./file")
-#'   writeLines(c("function(){}", "A<-7"), file_conn)
-#'   close(file_conn)
-#'   style_file(file = "./file", configuration = list())
-#' }
+#' tmp <- tempfile()
+#' file_conn <- file(tmp)
+#' writeLines(c("function(){}", "A<-7"), file_conn)
+#' close(file_conn)
+#' style_file(file = tmp, configuration = list())
+#' unlink(tmp)
 style_file <- function(file, configuration = list()) {
   if (!file.exists(file)) {
     stop("File " + file + " does not exist")
@@ -170,6 +174,7 @@ style_file <- function(file, configuration = list()) {
     stop("Failed to style the file.")
   }
   write(x = formatted[[2]], file = file)
+  invisible(NULL)
 }
 
 #' Style text
@@ -180,8 +185,8 @@ style_file <- function(file, configuration = list()) {
 #'
 #' @inheritParams style
 #' @param text (`character`) the text to style
-#'
 #' @return (`character`) the text formatted as R code
+#'
 #' @export
 #' @examples
 #' code <- "function(){}"

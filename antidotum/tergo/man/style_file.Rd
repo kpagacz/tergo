@@ -11,6 +11,9 @@ style_file(file, configuration = list())
 
 \item{configuration}{(\code{list}) Configuration for formatting. Default \code{list()}.}
 }
+\value{
+No return value, called for side effects.
+}
 \description{
 Style a file
 }
@@ -18,10 +21,10 @@ Style a file
 To see possible configuration options, see \code{\link[=get_default_config]{get_default_config()}}.
 }
 \examples{
-if (interactive()) {
-  file_conn <- file("./file")
-  writeLines(c("function(){}", "A<-7"), file_conn)
-  close(file_conn)
-  style_file(file = "./file", configuration = list())
-}
+tmp <- tempfile()
+file_conn <- file(tmp)
+writeLines(c("function(){}", "A<-7"), file_conn)
+close(file_conn)
+style_file(file = tmp, configuration = list())
+unlink(tmp)
 }

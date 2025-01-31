@@ -13,6 +13,9 @@ style(config_file = "tergo.toml", configuration = list(), ...)
 
 \item{...}{additional parameters to \code{\link[=style_pkg]{style_pkg()}}}
 }
+\value{
+No return value, called for side effects.
+}
 \description{
 Style a package
 }

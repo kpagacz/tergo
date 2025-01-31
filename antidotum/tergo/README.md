@@ -24,7 +24,7 @@ use-cases include:
 
 Yes, tergo is there but it takes less than 0.1 seconds so is not visible!!!
 
-Benchmarking code is available in `inst/bench.R`.
+Benchmarking code is available in `data-raw/bench.R` on Github.
 
 ## Installation
 

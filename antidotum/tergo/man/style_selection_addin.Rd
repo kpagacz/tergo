@@ -6,6 +6,9 @@
 \usage{
 style_selection_addin()
 }
+\value{
+invisibly returns \code{NULL}.
+}
 \description{
 Styles the selected text in the RStudio editor, replacing it with the formatted version.
 }
