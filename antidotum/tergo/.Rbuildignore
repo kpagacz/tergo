@@ -6,3 +6,4 @@
 ^\_pkgdown\.yml
 ^src/rust/repo_vendor/
 ^data-raw/
+^cran-comments\.md$
