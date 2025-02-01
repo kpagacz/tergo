@@ -59,4 +59,3 @@ get_config <- function(path) .Call(wrap__get_config, path)
 get_default_config <- function() .Call(wrap__get_default_config)
 
 # nolint end
-
