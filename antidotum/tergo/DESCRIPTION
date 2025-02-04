@@ -1,6 +1,6 @@
 Package: tergo
 Title: Style Your Code Fast
-Version: 0.1.7.9000
+Version: 0.1.8
 Authors@R:
     c(
       person("Konrad", "Pagacz", , "konrad.pagacz@gmail.com", role = c("aut", "cre")),
@@ -10,9 +10,9 @@ Authors@R:
     )
 Description: Provides a set of functions
     that allow users for styling their R code according to
-    the `tidyverse` style guide. The package uses a native
+    the 'tidyverse' style guide. The package uses a native
     Rust implementation to ensure the highest performance.
-    Learn more about `tergo` at <https://rtergo.pagacz.io>.
+    Learn more about 'tergo' at <https://rtergo.pagacz.io>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

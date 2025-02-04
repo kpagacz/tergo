@@ -209,3 +209,4 @@ style_text <- function(text, configuration = list()) {
     USE.NAMES = FALSE
   )
 }
+

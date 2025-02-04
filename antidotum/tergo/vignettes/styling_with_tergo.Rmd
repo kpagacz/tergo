@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 library(tergo)
 ```
 
-# Get Started with `tergo` 
+# Get Started with `tergo`
 
 `tergo` is a lightning-fast R code formatter powered by Rust, designed for developers who prioritize speed and efficiency. 
 Whether you're optimizing CI pipelines or building responsive developer tools, `tergo` reformats R code in milliseconds.
@@ -111,5 +111,3 @@ tergo::style(config = "path/to/alternate.toml")
 • Visit [GitHub repository](https://github.com/kpagacz/tergo) for issue tracking  
 • Experiment with different `.toml` configurations to match your team's style guide
 ``` 
-
-This vignette emphasizes speed comparisons through concrete multipliers ("100-1000x faster"), provides immediate copy-paste examples, and uses tables for configuration clarity. The structure guides users from installation to advanced features while maintaining visual scanability.
