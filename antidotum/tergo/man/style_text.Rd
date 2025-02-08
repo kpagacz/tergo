@@ -12,7 +12,7 @@ style_text(text, configuration = list())
 \item{configuration}{(\code{list}) Configuration for formatting. Default \code{list()}.}
 }
 \value{
-(\code{character}) the text formatted as R code
+(\code{character}) The text formatted as R code.
 }
 \description{
 Style text
