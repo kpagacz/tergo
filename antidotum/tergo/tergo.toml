@@ -1,1 +1,1 @@
-exclusion_list = ["./R/extendr-wrappers.R", "./src"]
+exclusion_list = ["./R/extendr-wrappers.R", "./src", "tergo.Rcheck"]

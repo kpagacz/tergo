@@ -1,6 +1,7 @@
 use extendr_api::prelude::*;
 use tergo_lib::{Config, FunctionLineBreaks};
 
+const ERROR: &str = "error";
 /// Format code
 ///
 /// @param source_code (`character`) the R code to format
@@ -70,6 +71,15 @@ fn format_code(source_code: &str, configuration: extendr_api::List) -> extendr_a
                     .expect("The insert_newline_in_quote_call must be a boolean")
             })
             .unwrap_or(default_config.insert_newline_in_quote_call.0),
+        match configuration.get("exclusion_list") {
+            Some(list) => match list.as_string_vector() {
+                Some(arr) => arr,
+                None => {
+                    return list!(ERROR, "exclusion_list must be an array of strings.");
+                }
+            },
+            None => default_config.exclusion_list.0,
+        },
     );
 
     match tergo_lib::tergo_format(source_code, Some(&config)) {
@@ -161,7 +171,8 @@ fn get_default_config() -> extendr_api::List {
             FunctionLineBreaks::Double => "double",
             FunctionLineBreaks::Single => "single",
         },
-        insert_newline_in_quote_call = config.insert_newline_in_quote_call.0
+        insert_newline_in_quote_call = config.insert_newline_in_quote_call.0,
+        exclusion_list = config.exclusion_list.0
     )
 }
 
