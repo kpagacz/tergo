@@ -162,6 +162,12 @@ style_pkg <- function(path = ".",
 #' style_file(file = tmp, configuration = list())
 #' unlink(tmp)
 style_file <- function(file, configuration = list()) {
+  ignored_paths <- configuration$exclusion_list
+  if (!is.null(ignored_paths)) {
+    if (any(Map(function(ignored_path) startsWith(file, ignored_path), ignored_paths))) {
+      return(invisible(NULL))
+    }
+  }
   if (!file.exists(file)) {
     stop("File " + file + " does not exist")
   }
@@ -209,4 +215,3 @@ style_text <- function(text, configuration = list()) {
     USE.NAMES = FALSE
   )
 }
-

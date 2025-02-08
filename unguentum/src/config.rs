@@ -12,7 +12,7 @@ pub trait FormattingConfig: std::fmt::Display + Clone {
     fn insert_newline_in_quote_call(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, Deserialize, Default, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum FunctionLineBreaks {
     #[default]
@@ -24,7 +24,7 @@ pub enum FunctionLineBreaks {
 /// The configuration for `tergo`.
 ///
 /// This configuration can also read from a TOML file.
-#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct Config {
     /// The number of characters to use for one level of indentation.
     ///
@@ -168,6 +168,24 @@ pub struct Config {
     /// Default: true.
     #[serde(default)]
     pub insert_newline_in_quote_call: InsertNewlineInQuoteCall,
+
+    /// A list of file paths to exclude from formatting.
+    ///
+    /// The file paths are relative to the directory
+    /// in which `tergo` is run.
+    ///
+    /// Example values:
+    ///
+    /// exclusion_list = ["./balnea",
+    /// "./aqua",
+    /// "./scopa",
+    /// "./spongia",
+    /// "./tergo",
+    /// "./unguentum",
+    /// "./antidotum/tergo/R/extendr-wrappers.R",
+    /// "./target"]
+    #[serde(default)]
+    pub exclusion_list: ExclusionList,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -219,6 +237,9 @@ impl Default for InsertNewlineInQuoteCall {
         Self(true)
     }
 }
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct ExclusionList(pub Vec<String>);
 
 impl FormattingConfig for Config {
     fn line_length(&self) -> i32 {
@@ -274,6 +295,7 @@ impl Config {
         strip_suffix_whitespace_in_function_defs: bool,
         function_line_breaks: FunctionLineBreaks,
         insert_newline_in_quote_call: bool,
+        exclusion_list: Vec<String>,
     ) -> Self {
         Self {
             indent: Indent(indent),
@@ -288,6 +310,7 @@ impl Config {
             ),
             function_line_breaks,
             insert_newline_in_quote_call: InsertNewlineInQuoteCall(insert_newline_in_quote_call),
+            exclusion_list: ExclusionList(exclusion_list),
         }
     }
 }

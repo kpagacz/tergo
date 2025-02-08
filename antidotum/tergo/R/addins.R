@@ -103,4 +103,3 @@ style_selection_addin <- function() {
   rstudioapi::documentSave(context$id)
   invisible(NULL)
 }
-

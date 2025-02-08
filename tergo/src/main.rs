@@ -93,7 +93,16 @@ fn list_r_files(path: &Path) -> Vec<PathBuf> {
 fn format_r_files(path: &Path, config_path: &Path) {
     let r_files = list_r_files(path);
     let config = get_config(config_path);
+    let ignored_paths: Vec<&Path> = config.exclusion_list.0.iter().map(Path::new).collect();
+    debug!("Ignored paths: {ignored_paths:?}");
     for file in r_files {
+        if ignored_paths
+            .iter()
+            .any(|&ignored_path| file.starts_with(ignored_path))
+        {
+            info!("Ignoring: {file:?}");
+            continue;
+        }
         debug!("Formatting: {file:?}");
         match format_file_in_place(&file, &config) {
             Ok(_) => info!("Formatted: {:?}", &file),

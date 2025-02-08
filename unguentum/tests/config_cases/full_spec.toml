@@ -6,3 +6,4 @@ space_before_complex_rhs_in_formula = true
 strip_suffix_whitespace_in_function_defs = true
 function_line_breaks = "double"
 insert_newline_in_quote_call = true
+exclusion_list = []

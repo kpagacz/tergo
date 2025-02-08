@@ -77,4 +77,3 @@ gg2 <- ggplot2::ggplot(results2_df, ggplot2::aes(x = package, y = median)) +
   ggplot2::labs(y = "seconds")
 
 ggplot2::ggsave("man/figures/second_run.png", gg2)
-

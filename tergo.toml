@@ -1,0 +1,10 @@
+exclusion_list = [
+  "./balnea",
+  "./aqua",
+  "./scopa",
+  "./spongia",
+  "./tergo",
+  "./unguentum",
+  "./antidotum/tergo/R/extendr-wrappers.R",
+  "./target",
+]

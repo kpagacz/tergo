@@ -91,44 +91,29 @@ fn format_code(source_code: &str, configuration: extendr_api::List) -> extendr_a
 /// @keywords internal
 #[extendr]
 fn get_config(path: &str) -> extendr_api::List {
-    match std::fs::read_to_string(path) {
+    let config = match std::fs::read_to_string(path) {
         Ok(config_file) => {
-            let config: Config = toml::from_str(&config_file).unwrap_or_else(|_| Config::default());
-            list!(
-                indent = config.indent.0,
-                line_length = config.line_length.0,
-                embracing_op_no_nl = config.embracing_op_no_nl.0,
-                allow_nl_after_assignment = config.allow_nl_after_assignment.0,
-                space_before_complex_rhs_in_formula = config.space_before_complex_rhs_in_formula.0,
-                strip_suffix_whitespace_in_function_defs =
-                    config.strip_suffix_whitespace_in_function_defs.0,
-                function_line_breaks = match config.function_line_breaks {
-                    FunctionLineBreaks::Hanging => "hanging",
-                    FunctionLineBreaks::Double => "double",
-                    FunctionLineBreaks::Single => "single",
-                },
-                insert_newline_in_quote_call = config.insert_newline_in_quote_call.0
-            )
+            toml::from_str::<Config>(&config_file).unwrap_or_else(|_| Config::default())
         }
-        Err(_) => {
-            let config = Config::default();
-            list!(
-                indent = config.indent.0,
-                line_length = config.line_length.0,
-                embracing_op_no_nl = config.embracing_op_no_nl.0,
-                allow_nl_after_assignment = config.allow_nl_after_assignment.0,
-                space_before_complex_rhs_in_formula = config.space_before_complex_rhs_in_formula.0,
-                strip_suffix_whitespace_in_function_defs =
-                    config.strip_suffix_whitespace_in_function_defs.0,
-                function_line_breaks = match config.function_line_breaks {
-                    FunctionLineBreaks::Hanging => "hanging",
-                    FunctionLineBreaks::Double => "double",
-                    FunctionLineBreaks::Single => "single",
-                },
-                insert_newline_in_quote_call = config.insert_newline_in_quote_call.0
-            )
-        }
-    }
+        Err(_) => Config::default(),
+    };
+
+    list!(
+        indent = config.indent.0,
+        line_length = config.line_length.0,
+        embracing_op_no_nl = config.embracing_op_no_nl.0,
+        allow_nl_after_assignment = config.allow_nl_after_assignment.0,
+        space_before_complex_rhs_in_formula = config.space_before_complex_rhs_in_formula.0,
+        strip_suffix_whitespace_in_function_defs =
+            config.strip_suffix_whitespace_in_function_defs.0,
+        function_line_breaks = match config.function_line_breaks {
+            FunctionLineBreaks::Hanging => "hanging",
+            FunctionLineBreaks::Double => "double",
+            FunctionLineBreaks::Single => "single",
+        },
+        insert_newline_in_quote_call = config.insert_newline_in_quote_call.0,
+        exclusion_list = config.exclusion_list.0
+    )
 }
 
 /// Get the default configuration
