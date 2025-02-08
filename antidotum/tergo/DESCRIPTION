@@ -31,8 +31,10 @@ Suggests:
     pkgdown,
     desc,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
 URL: https://rtergo.pagacz.io,
     https://github.com/kpagacz/tergo
 BugReports: https://github.com/kpagacz/tergo/issues
 VignetteBuilder: knitr
+Config/testthat/edition: 3
