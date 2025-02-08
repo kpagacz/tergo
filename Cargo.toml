@@ -3,3 +3,7 @@
 members = ["aqua", "spongia", "balnea", "unguentum", "tergo", "scopa"]
 resolver = "2"
 exclude = ["antidotum"]
+
+[profile.release]
+lto = true
+codegen-units = 1
