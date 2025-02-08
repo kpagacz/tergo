@@ -14,3 +14,7 @@ extendr-api = "*"
 
 [workspace]
 exclude = ["vendor", "repo_vendor"]
+
+[profile.release]
+lto = true
+codegen-units = 1
