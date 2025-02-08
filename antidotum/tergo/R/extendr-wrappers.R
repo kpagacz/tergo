@@ -52,10 +52,13 @@ get_config <- function(path) .Call(wrap__get_config, path)
 #' print(config)
 #'
 #' # Make the indent 4 spaces
-#' config$indent <- 4
+#' config$indent <- 4L
 #'
 #' # Make the maximum line length 80 characters
-#' config$line_length <- 80
+#' config$line_length <- 80L
+#'
+#' # Make the function line breaks double
+#' config$function_line_breaks <- "double"
 get_default_config <- function() .Call(wrap__get_default_config)
 
 # nolint end
