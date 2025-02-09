@@ -336,3 +336,15 @@ fn non_ascii_characters() {
         let _ = tokenizer.tokenize();
     }
 }
+
+#[test]
+fn escape_in_strings() {
+    log_init();
+
+    let examples = vec![".\\"];
+    for example in examples {
+        let mut tokenizer = Tokenizer::new(example);
+        let res = tokenizer.tokenize();
+        assert!(!res.is_empty())
+    }
+}
