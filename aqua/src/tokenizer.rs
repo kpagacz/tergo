@@ -351,11 +351,15 @@ impl<'a> Tokenizer<'a> {
         let delimiter = self.current_char;
         let start_offset = self.offset;
         let start_it = self.it;
-        let mut previous_char = self.current_char;
+        let mut in_escape = false;
         self.next();
-        while self.current_char != delimiter || previous_char == '\\' {
-            previous_char = self.current_char;
+        while self.current_char != delimiter || in_escape {
             self.next();
+            if in_escape {
+                in_escape = !in_escape;
+            } else if self.current_char == '\\' {
+                in_escape = true;
+            }
         }
         tokens.push(CommentedToken::new(
             Literal(&self.raw_source[start_it..=self.it]),

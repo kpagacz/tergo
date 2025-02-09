@@ -9,7 +9,7 @@ path = "./src/lib.rs"
 
 [dependencies]
 wit-bindgen = "0.32.0"
-tergo-lib = { path = "../balnea", version = "0.2.8" }
+tergo-lib = { path = "../balnea", version = "0.2.10" }
 
 [dev-dependencies]
 wasm-tools = "1.217.0"
