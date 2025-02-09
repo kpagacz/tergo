@@ -16,5 +16,7 @@ tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.2.3" }
 parser = { package = "tergo-parser", path = "../spongia", version = "0.2.4" }
 formatter = { package = "tergo-formatter", path = "../unguentum", version = "0.2.9" }
 log = "0.4.21"
-env_logger = "0.11.3"
 serde = { version = "1.0.210", features = ["derive"] }
+
+[dev-dependencies]
+simple_logger = { version = "5.0.0", features = ["timestamps"], default-features = false }

@@ -8,6 +8,7 @@ struct Tergo;
 
 impl Guest for Tergo {
     fn format(code: String) -> Result<String, String> {
+        simple_logger::init_with_env().map_err(|err| format!("Error initializing logger: {:?}", err))?;
         tergo_format(&code, None)
     }
 }

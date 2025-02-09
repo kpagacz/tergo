@@ -447,7 +447,10 @@ mod tests {
     use super::*;
 
     fn log_init() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        match simple_logger::init_with_env() {
+            Ok(_) => {}
+            Err(err) => println!("Failed to initialize logger: {:?}", err),
+        }
     }
 
     #[test]
