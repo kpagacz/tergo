@@ -115,16 +115,33 @@ style_pkg <- function(path = ".",
   # Define ANSI Color Codes and Unicode Symbols
   green_tick <- "\u001B[32m\u2714\u001B[0m"
   red_cross <- "\u001B[31m\u274C\u001B[0m"
+  # Define ANSI Color Codes and Unicode Symbols for a yellow dot
+  yellow_dot <- "\u001B[33m\u2022\u001B[0m"
 
+  ignored_paths <- vapply(
+    config$exclusion_list,
+    function(ignored_path) {
+      if (startsWith(ignored_path, "./")) {
+        ignored_path <- substr(ignored_path, 3, nchar(ignored_path))
+      }
+      file.path(path, ignored_path)
+    },
+    FUN.VALUE = character(1),
+    USE.NAMES = FALSE
+  )
   success_count <- 0
-
+  skipped_count <- 0
   for (file in files) {
     tryCatch(
       {
-        style_file(file, config)
-        success_count <- success_count + 1
-        # Print File Path and Green Tick
-        if (verbose) cat(sprintf("%s %s\n", basename(file), green_tick))
+        succes <- style_file_internal(file, config, ignored_paths)
+        if (succes) {
+          success_count <- success_count + 1
+          if (verbose) cat(sprintf("%s %s\n", file, green_tick))
+        } else {
+          skipped_count <- skipped_count + 1
+          if (verbose) cat(sprintf("%s %s\n", file, yellow_dot))
+        }
       },
       error = function(err) {
         # Print File Path, Red Cross, and Error Message
@@ -138,7 +155,8 @@ style_pkg <- function(path = ".",
     cat("\nSummary:\n")
     cat(sprintf("  %s Files processed : %d\n", summary_bullet, length(files)))
     cat(sprintf("  %s Successful      : %d\n", green_tick, success_count))
-    cat(sprintf("  %s Failed          : %d\n", red_cross, length(files) - success_count))
+    cat(sprintf("  %s Skipped         : %d\n", yellow_dot, skipped_count))
+    cat(sprintf("  %s Failed          : %d\n", red_cross, length(files) - success_count - skipped_count))
   }
 
   invisible(NULL)
@@ -150,8 +168,9 @@ style_pkg <- function(path = ".",
 #' To see possible configuration options, see [get_default_config()].
 #'
 #' @inheritParams style
-#' @param file (`character`) the file to format
-#' @return No return value, called for side effects.
+#' @param file (`character`) path to the file to format.
+#' @return (`logical`) whether the file was formatted successfully
+#' or skipped. `TRUE` - formatted successfully, `FALSE` - skipped.
 #'
 #' @export
 #' @examples
@@ -162,6 +181,12 @@ style_pkg <- function(path = ".",
 #' style_file(file = tmp, configuration = list())
 #' unlink(tmp)
 style_file <- function(file, configuration = list()) {
+  ignored_paths <- configuration$exclusion_list
+  if (!is.null(ignored_paths)) {
+    if (any(Map(function(ignored_path) startsWith(file, ignored_path), ignored_paths))) {
+      return(FALSE)
+    }
+  }
   if (!file.exists(file)) {
     stop("File " + file + " does not exist")
   }
@@ -174,7 +199,49 @@ style_file <- function(file, configuration = list()) {
     stop("Failed to style the file. Error: ", truncate_error(formatted[[2]]))
   }
   write(x = formatted[[2]], file = file)
-  invisible(NULL)
+  TRUE
+}
+
+#' Check whether a path is in ignored paths
+#' @return (`logical`) whether the path is in the ignored paths.
+#' @keywords internal
+is_in_ignored_paths <- function(path, ignored_paths) {
+  if (!is.null(ignored_paths)) {
+    if (
+      any(
+        vapply(
+          ignored_paths,
+          FUN = function(ignored_path) startsWith(path, ignored_path),
+          FUN.VALUE = logical(1),
+          USE.NAMES = FALSE
+        )
+      )
+    ) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
+#' Style a file internal
+#' @keywords internal
+style_file_internal <- function(file, configuration, ignored_paths) {
+  if (is_in_ignored_paths(file, ignored_paths)) {
+    return(FALSE)
+  }
+  if (!file.exists(file)) {
+    stop("File " + file + " does not exist")
+  }
+  size <- file.info(file)$size
+  code <- readChar(con = file, nchars = size)
+  formatted <- format_code(code, configuration)
+  if (formatted[[1]] == "success") {
+    formatted[[2]]
+  } else {
+    stop("Failed to style the file.")
+  }
+  write(x = formatted[[2]], file = file)
+  TRUE
 }
 
 #' Style text

@@ -7,12 +7,13 @@
 style_file(file, configuration = list())
 }
 \arguments{
-\item{file}{(\code{character}) the file to format}
+\item{file}{(\code{character}) path to the file to format.}
 
 \item{configuration}{(\code{list}) Configuration for formatting. Default \code{list()}.}
 }
 \value{
-No return value, called for side effects.
+(\code{logical}) whether the file was formatted successfully
+or skipped. \code{TRUE} - formatted successfully, \code{FALSE} - skipped.
 }
 \description{
 Style a file

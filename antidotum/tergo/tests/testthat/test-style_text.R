@@ -21,4 +21,3 @@ testthat::test_that("style_text validates the configuration", {
     )
   )
 })
-
