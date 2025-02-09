@@ -84,6 +84,7 @@ tergo::style(config = list(
 | `strip_suffix_whitespace_in_function_defs` | boolean | TRUE | Trim trailing whitespace in functions |
 | `function_line_breaks`             | string  | "hanging" | `"single"`/`"double"`/`"hanging"` function argument formatting ([ref](https://style.tidyverse.org/functions.html#multi-line-function-definitions)) |
 | `insert_newline_in_quote_call`     | boolean | TRUE   | Add newlines in long `quote()` calls |
+| `exclusion_list` | array of strings | [] | Files/directories to exclude from formatting |
 
 ## Why Choose `tergo`?
 - **Blazing Fast**: Formats large codebases 100-1000x faster than alternatives

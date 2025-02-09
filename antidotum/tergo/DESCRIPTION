@@ -1,6 +1,6 @@
 Package: tergo
 Title: Style Your Code Fast
-Version: 0.1.8.9000
+Version: 0.1.8.9001
 Authors@R:
     c(
       person("Konrad", "Pagacz", , "konrad.pagacz@gmail.com", role = c("aut", "cre")),
@@ -31,8 +31,10 @@ Suggests:
     pkgdown,
     desc,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
 URL: https://rtergo.pagacz.io,
     https://github.com/kpagacz/tergo
 BugReports: https://github.com/kpagacz/tergo/issues
 VignetteBuilder: knitr
+Config/testthat/edition: 3

@@ -33,8 +33,11 @@ config <- get_default_config()
 print(config)
 
 # Make the indent 4 spaces
-config$indent <- 4
+config$indent <- 4L
 
 # Make the maximum line length 80 characters
-config$line_length <- 80
+config$line_length <- 80L
+
+# Make the function line breaks double
+config$function_line_breaks <- "double"
 }

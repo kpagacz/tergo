@@ -1,7 +1,57 @@
 use extendr_api::prelude::*;
+use std::collections::HashMap;
 use tergo_lib::{Config, FunctionLineBreaks};
 
 const ERROR: &str = "error";
+const OK: &str = "success";
+
+fn config_to_bool(
+    field: &str,
+    configuration: &HashMap<&str, Robj>,
+    default_value: bool,
+) -> std::result::Result<bool, extendr_api::List> {
+    let config_value = configuration.get(field);
+    let value: bool;
+    if let Some(config) = config_value {
+        if let Some(casted) = config.as_bool() {
+            value = casted;
+        } else {
+            return Err(list!(
+                ERROR,
+                format!("{} configuration value must be a boolean.", field)
+            ));
+        }
+    } else {
+        value = default_value;
+    }
+    Ok(value)
+}
+
+fn config_to_integer(
+    field: &str,
+    configuration: &HashMap<&str, Robj>,
+    default_value: i32,
+) -> std::result::Result<i32, extendr_api::List> {
+    let config_value = configuration.get(field);
+    let value: i32;
+    if let Some(config) = config_value {
+        if let Some(casted) = config.as_integer() {
+            value = casted;
+        } else {
+            return Err(list!(
+                ERROR,
+                format!(
+                    "{} configuration value must be an integer. Did you forget about L?",
+                    field
+                )
+            ));
+        }
+    } else {
+        value = default_value;
+    }
+    Ok(value)
+}
+
 /// Format code
 ///
 /// @param source_code (`character`) the R code to format
@@ -14,63 +64,68 @@ fn format_code(source_code: &str, configuration: extendr_api::List) -> extendr_a
     let configuration = configuration.into_hashmap();
     let default_config = Config::default();
     let config = Config::new(
-        configuration
-            .get("indent")
-            .map(|x| x.as_integer().expect("The indent must be an integer"))
-            .unwrap_or(default_config.indent.0),
-        configuration
-            .get("line_length")
-            .map(|x| x.as_integer().expect("The line_length must be an integer"))
-            .unwrap_or(default_config.line_length.0),
-        configuration
-            .get("embracing_op_no_nl")
-            .map(|x| {
-                x.as_bool()
-                    .expect("The embracing_op_no_nl must be a boolean")
-            })
-            .unwrap_or(default_config.embracing_op_no_nl.0),
-        configuration
-            .get("allow_nl_after_assignment")
-            .map(|x| {
-                x.as_bool()
-                    .expect("The allow_nl_after_assignment must be a boolean")
-            })
-            .unwrap_or(default_config.allow_nl_after_assignment.0),
-        configuration
-            .get("space_before_complex_rhs_in_formula")
-            .map(|x| {
-                x.as_bool()
-                    .expect("The space_before_complex_rhs_in_formula must be a boolean")
-            })
-            .unwrap_or(default_config.space_before_complex_rhs_in_formula.0),
-        configuration
-            .get("strip_suffix_whitespace_in_function_defs")
-            .map(|x| {
-                x.as_bool()
-                    .expect("The strip_suffix_whitespace_in_function_defs must be a boolean")
-            })
-            .unwrap_or(default_config.strip_suffix_whitespace_in_function_defs.0),
-        configuration
-            .get("function_line_breaks")
-            .map(|x| {
-                match x
-                    .as_str()
-                    .expect("The function_line_breaks must be character")
-                {
-                    "single" => FunctionLineBreaks::Single,
-                    "double" => FunctionLineBreaks::Double,
-                    "hanging" => FunctionLineBreaks::Hanging,
-                    _ => panic!("Unknown function line breaks. Allowed: single, double, hanging."),
+        match config_to_integer("indent", &configuration, default_config.indent.0) {
+            Ok(value) => value,
+            Err(error) => return error,
+        },
+        match config_to_integer("line_length", &configuration, default_config.line_length.0) {
+            Ok(value) => value,
+            Err(error) => return error,
+        },
+        match config_to_bool(
+            "embracing_op_no_nl",
+            &configuration,
+            default_config.embracing_op_no_nl.0,
+        ) {
+            Ok(value) => value,
+            Err(error) => return error,
+        },
+        match config_to_bool(
+            "allow_nl_after_assignment",
+            &configuration,
+            default_config.allow_nl_after_assignment.0,
+        ) {
+            Ok(value) => value,
+            Err(error) => return error,
+        },
+        match config_to_bool(
+            "space_before_complex_rhs_in_formula",
+            &configuration,
+            default_config.space_before_complex_rhs_in_formula.0,
+        ) {
+            Ok(value) => value,
+            Err(error) => return error,
+        },
+        match config_to_bool(
+            "strip_suffix_whitespace_in_function_defs",
+            &configuration,
+            default_config.strip_suffix_whitespace_in_function_defs.0,
+        ) {
+            Ok(value) => value,
+            Err(error) => return error,
+        },
+        match configuration.get("function_line_breaks") {
+            Some(text) => match text.as_str() {
+                Some("single") => FunctionLineBreaks::Single,
+                Some("double") => FunctionLineBreaks::Double,
+                Some("hanging") => FunctionLineBreaks::Hanging,
+                _ => {
+                    return list!(
+                        ERROR,
+                        "Unknown function line breaks in the configuration value. Allowed: single, double, hanging."
+                    )
                 }
-            })
-            .unwrap_or(default_config.function_line_breaks),
-        configuration
-            .get("insert_newline_in_quote_call")
-            .map(|x| {
-                x.as_bool()
-                    .expect("The insert_newline_in_quote_call must be a boolean")
-            })
-            .unwrap_or(default_config.insert_newline_in_quote_call.0),
+            }
+            None => default_config.function_line_breaks,
+        },
+        match config_to_bool(
+            "insert_newline_in_quote_call",
+            &configuration,
+            default_config.insert_newline_in_quote_call.0,
+        ) {
+            Ok(value) => value,
+            Err(error) => return error,
+        },
         match configuration.get("exclusion_list") {
             Some(list) => match list.as_string_vector() {
                 Some(arr) => arr,
@@ -79,15 +134,15 @@ fn format_code(source_code: &str, configuration: extendr_api::List) -> extendr_a
                 }
             },
             None => default_config.exclusion_list.0,
-        },
+        }
     );
 
     match tergo_lib::tergo_format(source_code, Some(&config)) {
         Ok(formatted_code) => {
-            list!("success", formatted_code)
+            list!(OK, formatted_code)
         }
         Err(error) => {
-            list!("error", error)
+            list!(ERROR, error)
         }
     }
 }
@@ -134,15 +189,20 @@ fn get_config(path: &str) -> extendr_api::List {
 ///
 /// @details
 /// The configuration values:
-/// * indent - the number of spaces to use for indentation.
-/// * line_length - the maximum number of characters in a line.
-/// * embracing_op_no_nl - whether to allow a newline after an embracing operator.
-/// * allow_nl_after_assignment - whether to allow a newline after an assignment operator.
-/// * space_before_complex_rhs_in_formula - whether to add a space before a complex right-hand side in a formula.
-/// * strip_suffix_whitespace_in_function_defs - whether to strip suffix whitespace in function definitions.
-/// * function_line_breaks - the type of line breaks in function definitions when arguments do not
-///   fit. Possible values are: hanging, double, single.
-/// * insert_newline_in_quote_call - whether to insert a newline in calls to `quote`.
+/// * indent (`integer`) - the number of spaces to use for indentation. E.g. 2L, 4L.
+/// * line_length (`integer`) - the maximum number of characters in a line. E.g. 80L, 120L.
+/// * embracing_op_no_nl (`logical`) - whether to allow a newline after an embracing operator. E.g.
+///   TRUE, FALSE.
+/// * allow_nl_after_assignment (`logical`) - whether to allow a newline after an assignment operator.
+///   E.g. TRUE, FALSE.
+/// * space_before_complex_rhs_in_formula (`logical`) - whether to add a space before a complex
+///   right-hand side in a formula. E.g. TRUE, FALSE.
+/// * strip_suffix_whitespace_in_function_defs (`logical`) - whether to strip suffix
+///   whitespace in function definitions. E.g. TRUE, FALSE.
+/// * function_line_breaks (`character`) - the type of line breaks in function definitions when arguments do not
+///   fit. Possible values are: "hanging", "double", "single".
+/// * insert_newline_in_quote_call (`logical`) - whether to insert a newline in calls to `quote`.
+///   E.g. TRUE, FALSE.
 ///
 /// @return `list` with the default configuration
 /// @export
@@ -151,10 +211,13 @@ fn get_config(path: &str) -> extendr_api::List {
 /// print(config)
 ///
 /// # Make the indent 4 spaces
-/// config$indent <- 4
+/// config$indent <- 4L
 ///
 /// # Make the maximum line length 80 characters
-/// config$line_length <- 80
+/// config$line_length <- 80L
+///
+/// # Make the function line breaks double
+/// config$function_line_breaks <- "double"
 #[extendr]
 fn get_default_config() -> extendr_api::List {
     let config = Config::default();

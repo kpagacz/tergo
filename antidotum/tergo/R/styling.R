@@ -145,7 +145,7 @@ style_pkg <- function(path = ".",
       },
       error = function(err) {
         # Print File Path, Red Cross, and Error Message
-        if (verbose) cat(sprintf("%s %s : %s\n", file, red_cross, err$message))
+        if (verbose) cat(sprintf("%s %s : %s\n", basename(file), red_cross, truncate_error(err$message)))
       }
     )
   }
@@ -196,7 +196,7 @@ style_file <- function(file, configuration = list()) {
   if (formatted[[1]] == "success") {
     formatted[[2]]
   } else {
-    stop("Failed to style the file.")
+    stop("Failed to style the file. Error: ", truncate_error(formatted[[2]]))
   }
   write(x = formatted[[2]], file = file)
   TRUE
@@ -252,7 +252,7 @@ style_file_internal <- function(file, configuration, ignored_paths) {
 #'
 #' @inheritParams style
 #' @param text (`character`) the text to style
-#' @return (`character`) the text formatted as R code
+#' @return (`character`) The text formatted as R code.
 #'
 #' @export
 #' @examples
@@ -269,7 +269,7 @@ style_text <- function(text, configuration = list()) {
       if (formatted[[1]] == "success") {
         formatted[[2]]
       } else {
-        stop("Failed to style the text.")
+        stop("Failed to style the text. Error: ", truncate_error(formatted[[2]]))
       }
     },
     FUN.VALUE = character(1),
@@ -277,3 +277,9 @@ style_text <- function(text, configuration = list()) {
   )
 }
 
+#' Truncate the error message
+#'
+#' @keywords internal
+truncate_error <- function(err) {
+  ifelse(nchar(err) > 80, sprintf("%s...", substr(err, 1, 77)), err)
+}
