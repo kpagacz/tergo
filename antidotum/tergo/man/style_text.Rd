@@ -22,9 +22,9 @@ This function is vectorized.
 To see possible configuration options, see \code{\link[=get_default_config]{get_default_config()}}.
 }
 \examples{
-code <- "function(){}"
+code <- "a+b"
 styled <- style_text(code)
-code <- c("function(){}", "A<-7")
+code <- c("a+b", "A<-7")
 styled <- (style_text(code)
 
 }

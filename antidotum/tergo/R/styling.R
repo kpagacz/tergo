@@ -259,9 +259,9 @@ style_file_internal <- function(file, configuration, ignored_paths) {
 #'
 #' @export
 #' @examples
-#' code <- "function(){}"
+#' code <- "a+b"
 #' styled <- style_text(code)
-#' code <- c("function(){}", "A<-7")
+#' code <- c("a+b", "A<-7")
 #' styled <- (style_text(code)
 #'
 style_text <- function(text, configuration = list()) {
