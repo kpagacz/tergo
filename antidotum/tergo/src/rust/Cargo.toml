@@ -9,7 +9,7 @@ name = "tergo"
 
 [dependencies]
 tergo-lib = "0.2.9"
-toml = "0.8.19"
+toml = "0.8.20"
 extendr-api = "*"
 
 [workspace]
