@@ -17,6 +17,7 @@
 #' @examples
 #' style()
 #' style(config_file = "tergo.toml", configuration = list())
+#'
 style <- function(config_file = "tergo.toml", configuration = list(), ...) {
   style_pkg(path = getwd(), config_file = config_file, configuration = configuration)
   invisible(NULL)
@@ -46,6 +47,7 @@ style <- function(config_file = "tergo.toml", configuration = list(), ...) {
 #' @examples
 #' style_pkg()
 #' style_pkg(path = "./tergo", config_file = "custom_tergo.toml", verbose = TRUE)
+#'
 style_pkg <- function(path = ".",
                       config_file = "tergo.toml",
                       configuration = list(),
@@ -180,6 +182,7 @@ style_pkg <- function(path = ".",
 #' close(file_conn)
 #' style_file(file = tmp, configuration = list())
 #' unlink(tmp)
+#'
 style_file <- function(file, configuration = list()) {
   ignored_paths <- configuration$exclusion_list
   if (!is.null(ignored_paths)) {
@@ -256,11 +259,11 @@ style_file_internal <- function(file, configuration, ignored_paths) {
 #'
 #' @export
 #' @examples
-#' code <- "function(){}"
-#' style_text(code)
+#' code <- "a+b"
+#' styled <- style_text(code)
+#' code <- c("a+b", "A<-7")
+#' styled <- style_text(code)
 #'
-#' code <- c("function(){}", "A<-7")
-#' style_text(code)
 style_text <- function(text, configuration = list()) {
   vapply(
     X = text,

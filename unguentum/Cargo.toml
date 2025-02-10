@@ -1,6 +1,6 @@
 [package]
 name = "tergo-formatter"
-version = "0.2.9"
+version = "0.2.10"
 edition = "2021"
 license = "MIT"
 description = "Formatter for tergo"
@@ -9,11 +9,13 @@ repository = "https://github.com/kpagacz/tergo/tree/main/unguentum"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.2.3" }
+tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.2.4" }
 parser = { package = "tergo-parser", path = "../spongia", version = "0.2.4" }
-log = "0.4.21"
-serde = { version = "1.0.210", features = ["derive"] }
+log = "0.4.25"
+serde = { version = "1.0.217", features = ["derive"] }
 
 [dev-dependencies]
-env_logger = "0.11.3"
-toml = "0.8.19"
+simple_logger = { version = "5.0.0", default-features = false, features = [
+  "timestamps",
+] }
+toml = "0.8.20"

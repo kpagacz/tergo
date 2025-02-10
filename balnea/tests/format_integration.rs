@@ -3,7 +3,11 @@ use formatter::config::{AllowNlAfterAssignment, EmbracingOpNoNl, Indent, LineLen
 use tergo_lib::{tergo_format, Config};
 
 fn log_init() {
-    let _ = env_logger::builder().is_test(true).try_init();
+    let res = simple_logger::init_with_env();
+    match res {
+        Ok(_) => {}
+        Err(err) => println!("Failed to initialize logger {:?}", err),
+    }
 }
 
 macro_rules! comparison_test {

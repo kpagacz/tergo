@@ -32,4 +32,5 @@ To see possible configuration options, see \code{\link[=get_default_config]{get_
 \examples{
 style()
 style(config_file = "tergo.toml", configuration = list())
+
 }

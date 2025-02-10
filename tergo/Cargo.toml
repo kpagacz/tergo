@@ -7,8 +7,10 @@ description = "Format code written in R"
 repository = "https://github.com/kpagacz/tergo/"
 
 [dependencies]
-clap = { version = "4.5.17", features = ["derive"] }
-env_logger = "0.11.5"
-log = "0.4.22"
-tergo-lib = { path = "../balnea", version = "0.2.9" }
-toml = "0.8.19"
+clap = { version = "4.5.18", features = ["derive"] }
+log = "0.4.25"
+simple_logger = { version = "5.0.0", default-features = false, features = [
+  "timestamps",
+] }
+tergo-lib = { path = "../balnea", version = "0.2.11" }
+toml = "0.8.20"

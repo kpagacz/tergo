@@ -118,7 +118,10 @@ fn main() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info");
     }
-    env_logger::init();
+    match simple_logger::init_with_env() {
+        Ok(_) => {}
+        Err(err) => println!("Failed to initialize logger: {:?}", err),
+    }
     let cli = Cli::parse();
 
     let path = PathBuf::from_str(&cli.path).unwrap();

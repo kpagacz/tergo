@@ -247,7 +247,10 @@ mod tests {
     use tokenizer::Token::*;
 
     fn log_init() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        match simple_logger::init_with_env() {
+            Ok(_) => {}
+            Err(err) => println!("Error initializing logger: {:?}", err),
+        }
     }
 
     #[test]
