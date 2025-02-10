@@ -23,8 +23,8 @@ To see possible configuration options, see \code{\link[=get_default_config]{get_
 }
 \examples{
 code <- "function(){}"
-print(style_text(code))
-
+styled <- style_text(code)
 code <- c("function(){}", "A<-7")
-print(style_text(code))
+styled <- (style_text(code)
+
 }
