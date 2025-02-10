@@ -17,7 +17,7 @@
 #' @examples
 #' style()
 #' style(config_file = "tergo.toml", configuration = list())
-#' 
+#'
 style <- function(config_file = "tergo.toml", configuration = list(), ...) {
   style_pkg(path = getwd(), config_file = config_file, configuration = configuration)
   invisible(NULL)
@@ -262,7 +262,7 @@ style_file_internal <- function(file, configuration, ignored_paths) {
 #' code <- "a+b"
 #' styled <- style_text(code)
 #' code <- c("a+b", "A<-7")
-#' styled <- (style_text(code)
+#' styled <- style_text(code)
 #'
 style_text <- function(text, configuration = list()) {
   vapply(

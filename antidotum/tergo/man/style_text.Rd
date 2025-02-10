@@ -25,6 +25,6 @@ To see possible configuration options, see \code{\link[=get_default_config]{get_
 code <- "a+b"
 styled <- style_text(code)
 code <- c("a+b", "A<-7")
-styled <- (style_text(code)
+styled <- style_text(code)
 
 }
