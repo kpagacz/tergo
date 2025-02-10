@@ -48,4 +48,5 @@ To see possible configuration options, see \code{\link[=get_default_config]{get_
 \examples{
 style_pkg()
 style_pkg(path = "./tergo", config_file = "custom_tergo.toml", verbose = TRUE)
+
 }

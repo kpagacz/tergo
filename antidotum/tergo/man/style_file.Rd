@@ -28,4 +28,5 @@ writeLines(c("function(){}", "A<-7"), file_conn)
 close(file_conn)
 style_file(file = tmp, configuration = list())
 unlink(tmp)
+
 }
