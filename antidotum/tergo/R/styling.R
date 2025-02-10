@@ -257,10 +257,10 @@ style_file_internal <- function(file, configuration, ignored_paths) {
 #' @export
 #' @examples
 #' code <- "function(){}"
-#' style_text(code)
+#' print(style_text(code))
 #'
 #' code <- c("function(){}", "A<-7")
-#' style_text(code)
+#' print(style_text(code))
 style_text <- function(text, configuration = list()) {
   vapply(
     X = text,
