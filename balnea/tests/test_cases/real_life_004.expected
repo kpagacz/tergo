@@ -1,36 +1,25 @@
 tm_g_lineplot <- function(label,
                           dataname,
                           parentname = ifelse(
-                            inherits(strata, "data_extract_spec"),
-                            teal.transform::datanames_input(strata),
-                            "ADSL"
+                            inherits(strata, "data_extract_spec"), teal.transform::datanames_input(strata), "ADSL"
                           ),
                           strata = teal.transform::choices_selected(
-                            teal.transform::variable_choices(parentname, c("ARM", "ARMCD", "ACTARMCD")),
-                            "ARM"
+                            teal.transform::variable_choices(parentname, c("ARM", "ARMCD", "ACTARMCD")), "ARM"
                           ),
                           x = teal.transform::choices_selected(
-                            teal.transform::variable_choices(dataname, "AVISIT"),
-                            "AVISIT",
-                            fixed = TRUE
+                            teal.transform::variable_choices(dataname, "AVISIT"), "AVISIT", fixed = TRUE
                           ),
                           y = teal.transform::choices_selected(
-                            teal.transform::variable_choices(dataname, c("AVAL", "BASE", "CHG", "PCHG")),
-                            "AVAL"
+                            teal.transform::variable_choices(dataname, c("AVAL", "BASE", "CHG", "PCHG")), "AVAL"
                           ),
                           y_unit = teal.transform::choices_selected(
-                            teal.transform::variable_choices(dataname, "AVALU"),
-                            "AVALU",
-                            fixed = TRUE
+                            teal.transform::variable_choices(dataname, "AVALU"), "AVALU", fixed = TRUE
                           ),
                           paramcd = teal.transform::choices_selected(
-                            teal.transform::variable_choices(dataname, "PARAMCD"),
-                            "PARAMCD",
-                            fixed = TRUE
+                            teal.transform::variable_choices(dataname, "PARAMCD"), "PARAMCD", fixed = TRUE
                           ),
                           param = teal.transform::choices_selected(
-                            teal.transform::value_choices(dataname, "PARAMCD", "PARAM"),
-                            "ALT"
+                            teal.transform::value_choices(dataname, "PARAMCD", "PARAM"), "ALT"
                           ),
                           conf_level = teal.transform::choices_selected(c(0.95, 0.9, 0.8), 0.95, keep_order = TRUE),
                           interval = "mean_ci",

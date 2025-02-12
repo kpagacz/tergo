@@ -1,3 +1,4 @@
+use crate::format::CommonProperties;
 use crate::{
     config::{FormattingConfig, FunctionLineBreaks},
     format::DocAlgebra,
@@ -6,10 +7,7 @@ use crate::{
 use parser::ast::{Arg, Args, Delimiter, Expression, IfConditional, TermExpr};
 use tokenizer::tokens::CommentedToken;
 
-use crate::format::{
-    query_inline_position, CommonProperties, Doc, GroupDocProperties, InlineCommentPosition,
-    ShouldBreak,
-};
+use crate::format::{Doc, InlineCommentPosition, ShouldBreak};
 use std::{ops::Deref, rc::Rc};
 use tokenizer::Token;
 
@@ -53,20 +51,33 @@ where
     }
 }
 
-// Macro that creates a Doc::Group
-macro_rules! group {
-    ($doc:expr, $should_break:expr, $doc_ref:expr) => {{
-        let doc: Rc<Doc> = $doc;
-        let should_break: ShouldBreak = $should_break;
-        let doc_ref: usize = $doc_ref;
-        let properties = CommonProperties(query_inline_position(&doc), doc_ref);
-        Rc::new(Doc::Group(
-            GroupDocProperties(doc, should_break),
-            properties,
-        ))
-    }};
+/// Returns the inline comments separately from the rest
+/// of the commented token.
+/// There is no whitespace between the token and the inline comment.
+/// If the inline comment is None, the second element is None.
+pub(crate) trait DocAlgebraWithSeparateComments {
+    fn to_docs_with_separate_comments(
+        &self,
+        config: &impl FormattingConfig,
+        doc_ref: &mut usize,
+    ) -> (Rc<Doc>, Option<Rc<Doc>>);
 }
-pub(crate) use group;
+
+impl<T> DocAlgebraWithSeparateComments for Option<T>
+where
+    T: DocAlgebraWithSeparateComments,
+{
+    fn to_docs_with_separate_comments(
+        &self,
+        config: &impl FormattingConfig,
+        doc_ref: &mut usize,
+    ) -> (Rc<Doc>, Option<Rc<Doc>>) {
+        match self {
+            Some(code) => code.to_docs_with_separate_comments(config, doc_ref),
+            None => (Rc::new(Doc::Nil), None),
+        }
+    }
+}
 
 // Macro that creates a Doc::Break
 macro_rules! nl {
@@ -107,6 +118,14 @@ macro_rules! text {
     }};
 }
 pub(crate) use text;
+
+// Macro that creates a HardBreak
+macro_rules! hardbreak {
+    () => {{
+        Rc::new(Doc::HardBreak)
+    }};
+}
+pub(crate) use hardbreak;
 
 impl<'a> Code for Token<'a> {
     fn to_docs(&self, _: &impl FormattingConfig, _: &mut usize) -> Rc<Doc> {
@@ -179,7 +198,7 @@ impl Code for CommentedToken<'_> {
                 .to_docs(config, doc_ref)
                 .cons(text!(" "))
                 .cons(text!(inline_comment, 0, InlineCommentPosition::End))
-                .to_group(ShouldBreak::No, doc_ref),
+                .cons(hardbreak!()),
             (Some(leading_comments), None) => {
                 let mut leading_comments_it = leading_comments.iter();
                 let mut leading_comments = text!(
@@ -196,15 +215,15 @@ impl Code for CommentedToken<'_> {
                 }
                 let leading_comments = leading_comments
                     .nest_hanging()
-                    .to_group(ShouldBreak::Yes, &mut 0);
+                    .to_group(ShouldBreak::Yes, doc_ref);
                 leading_comments
                     .cons(nl!(""))
                     .cons(
                         self.token
                             .to_docs(config, doc_ref)
-                            .to_group(ShouldBreak::No, &mut 0),
+                            .to_group(ShouldBreak::No, doc_ref),
                     )
-                    .to_group(ShouldBreak::Yes, &mut 0)
+                    .to_group(ShouldBreak::Yes, doc_ref)
             }
             (Some(leading_comments), Some(inline_comment)) => {
                 let mut leading_comments_it = leading_comments.iter();
@@ -214,7 +233,7 @@ impl Code for CommentedToken<'_> {
                 }
                 let leading_comments = leading_comments
                     .nest_hanging()
-                    .to_group(ShouldBreak::Yes, &mut 0);
+                    .to_group(ShouldBreak::Yes, doc_ref);
                 leading_comments
                     .cons(nl!(""))
                     .cons(
@@ -222,9 +241,9 @@ impl Code for CommentedToken<'_> {
                             .to_docs(config, doc_ref)
                             .cons(text!(" "))
                             .cons(text!(inline_comment, 0, InlineCommentPosition::End))
-                            .to_group(ShouldBreak::No, &mut 0),
+                            .cons(hardbreak!()),
                     )
-                    .to_group(ShouldBreak::Propagate, &mut 0)
+                    .to_group(ShouldBreak::Propagate, doc_ref)
             }
         }
     }
@@ -247,6 +266,67 @@ impl CodeWithoutLeadingComments for CommentedToken<'_> {
     }
 }
 
+impl DocAlgebraWithSeparateComments for CommentedToken<'_> {
+    fn to_docs_with_separate_comments(
+        &self,
+        config: &impl FormattingConfig,
+        doc_ref: &mut usize,
+    ) -> (Rc<Doc>, Option<Rc<Doc>>) {
+        match (&self.leading_comments, self.inline_comment) {
+            (None, None) => (self.token.to_docs(config, doc_ref), None),
+            (None, Some(inline_comment)) => (
+                self.token.to_docs(config, doc_ref),
+                Some(text!(inline_comment, 0, InlineCommentPosition::End)),
+            ),
+            (Some(leading_comments), None) => {
+                let mut leading_comments_it = leading_comments.iter();
+                let mut leading_comments = text!(
+                    leading_comments_it.next().unwrap(),
+                    0,
+                    InlineCommentPosition::End
+                );
+                for comment in leading_comments_it {
+                    leading_comments = leading_comments.cons(nl!("")).cons(text!(
+                        comment,
+                        0,
+                        InlineCommentPosition::End
+                    ));
+                }
+                let leading_comments = leading_comments
+                    .nest_hanging()
+                    .to_group(ShouldBreak::Yes, doc_ref);
+                (
+                    leading_comments
+                        .cons(nl!(""))
+                        .cons(
+                            self.token
+                                .to_docs(config, doc_ref)
+                                .to_group(ShouldBreak::No, doc_ref),
+                        )
+                        .to_group(ShouldBreak::Yes, doc_ref),
+                    None,
+                )
+            }
+            (Some(leading_comments), Some(inline_comment)) => {
+                let mut leading_comments_it = leading_comments.iter();
+                let mut leading_comments = text!(leading_comments_it.next().unwrap());
+                for comment in leading_comments_it {
+                    leading_comments = leading_comments.cons(nl!("")).cons(text!(comment, 0));
+                }
+                let leading_comments = leading_comments
+                    .nest_hanging()
+                    .to_group(ShouldBreak::Yes, doc_ref);
+                (
+                    leading_comments
+                        .cons(nl!(""))
+                        .cons(self.token.to_docs(config, doc_ref)),
+                    Some(text!(inline_comment, 0, InlineCommentPosition::End)),
+                )
+            }
+        }
+    }
+}
+
 impl Code for Delimiter<'_> {
     fn to_docs(&self, config: &impl FormattingConfig, doc_ref: &mut usize) -> Rc<Doc> {
         match self {
@@ -256,6 +336,25 @@ impl Code for Delimiter<'_> {
             Delimiter::DoubleBracket((b1, b2)) => b1
                 .to_docs(config, doc_ref)
                 .cons(b2.to_docs(config, doc_ref)),
+        }
+    }
+}
+
+impl DocAlgebraWithSeparateComments for Delimiter<'_> {
+    fn to_docs_with_separate_comments(
+        &self,
+        config: &impl FormattingConfig,
+        doc_ref: &mut usize,
+    ) -> (Rc<Doc>, Option<Rc<Doc>>) {
+        match self {
+            Delimiter::Paren(token) | Delimiter::SingleBracket(token) => {
+                token.to_docs_with_separate_comments(config, doc_ref)
+            }
+            Delimiter::DoubleBracket((b1, b2)) => {
+                let first = b1.to_docs(config, doc_ref);
+                let (second, comment) = b2.to_docs_with_separate_comments(config, doc_ref);
+                (first.cons(second), comment)
+            }
         }
     }
 }
@@ -394,7 +493,7 @@ impl<'a> Code for Expression<'a> {
                             .cons(nl!(""))
                             .nest(config.indent())
                             .cons(post_delim.to_docs(config, doc_ref))
-                            .to_group(ShouldBreak::No, &mut 0)
+                            .to_group(ShouldBreak::No, doc_ref)
                     } else {
                         let docs = term
                             .iter()
@@ -759,10 +858,7 @@ impl<'a> Code for Expression<'a> {
                         false
                     }
                 };
-                let group_ref = *doc_ref + 1;
-                *doc_ref += 1;
-                let inner_docs =
-                    args_to_docs_with_conditional_nest(args, config, doc_ref, group_ref);
+                let inner_docs = args.to_docs(config, doc_ref);
                 if is_function_ref_quote
                     && args.args.len() == 1
                     && args
@@ -789,17 +885,9 @@ impl<'a> Code for Expression<'a> {
                     // )
                     // One of the few cases it makes some miniscule
                     // sense to have more indent
-                    group!(
-                        function_ref.to_docs(config, doc_ref).cons(inner_docs),
-                        ShouldBreak::Yes,
-                        group_ref
-                    )
+                    function_ref.to_docs(config, doc_ref).cons(inner_docs)
                 } else {
-                    group!(
-                        function_ref.to_docs(config, doc_ref).cons(inner_docs),
-                        ShouldBreak::No,
-                        group_ref
-                    )
+                    function_ref.to_docs(config, doc_ref).cons(inner_docs)
                 }
             }
             Expression::SubsetExpression(subset_expression) => {
@@ -857,25 +945,101 @@ impl<'a> Code for Expression<'a> {
 
 impl Code for Args<'_> {
     fn to_docs(&self, config: &impl FormattingConfig, doc_ref: &mut usize) -> Rc<Doc> {
-        let inside_delims = self
-            .args
-            .iter()
-            .map(|arg| {
-                arg.to_docs(config, doc_ref)
-                    .to_group(ShouldBreak::No, doc_ref)
-            })
-            .reduce(|first, second| first.cons(nl!(" ")).cons(second));
-
-        if let Some(inside_delims) = inside_delims {
-            self.left_delimeter
-                .to_docs(config, doc_ref)
-                .cons(nl!("").cons(inside_delims).nest(config.indent()))
-                .cons(nl!(""))
-                .cons(self.right_delimeter.to_docs(config, doc_ref))
-        } else {
-            self.left_delimeter
-                .to_docs(config, doc_ref)
-                .cons(self.right_delimeter.to_docs(config, doc_ref))
+        let mut observed_doc = *doc_ref;
+        // Hoist up the comment, so it's not part of the args group
+        // This prevents line breaks in these situations:
+        // c(1, 2, 3) # Comment
+        //
+        // We want the above instead of:
+        // c(
+        //   1,
+        //   2,
+        //   3
+        // ) # Comment
+        //
+        // The latter might happen because the inline comment
+        // is followed by a hard break, but at the same time
+        // it should not impact the fits calculations of the line.
+        let (right_delim, inline_comment) = self
+            .right_delimeter
+            .to_docs_with_separate_comments(config, doc_ref);
+        match self.args.split_last() {
+            Some((last_arg, other_args)) => {
+                let other_args = other_args
+                    .iter()
+                    .map(|arg| {
+                        arg.to_docs(config, doc_ref)
+                            .to_group(ShouldBreak::No, doc_ref)
+                    })
+                    .collect::<Vec<_>>();
+                let last_arg = std::iter::once(
+                    if is_expression_bracketed_term_or_function_def(&last_arg.0) {
+                        last_arg
+                            .to_docs(config, doc_ref)
+                            .to_group(ShouldBreak::No, doc_ref)
+                            .nest(-config.indent())
+                            .nest_if_break(config.indent(), observed_doc + 1)
+                            .fits_until_l_bracket()
+                    } else {
+                        last_arg
+                            .to_docs(config, doc_ref)
+                            .to_group(ShouldBreak::No, doc_ref)
+                    },
+                );
+                let inside_delims = other_args
+                .into_iter()
+                .chain(last_arg)
+                .reduce(|first, second| first.cons(nl!(" ")).cons(second))
+                .expect(
+                    "There is at least last_arg doc, otherwise we should be in the None match arm",
+                )
+                .to_group(ShouldBreak::No, &mut observed_doc);
+                if let Some(inline) = inline_comment {
+                    self.left_delimeter
+                        .to_docs(config, doc_ref)
+                        .cons(nl!("").cons(inside_delims).nest(config.indent()))
+                        .cons(nl!(""))
+                        .cons(right_delim)
+                        .to_group(ShouldBreak::No, doc_ref)
+                        .cons(text!(" "))
+                        .cons(inline)
+                } else {
+                    self.left_delimeter
+                        .to_docs(config, doc_ref)
+                        .cons(nl!("").cons(inside_delims).nest(config.indent()))
+                        .cons(nl!(""))
+                        .cons(right_delim)
+                        .to_group(ShouldBreak::No, doc_ref)
+                }
+            }
+            None => match self.right_delimeter {
+                Delimiter::SingleBracket(commented_token) | Delimiter::Paren(commented_token) => {
+                    if commented_token.leading_comments.is_some() {
+                        self.left_delimeter
+                            .to_docs(config, doc_ref)
+                            .cons(nl!("").nest(config.indent()))
+                            .cons(self.right_delimeter.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::Yes, doc_ref)
+                    } else {
+                        self.left_delimeter
+                            .to_docs(config, doc_ref)
+                            .cons(self.right_delimeter.to_docs(config, doc_ref))
+                    }
+                }
+                Delimiter::DoubleBracket((first_commented_token, _)) => {
+                    if first_commented_token.leading_comments.is_some() {
+                        self.left_delimeter
+                            .to_docs(config, doc_ref)
+                            .cons(nl!("").nest(config.indent()))
+                            .cons(self.right_delimeter.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::Yes, doc_ref)
+                    } else {
+                        self.left_delimeter
+                            .to_docs(config, doc_ref)
+                            .cons(self.right_delimeter.to_docs(config, doc_ref))
+                    }
+                }
+            },
         }
     }
 }
@@ -888,80 +1052,6 @@ impl Code for Arg<'_> {
         } else {
             self.0.to_docs(config, doc_ref)
         }
-    }
-}
-
-fn args_to_docs_with_conditional_nest(
-    args: &Args,
-    config: &impl FormattingConfig,
-    doc_ref: &mut usize,
-    observed_doc: usize,
-) -> Rc<Doc> {
-    match args.args.split_last() {
-        Some((last_arg, other_args)) => {
-            let other_args = other_args
-                .iter()
-                .map(|arg| {
-                    arg.to_docs(config, doc_ref)
-                        .to_group(ShouldBreak::No, doc_ref)
-                })
-                .collect::<Vec<_>>();
-            let last_arg = std::iter::once(
-                if is_expression_bracketed_term_or_function_def(&last_arg.0) {
-                    last_arg
-                        .to_docs(config, doc_ref)
-                        .to_group(ShouldBreak::No, doc_ref)
-                        .fits_until_l_bracket()
-                } else {
-                    last_arg
-                        .to_docs(config, doc_ref)
-                        .to_group(ShouldBreak::No, doc_ref)
-                },
-            );
-            let inside_delims = other_args
-                .into_iter()
-                .chain(last_arg)
-                .reduce(|first, second| first.cons(nl!(" ")).cons(second))
-                .expect(
-                    "There is at least last_arg doc, otherwise we should be in the None match arm",
-                );
-            let nested_inside_delims = nl!("")
-                .cons(inside_delims)
-                .nest_if_break(config.indent(), observed_doc);
-            args.left_delimeter
-                .to_docs(config, doc_ref)
-                .cons(nested_inside_delims)
-                .cons(nl!(""))
-                .cons(args.right_delimeter.to_docs(config, doc_ref))
-        }
-        None => match args.right_delimeter {
-            Delimiter::SingleBracket(commented_token) | Delimiter::Paren(commented_token) => {
-                if commented_token.leading_comments.is_some() {
-                    args.left_delimeter
-                        .to_docs(config, doc_ref)
-                        .cons(nl!("").nest(config.indent()))
-                        .cons(args.right_delimeter.to_docs(config, doc_ref))
-                        .to_group(ShouldBreak::Yes, doc_ref)
-                } else {
-                    args.left_delimeter
-                        .to_docs(config, doc_ref)
-                        .cons(args.right_delimeter.to_docs(config, doc_ref))
-                }
-            }
-            Delimiter::DoubleBracket((first_commented_token, _)) => {
-                if first_commented_token.leading_comments.is_some() {
-                    args.left_delimeter
-                        .to_docs(config, doc_ref)
-                        .cons(nl!("").nest(config.indent()))
-                        .cons(args.right_delimeter.to_docs(config, doc_ref))
-                        .to_group(ShouldBreak::Yes, doc_ref)
-                } else {
-                    args.left_delimeter
-                        .to_docs(config, doc_ref)
-                        .cons(args.right_delimeter.to_docs(config, doc_ref))
-                }
-            }
-        },
     }
 }
 
@@ -1020,6 +1110,7 @@ fn has_forced_line_breaks(doc: &Rc<Doc>, inside_a_group_with_should_break: bool)
             matches!(group_props.1, ShouldBreak::Yes)
                 || matches!(group_props.1, ShouldBreak::Propagate),
         ),
+        Doc::HardBreak => true,
     }
 }
 
@@ -1045,7 +1136,7 @@ fn delimited_content_to_docs(
         }
         let leading_comments = leading_comments
             .nest_hanging()
-            .to_group(ShouldBreak::Yes, &mut 0);
+            .to_group(ShouldBreak::Yes, doc_ref);
         left_delim
             .to_docs(config, doc_ref)
             .cons(

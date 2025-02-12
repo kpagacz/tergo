@@ -434,3 +434,4 @@ comparison_test!(
     Config::default()
 );
 comparison_test!(rle_tmc, "real_life_004", Config::default());
+comparison_test!(rle_somehow_exceeds_120, "real_life_005", Config::default());

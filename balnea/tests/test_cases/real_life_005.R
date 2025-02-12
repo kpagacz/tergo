@@ -1,0 +1,9 @@
+jnj_template_g_response <- function() {
+  substitute(
+    expr = {
+      data %>%
+        tidyr::complete(treatment_var, tidyr::nesting(visit_var), fill = list(n = 0, mean = 0.0, sd = 0.0, se = 0.0)) %>%
+        print()
+    }
+  )
+}
