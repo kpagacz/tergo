@@ -227,7 +227,6 @@ pub(crate) enum Mode {
 pub(crate) type Triple = (i32, Mode, Rc<Doc>);
 
 fn fits(mut remaining_width: i32, mut docs: VecDeque<Triple>) -> bool {
-    trace!("Judging fits with remaining width {remaining_width} for {docs:?}");
     while remaining_width >= 0 {
         match docs.pop_front() {
             None => {
@@ -297,11 +296,9 @@ fn fits(mut remaining_width: i32, mut docs: VecDeque<Triple>) -> bool {
 }
 
 fn fits_until_l_bracket(mut remaining_width: i32, mut docs: VecDeque<Triple>) -> bool {
-    trace!("Judging fits until l bracket for {docs:?}");
     while remaining_width >= 0 {
         match docs.pop_front() {
             None => {
-                trace!("Got None docs fits until l bracket returned true");
                 return true;
             }
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
@@ -351,7 +348,6 @@ fn fits_until_l_bracket(mut remaining_width: i32, mut docs: VecDeque<Triple>) ->
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
                 (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, _))) => {
                     if inline_comment_pos == &InlineCommentPosition::Middle {
-                        trace!("Fits returned false due to inline comment {inline_comment_pos:?}");
                         return false;
                     } else {
                         docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
@@ -364,7 +360,6 @@ fn fits_until_l_bracket(mut remaining_width: i32, mut docs: VecDeque<Triple>) ->
             },
         }
     }
-    trace!("Fits until l bracket returned false");
     false
 }
 
@@ -382,13 +377,9 @@ pub(crate) fn format_to_sdoc(
         None => SimpleDoc::Nil,
         Some(doc) => {
             let (indent, mode, doc) = doc;
-            trace!("Popped. Consumed: {consumed} Indent:{indent} {mode:?} {doc:?}");
             match (indent, mode, &*doc) {
                 (_, _, Doc::Nil) => format_to_sdoc(consumed, docs, config, broken_docs),
                 (i, m, Doc::Cons(first, second, _)) => {
-                    trace!("Cons unpacked:");
-                    trace!("First {first:?}");
-                    trace!("Second {second:?}");
                     docs.push_front((i, m, Rc::clone(second)));
                     docs.push_front((i, m, Rc::clone(first)));
                     format_to_sdoc(consumed, docs, config, broken_docs)

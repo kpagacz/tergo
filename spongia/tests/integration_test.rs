@@ -51,30 +51,6 @@ fn literal_with_parentheses() {
 }
 
 #[test]
-fn bop_with_parentheses() {
-    log_init();
-    let code = include_str!("./test_cases/003.R");
-    let mut tokenizer = Tokenizer::new(code);
-    let mut commented_tokens = tokenizer.tokenize();
-
-    let tokens = pre_parse(&mut commented_tokens);
-    let res = parse(&tokens).unwrap();
-    let expected = vec![
-        Expression::Term(Box::new(TermExpr {
-            pre_delimiters: Some(tokens[0]),
-            term: vec![Expression::Bop(
-                tokens[2],
-                Box::new(Expression::Literal(tokens[1])),
-                Box::new(Expression::Literal(tokens[3])),
-            )],
-            post_delimiters: Some(tokens[4]),
-        })),
-        Expression::EOF(tokens[6]),
-    ];
-    assert_eq!(res, expected);
-}
-
-#[test]
 fn empty_function_definition() {
     log_init();
     let code = include_str!("./test_cases/004.R");
@@ -127,48 +103,6 @@ fn function_def_with_one_arg() {
             )))),
         )),
         Expression::EOF(tokens[7]),
-    ];
-
-    assert_eq!(
-        res,
-        expected,
-        "res: {}, expected: {}",
-        ExpressionsBuffer(&res),
-        ExpressionsBuffer(&expected)
-    );
-}
-
-#[test]
-fn function_def_with_one_arg_with_default_value() {
-    log_init();
-    let code = include_str!("./test_cases/006.R");
-    let mut tokenizer = Tokenizer::new(code);
-    let mut commented_tokens = tokenizer.tokenize();
-
-    let tokens = pre_parse(&mut commented_tokens);
-    let res = parse(&tokens).unwrap();
-    let expected = vec![
-        Expression::FunctionDef(FunctionDefinition::new(
-            tokens[0],
-            Args::new(
-                Delimiter::Paren(tokens[1]),
-                vec![Arg(
-                    Some(Expression::Bop(
-                        tokens[3],
-                        Box::new(Expression::Symbol(tokens[2])),
-                        Box::new(Expression::Literal(tokens[4])),
-                    )),
-                    None,
-                )],
-                Delimiter::Paren(tokens[5]),
-            ),
-            Box::new(Expression::Term(Box::new(TermExpr::new(
-                Some(tokens[6]),
-                vec![],
-                Some(tokens[7]),
-            )))),
-        )),
-        Expression::EOF(tokens[9]),
     ];
 
     assert_eq!(

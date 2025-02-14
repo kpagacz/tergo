@@ -595,14 +595,10 @@ impl<'a> Code for Expression<'a> {
                     lhs.to_docs(config, doc_ref)
                         .cons(text!(" "))
                         .cons(op.to_docs(config, doc_ref))
-                        .cons(text!(" ").cons(rhs.to_docs(config, doc_ref)))
-                        .to_group(ShouldBreak::No, doc_ref)
+                        .cons(text!(" "))
+                        .cons(rhs.to_docs(config, doc_ref).nest(config.indent()))
                 }
-                Token::LAssign
-                | Token::SuperAssign
-                | Token::ColonAssign
-                | Token::RAssign
-                | Token::OldAssign
+                Token::RAssign
                 | Token::Equal
                 | Token::NotEqual
                 | Token::LowerThan
@@ -624,6 +620,7 @@ impl<'a> Code for Expression<'a> {
                     .to_docs(config, doc_ref)
                     .cons(text!(" "))
                     .cons(op.to_docs(config, doc_ref))
+                    .to_group(ShouldBreak::No, doc_ref)
                     .cons(
                         nl!(" ")
                             .cons(rhs.to_docs(config, doc_ref))
@@ -638,12 +635,11 @@ impl<'a> Code for Expression<'a> {
                 | Token::Help => lhs
                     .to_docs(config, doc_ref)
                     .cons(op.to_docs(config, doc_ref))
-                    .cons(rhs.to_docs(config, doc_ref))
-                    .to_group(ShouldBreak::No, doc_ref),
+                    .cons(rhs.to_docs(config, doc_ref).nest(config.indent())),
                 _ => panic!(
                     "Got a not a binary operator token inside a binary expression when \
                      formatting. Token: {:?}",
-                    &op.token
+                    &op
                 ),
             },
             Expression::Formula(tilde, term) => tilde
@@ -939,6 +935,151 @@ impl<'a> Code for Expression<'a> {
                     .cons(body.to_docs(config, doc_ref))
                     .to_group(ShouldBreak::No, doc_ref)
             }
+            Expression::MultiBop(lhs, other) => {
+                assert!(!other.is_empty());
+                let mut last_op: Option<&CommentedToken> = None;
+                let mut acc_rhs: Rc<Doc> = Rc::new(Doc::Nil);
+                for (op, rhs) in other.iter().rev() {
+                    match last_op {
+                        Some(last_op_token) => match last_op_token.token {
+                            Token::OldAssign
+                            | Token::LAssign
+                            | Token::ColonAssign
+                            | Token::SuperAssign
+                                if !config.allow_nl_after_assignment() =>
+                            {
+                                acc_rhs = rhs
+                                    .to_docs(config, doc_ref)
+                                    .cons(text!(" "))
+                                    .cons(last_op_token.to_docs(config, doc_ref))
+                                    .cons(text!(" "))
+                                    .cons(acc_rhs);
+                                last_op = Some(op);
+                            }
+                            Token::OldAssign
+                            | Token::LAssign
+                            | Token::ColonAssign
+                            | Token::SuperAssign
+                            | Token::RAssign
+                            | Token::Equal
+                            | Token::NotEqual
+                            | Token::LowerThan
+                            | Token::GreaterThan
+                            | Token::LowerEqual
+                            | Token::GreaterEqual
+                            | Token::Divide
+                            | Token::Multiply
+                            | Token::Minus
+                            | Token::Plus
+                            | Token::And
+                            | Token::VectorizedAnd
+                            | Token::Or
+                            | Token::VectorizedOr
+                            | Token::Pipe
+                            | Token::Modulo
+                            | Token::Tilde
+                            | Token::Special(_) => {
+                                acc_rhs = rhs
+                                    .to_docs(config, doc_ref)
+                                    .cons(text!(" "))
+                                    .cons(last_op_token.to_docs(config, doc_ref))
+                                    .to_group(ShouldBreak::No, doc_ref)
+                                    .cons(nl!(" "))
+                                    .cons(acc_rhs);
+                                last_op = Some(op);
+                            }
+                            Token::Dollar
+                            | Token::NsGet
+                            | Token::NsGetInt
+                            | Token::Colon
+                            | Token::Slot
+                            | Token::Power
+                            | Token::Help => {
+                                acc_rhs = rhs
+                                    .to_docs(config, doc_ref)
+                                    .cons(last_op_token.to_docs(config, doc_ref))
+                                    .cons(acc_rhs);
+                                last_op = Some(op);
+                            }
+                            _ => panic!(
+                            "Got a not a binary operator token inside a binary expression when \
+                     formatting. Token: {:?}",
+                            &op.token
+                        ),
+                        },
+                        None => {
+                            last_op = Some(op);
+                            acc_rhs = rhs
+                                .to_docs(config, doc_ref)
+                                .to_group(ShouldBreak::No, doc_ref);
+                        }
+                    }
+                }
+                if let Some(last_op) = last_op {
+                    match last_op.token {
+                        Token::OldAssign
+                        | Token::LAssign
+                        | Token::ColonAssign
+                        | Token::SuperAssign
+                            if !config.allow_nl_after_assignment() =>
+                        {
+                            lhs.to_docs(config, doc_ref)
+                                .cons(text!(" "))
+                                .cons(last_op.to_docs(config, doc_ref))
+                                .cons(text!(" "))
+                                .cons(acc_rhs)
+                                .to_group(ShouldBreak::No, doc_ref)
+                        }
+                        Token::OldAssign
+                        | Token::LAssign
+                        | Token::ColonAssign
+                        | Token::SuperAssign
+                        | Token::RAssign
+                        | Token::Equal
+                        | Token::NotEqual
+                        | Token::LowerThan
+                        | Token::GreaterThan
+                        | Token::LowerEqual
+                        | Token::GreaterEqual
+                        | Token::Divide
+                        | Token::Multiply
+                        | Token::Minus
+                        | Token::Plus
+                        | Token::And
+                        | Token::VectorizedAnd
+                        | Token::Or
+                        | Token::VectorizedOr
+                        | Token::Pipe
+                        | Token::Modulo
+                        | Token::Tilde
+                        | Token::Special(_) => lhs
+                            .to_docs(config, doc_ref)
+                            .cons(text!(" "))
+                            .cons(last_op.to_docs(config, doc_ref))
+                            .to_group(ShouldBreak::No, doc_ref)
+                            .cons(nl!(" ").cons(acc_rhs).nest(config.indent()))
+                            .to_group(ShouldBreak::No, doc_ref),
+                        Token::Dollar
+                        | Token::NsGet
+                        | Token::NsGetInt
+                        | Token::Colon
+                        | Token::Slot
+                        | Token::Power
+                        | Token::Help => lhs
+                            .to_docs(config, doc_ref)
+                            .cons(last_op.to_docs(config, doc_ref))
+                            .cons(acc_rhs)
+                            .to_group(ShouldBreak::No, doc_ref),
+                        _ => panic!(
+                            "Got a not a binary operator token inside a binary expression when \
+                     formatting. Token: {:?}",
+                            &last_op
+                        ),
+                    }
+                } else {
+                    unreachable!("There's always the rhs")
+                }
+            }
         }
     }
 }
@@ -1009,7 +1150,6 @@ impl Code for Args<'_> {
                         .cons(nl!("").cons(inside_delims).nest(config.indent()))
                         .cons(nl!(""))
                         .cons(right_delim)
-                        .to_group(ShouldBreak::No, doc_ref)
                 }
             }
             None => match self.right_delimeter {
