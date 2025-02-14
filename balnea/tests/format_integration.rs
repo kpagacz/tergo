@@ -287,6 +287,11 @@ comparison_test!(
     "096",
     Config::default()
 );
+comparison_test!(
+    bops_with_different_precedence,
+    "097",
+    short_line_plus_indent()
+);
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
@@ -434,3 +439,4 @@ comparison_test!(
     Config::default()
 );
 comparison_test!(rle_tmc, "real_life_004", Config::default());
+comparison_test!(rle_somehow_exceeds_120, "real_life_005", Config::default());

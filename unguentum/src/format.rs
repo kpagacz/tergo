@@ -89,13 +89,17 @@ pub(crate) enum Doc {
     FitsUntilLBracket(Rc<Doc>, CommonProperties), // inner docs, the fixed length, common props
     Break(&'static str),
     Group(GroupDocProperties, CommonProperties),
+    // Hard break will always not fit in the line
+    // essentially forcing the groups containing it
+    // to break new lines
+    HardBreak,
 }
 
 impl std::fmt::Display for Doc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Doc::Nil => f.write_str("Nil"),
-            Doc::Cons(left, right, _) => f.write_fmt(format_args!("{} + {}", left, right)),
+            Doc::Cons(left, right, _) => f.write_fmt(format_args!("{} {}", left, right)),
             Doc::Text(text, _, _) => f.write_fmt(format_args!("'{}'", text)),
             Doc::Nest(indent, body, _) => f.write_fmt(format_args!("Nest{}({})", indent, body)),
             Doc::NestIfBreak(indent, body, _, watched) => {
@@ -108,6 +112,7 @@ impl std::fmt::Display for Doc {
                 "GROUP{}:CommPos{:?}:SB{:?}<{}>",
                 common_props.1, common_props.0, inside.1, inside.0
             )),
+            Doc::HardBreak => f.write_str("HardBreak"),
         }
     }
 }
@@ -123,6 +128,7 @@ pub(crate) fn query_inline_position(doc: &Doc) -> InlineCommentPosition {
         Doc::FitsUntilLBracket(_, props) => props.0,
         Doc::Break(_) => InlineCommentPosition::No,
         Doc::Group(_, props) => props.0,
+        Doc::HardBreak => InlineCommentPosition::No,
     }
 }
 
@@ -221,11 +227,10 @@ pub(crate) enum Mode {
 pub(crate) type Triple = (i32, Mode, Rc<Doc>);
 
 fn fits(mut remaining_width: i32, mut docs: VecDeque<Triple>) -> bool {
-    trace!("Judging fits for {docs:?}");
     while remaining_width >= 0 {
         match docs.pop_front() {
             None => {
-                trace!("Got None docs Fits returned true");
+                trace!("Got None docs Fits returned true at remaining width: {remaining_width}");
                 return true;
             }
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
@@ -280,19 +285,20 @@ fn fits(mut remaining_width: i32, mut docs: VecDeque<Triple>) -> bool {
                         continue;
                     }
                 }
+                (_, _, Doc::HardBreak) => {
+                    return false;
+                }
             },
         }
     }
-    trace!("Fits returned false");
+    trace!("Fits returned false at remaining width: {remaining_width}");
     false
 }
 
 fn fits_until_l_bracket(mut remaining_width: i32, mut docs: VecDeque<Triple>) -> bool {
-    trace!("Judging fits until l bracket for {docs:?}");
     while remaining_width >= 0 {
         match docs.pop_front() {
             None => {
-                trace!("Got None docs fits until l bracket returned true");
                 return true;
             }
             Some((indent, mode, doc)) => match (indent, mode, &*doc) {
@@ -342,17 +348,18 @@ fn fits_until_l_bracket(mut remaining_width: i32, mut docs: VecDeque<Triple>) ->
                 (_, Mode::Break, Doc::Break(_)) => unreachable!(),
                 (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, _))) => {
                     if inline_comment_pos == &InlineCommentPosition::Middle {
-                        trace!("Fits returned false due to inline comment {inline_comment_pos:?}");
                         return false;
                     } else {
                         docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
                         continue;
                     }
                 }
+                (_, _, Doc::HardBreak) => {
+                    return false;
+                }
             },
         }
     }
-    trace!("Fits until l bracket returned false");
     false
 }
 
@@ -435,6 +442,7 @@ pub(crate) fn format_to_sdoc(
                         format_to_sdoc(consumed, docs, config, broken_docs)
                     }
                 }
+                (_, _, Doc::HardBreak) => format_to_sdoc(consumed, docs, config, broken_docs),
             }
         }
     }

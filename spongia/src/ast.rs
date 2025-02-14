@@ -12,6 +12,10 @@ pub enum Expression<'a> {
         Box<Expression<'a>>,
         Box<Expression<'a>>,
     ),
+    MultiBop(
+        Box<Expression<'a>>,
+        Vec<(&'a CommentedToken<'a>, Box<Expression<'a>>)>,
+    ),
     Formula(&'a CommentedToken<'a>, Box<Expression<'a>>),
     Newline(&'a CommentedToken<'a>),
     Whitespace(&'a [&'a CommentedToken<'a>]),
@@ -39,6 +43,7 @@ impl std::fmt::Display for Expression<'_> {
             Expression::Bop(op, left, right) => {
                 f.write_fmt(format_args!("{} {} {}", left, TokensBuffer(&[op]), right))
             }
+            Expression::MultiBop(lhs, other) => f.write_fmt(format_args!("{} {:?}", lhs, other)),
             Expression::Formula(tilde, term) => write!(f, "{} {}", tilde, term),
             Expression::Newline(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
             Expression::Whitespace(tokens) => f.write_fmt(format_args!("{}", TokensBuffer(tokens))),
@@ -126,7 +131,7 @@ impl std::fmt::Display for TermExpr<'_> {
                 .iter()
                 .map(|e| format!("(expr: {})", e))
                 .collect::<Vec<_>>()
-                .join(" "),
+                .join("\n"),
             if let Some(post_delim) = self.post_delimiters {
                 post_delim.to_string()
             } else {

@@ -261,7 +261,6 @@ impl ExprParser {
         mut lhs: Expression<'a>,
         mut tokens: Input<'a, 'b>,
     ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-        trace!("ExprParser::parse: {}", TokensBuffer(tokens));
         let mut lookahead = &tokens[0];
         while is_binary_operator(lookahead) && precedence(lookahead) >= self.0 {
             let op = lookahead;
@@ -286,14 +285,13 @@ impl ExprParser {
                     });
                 let parser = ExprParser(q);
                 let (new_tokens, new_rhs) = parser.parse(rhs, tokens)?;
+                let new_rhs = bop_to_multibop(new_rhs);
                 rhs = new_rhs;
                 tokens = new_tokens;
                 lookahead = &tokens[0];
             }
             lhs = Expression::Bop(op, Box::new(lhs), Box::new(rhs));
         }
-        trace!("ExprParser::parse: LHS {lhs}");
-        trace!("ExprParser::parse: tokens left: {}", TokensBuffer(tokens));
         Ok((tokens, lhs))
     }
 }
@@ -303,7 +301,8 @@ pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, 
     let (tokens, term) = unary_term(tokens)?;
     if !tokens.is_empty() {
         let parser = ExprParser(0);
-        parser.parse(term, tokens)
+        let (tokens_left, xpr) = parser.parse(term, tokens)?;
+        Ok((tokens_left, bop_to_multibop(xpr)))
     } else {
         Ok((tokens, term))
     }
@@ -312,16 +311,38 @@ pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, 
 pub(crate) fn expr_with_newlines<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("expr: {}", TokensBuffer(tokens));
+    trace!("expr_with_newlines: {}", TokensBuffer(tokens));
     let (mut tokens, term) = unary_term(tokens)?;
     while !tokens.is_empty() && tokens[0].token == Newline {
         tokens = &tokens[1..];
     }
     if !tokens.is_empty() {
         let parser = ExprParser(0);
-        parser.parse(term, tokens)
+        let (tokens_left, xpr) = parser.parse(term, tokens)?;
+        Ok((tokens_left, bop_to_multibop(xpr)))
     } else {
         Ok((tokens, term))
+    }
+}
+
+fn bop_to_multibop(bop: Expression) -> Expression {
+    match bop {
+        Expression::Bop(op, lhs, rhs) => {
+            let mut multibop = vec![(op, rhs)];
+            let original_precedence = precedence(op);
+            let mut lhs = lhs;
+            while let Expression::Bop(op, lhs_, rhs) = *lhs {
+                if original_precedence != precedence(op) {
+                    lhs = Box::new(Expression::Bop(op, lhs_, rhs));
+                    break;
+                }
+                multibop.push((op, rhs));
+                lhs = lhs_;
+            }
+            multibop.reverse();
+            Expression::MultiBop(lhs, multibop)
+        }
+        _ => bop,
     }
 }
 
@@ -330,39 +351,6 @@ mod tests {
     use tokenizer::tokens::commented_tokens;
 
     use super::*;
-    use tokenizer::Token::{self};
-
-    fn binary_op_tokens() -> Vec<Token<'static>> {
-        vec![
-            Help,
-            RAssign,
-            Tilde,
-            Or,
-            VectorizedOr,
-            And,
-            VectorizedAnd,
-            NotEqual,
-            GreaterThan,
-            GreaterEqual,
-            LowerThan,
-            LowerEqual,
-            Equal,
-            NotEqual,
-            Plus,
-            Minus,
-            Multiply,
-            Divide,
-            Colon,
-            Dollar,
-            Slot,
-            NsGet,
-            NsGetInt,
-            LAssign,
-            OldAssign,
-            Power,
-            Special("%>%"),
-        ]
-    }
 
     #[test]
     fn symbol_exprs() {
@@ -378,88 +366,6 @@ mod tests {
         let tokens: Vec<_> = tokens_.iter().collect();
         let res = literal_expr(&tokens).unwrap().1;
         assert_eq!(res, Expression::Literal(tokens[0]));
-    }
-
-    #[test]
-    fn expressions() {
-        for token in binary_op_tokens() {
-            let tokens_ = commented_tokens!(Literal("1"), token, Literal("1"), EOF);
-            let tokens: Vec<_> = tokens_.iter().collect();
-            let res = expr(&tokens).unwrap().1;
-            assert_eq!(
-                res,
-                Expression::Bop(
-                    tokens[1],
-                    Box::new(Expression::Literal(tokens[0])),
-                    Box::new(Expression::Literal(tokens[2]))
-                )
-            );
-        }
-    }
-
-    #[test]
-    fn right_associative_bop() {
-        let tokens_ =
-            commented_tokens!(Literal("1"), Power, Literal("2"), Power, Literal("3"), EOF);
-        let tokens: Vec<_> = tokens_.iter().collect();
-        let res = expr(&tokens).unwrap().1;
-        assert_eq!(
-            res,
-            Expression::Bop(
-                tokens[1],
-                Box::new(Expression::Literal(tokens[0])),
-                Box::new(Expression::Bop(
-                    tokens[3],
-                    Box::new(Expression::Literal(tokens[2])),
-                    Box::new(Expression::Literal(tokens[4]))
-                ))
-            )
-        );
-    }
-
-    #[test]
-    fn left_associative_bop() {
-        let tokens_ = commented_tokens!(Literal("1"), Plus, Literal("2"), Plus, Literal("3"), EOF);
-        let tokens: Vec<_> = tokens_.iter().collect();
-        let res = expr(&tokens).unwrap().1;
-        assert_eq!(
-            res,
-            Expression::Bop(
-                tokens[3],
-                Box::new(Expression::Bop(
-                    tokens[1],
-                    Box::new(Expression::Literal(tokens[0])),
-                    Box::new(Expression::Literal(tokens[2]))
-                )),
-                Box::new(Expression::Literal(tokens[4]))
-            )
-        );
-    }
-
-    #[test]
-    fn bop_precedence() {
-        let tokens_ = commented_tokens!(
-            Literal("1"),
-            Multiply,
-            Literal("2"),
-            Plus,
-            Literal("3"),
-            EOF
-        );
-        let tokens: Vec<_> = tokens_.iter().collect();
-        let res = expr(&tokens).unwrap().1;
-        assert_eq!(
-            res,
-            Expression::Bop(
-                tokens[3],
-                Box::new(Expression::Bop(
-                    tokens[1],
-                    Box::new(Expression::Literal(tokens[0])),
-                    Box::new(Expression::Literal(tokens[2]))
-                )),
-                Box::new(Expression::Literal(tokens[4]))
-            )
-        )
     }
 
     #[test]

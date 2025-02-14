@@ -23,6 +23,13 @@ pub(crate) fn remove_trailing_whitespace_from_function_defs(expression: &mut Exp
             remove_trailing_whitespace_from_function_defs(expression1);
             remove_trailing_whitespace_from_function_defs(expression2);
         }
+        Expression::MultiBop(lhs, other) => {
+            remove_trailing_whitespace_from_function_defs(lhs);
+            other
+                .iter_mut()
+                .map(|(_, rhs)| rhs)
+                .for_each(|arg0| remove_trailing_whitespace_from_function_defs(arg0));
+        }
         Expression::FunctionDef(function_def) => {
             let body = &mut function_def.body;
             if let Expression::Term(ref mut terms) = **body {
