@@ -8,3 +8,7 @@
 ^data-raw/
 ^cran-comments\.md$
 ^tergo\.toml
+^src/rust/vendor$
+^src/rust/target$
+^src/Makevars$
+^src/Makevars\.win$

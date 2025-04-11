@@ -1,38 +1,41 @@
-TARGET = x86_64-pc-windows-gnu
+TARGET = $(subst 64,x86_64,$(subst 32,i686,$(WIN)))-pc-windows-gnu
 
-# Rtools42 doesn't have the linker in the location that cargo expects, so we
-# need to overwrite it via configuration.
-CARGO_LINKER = x86_64-w64-mingw32.static.posix-gcc.exe
-
-VENDORING = @VENDORING@
-OFFLINE_OPTION = @OFFLINE_OPTION@
-
-LIBDIR = ./rust/target/$(TARGET)/release
-PKG_LIBS = -L$(LIBDIR) -ltergo -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll
+TARGET_DIR = ./rust/target
+LIBDIR = $(TARGET_DIR)/$(TARGET)/@LIBDIR@
 STATLIB = $(LIBDIR)/libtergo.a
+PKG_LIBS = -L$(LIBDIR) -ltergo -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll
 
-all: C_clean
+all: $(SHLIB) rust_clean
+
+.PHONY: $(STATLIB)
 
 $(SHLIB): $(STATLIB)
 
-$(STATLIB):
-	mkdir -p $(LIBDIR)/libgcc_mock && touch $(LIBDIR)/libgcc_mock/libgcc_eh.a
+CARGOTMP = $(CURDIR)/.cargo
+VENDOR_DIR = vendor
 
-	# vendoring (Note: to avoid NOTE of "Found the following hidden files and
-	# directories", .cargo needs to be created here)
-	if [ "$(VENDORING)" = "yes" ]; then \
-	  $(TAR) --extract --xz -f ./rust/vendor.tar.xz -C ./rust && \
-	    mkdir -p ./rust/.cargo && \
-	    cp ./cargo_vendor_config.toml ./rust/.cargo/config.toml; \
+$(STATLIB):
+	mkdir -p $(TARGET_DIR)/libgcc_mock
+	touch $(TARGET_DIR)/libgcc_mock/libgcc_eh.a
+
+	if [ "$(NOT_CRAN)" != "true" ]; then \
+		if [ -f ./rust/vendor.tar.xz ]; then \
+			tar xf rust/vendor.tar.xz && \
+			mkdir -p $(CARGOTMP) && \
+			cp rust/vendor-config.toml $(CARGOTMP)/config.toml; \
+		fi; \
 	fi
 
-	@BEFORE_CARGO_BUILD@ cd ./rust && cargo build --jobs 1 --target $(TARGET) --lib --release $(OFFLINE_OPTION)
-	@AFTER_CARGO_BUILD@
+	# Build the project using Cargo with additional flags
+	export CARGO_HOME=$(CARGOTMP) && \
+	export LIBRARY_PATH="$(LIBRARY_PATH);$(CURDIR)/$(TARGET_DIR)/libgcc_mock" && \
+	RUSTFLAGS="$(RUSTFLAGS) --print=native-static-libs" cargo build @CRAN_FLAGS@ --target=$(TARGET) --lib @PROFILE@ --manifest-path=rust/Cargo.toml --target-dir=$(TARGET_DIR)
 
-C_clean:
-	rm -Rf $(SHLIB) $(OBJECTS) ./rust/.cargo $(STATLIB)
+	# Always clean up CARGOTMP
+	rm -Rf $(CARGOTMP);
+
+rust_clean: $(SHLIB)
+	rm -Rf $(CARGOTMP) $(VENDOR_DIR) @CLEAN_TARGET@
 
 clean:
-	rm -Rf $(SHLIB) $(OBJECTS) $(STATLIB) ./rust/.cargo ./rust/vendor ./rust/target
-
-.PHONY: all C_clean clean
+	rm -Rf $(SHLIB) $(STATLIB) $(OBJECTS) $(TARGET_DIR)
