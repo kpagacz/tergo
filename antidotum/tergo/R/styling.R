@@ -286,3 +286,4 @@ style_text <- function(text, configuration = list()) {
 truncate_error <- function(err) {
   ifelse(nchar(err) > 80, sprintf("%s...", substr(err, 1, 77)), err)
 }
+

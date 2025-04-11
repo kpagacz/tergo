@@ -54,11 +54,7 @@ no_rustc_msg <- c(
 )
 
 # Add {user}/.cargo/bin to path before checking
-new_path <- paste0(
-  Sys.getenv("PATH"),
-  ":",
-  paste0(Sys.getenv("HOME"), "/.cargo/bin")
-)
+new_path <- paste0(Sys.getenv("PATH"), ":", paste0(Sys.getenv("HOME"), "/.cargo/bin"))
 
 # set the path with the new path
 Sys.setenv("PATH" = new_path)
@@ -114,3 +110,4 @@ if (!is.na(msrv)) {
 # print the versions
 versions_fmt <- "Using %s\nUsing %s"
 message(sprintf(versions_fmt, cargo_version, rustc_version))
+

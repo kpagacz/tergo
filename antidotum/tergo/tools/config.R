@@ -24,11 +24,7 @@ if (!is_not_cran) {
 
 # we set cran flags only if NOT_CRAN is empty and if
 # the vendored crates are present.
-.cran_flags <- ifelse(
-  !is_not_cran && vendor_exists,
-  "-j 2 --offline",
-  ""
-)
+.cran_flags <- ifelse(!is_not_cran && vendor_exists, "-j 2 --offline", "")
 
 # when DEBUG env var is present we use `--debug` build
 .profile <- ifelse(is_debug, "", "--release")
@@ -41,18 +37,10 @@ if (!is_not_cran) {
 is_windows <- .Platform[["OS.type"]] == "windows"
 
 # if windows we replace in the Makevars.win.in
-mv_fp <- ifelse(
-  is_windows,
-  "src/Makevars.win.in",
-  "src/Makevars.in"
-)
+mv_fp <- ifelse(is_windows, "src/Makevars.win.in", "src/Makevars.in")
 
 # set the output file
-mv_ofp <- ifelse(
-  is_windows,
-  "src/Makevars.win",
-  "src/Makevars"
-)
+mv_ofp <- ifelse(is_windows, "src/Makevars.win", "src/Makevars")
 
 # delete the existing Makevars{.win}
 if (file.exists(mv_ofp)) {
@@ -75,3 +63,4 @@ writeLines(new_txt, con, sep = "\n")
 close(con)
 
 message("`tools/config.R` has finished.")
+
