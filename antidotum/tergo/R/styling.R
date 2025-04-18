@@ -293,7 +293,7 @@ truncate_error <- function(err) {
 #' Fallback to simpler symbol if console does not support Unicode characters
 #' @param symbol (`character`) to print by default
 #' @param fallback_symbol (`character`) to print if the option `tergo.unicode`
-#' is false.
+#' is `FALSE`.
 #' @keywords internal
 get_printed_symbol <- function(symbol, fallback_symbol) {
   ifelse(isFALSE(getOption("tergo.unicode")), fallback_symbol, symbol)
