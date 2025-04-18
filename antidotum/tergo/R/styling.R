@@ -115,10 +115,10 @@ style_pkg <- function(path = ".",
   files <- Filter(function(file) any(endsWith(file, extensions)), files)
 
   # Define ANSI Color Codes and Unicode Symbols
-  green_tick <- "\u001B[32m\u2714\u001B[0m"
-  red_cross <- "\u001B[31m\u274C\u001B[0m"
+  green_tick <- get_printed_symbol(symbol = "\u001B[32m\u2714\u001B[0m", fallback_symbol = "v")
+  red_cross <- get_printed_symbol(symbol = "\u001B[31m\u274C\u001B[0m", fallback_symbol = "x")
   # Define ANSI Color Codes and Unicode Symbols for a yellow dot
-  yellow_dot <- "\u001B[33m\u2022\u001B[0m"
+  yellow_dot <- get_printed_symbol(symbol = "\u001B[33m\u2022\u001B[0m", fallback_symbol = "*")
 
   ignored_paths <- vapply(
     config$exclusion_list,
@@ -153,7 +153,10 @@ style_pkg <- function(path = ".",
   }
 
   if (verbose) {
-    summary_bullet <- "\u25B6" # Black Right-Pointing Triangle
+    summary_bullet <- get_printed_symbol(
+      symbol = "\u25B6", # Black Right-Pointing Triangle
+      fallback_symbol = ">"
+    )
     cat("\nSummary:\n")
     cat(sprintf("  %s Files processed : %d\n", summary_bullet, length(files)))
     cat(sprintf("  %s Successful      : %d\n", green_tick, success_count))
@@ -286,3 +289,13 @@ style_text <- function(text, configuration = list()) {
 truncate_error <- function(err) {
   ifelse(nchar(err) > 80, sprintf("%s...", substr(err, 1, 77)), err)
 }
+
+#' Fallback to simpler symbol if console does not support Unicode characters
+#' @param symbol (`character`) to print by default
+#' @param fallback_symbol (`character`) to print if the option `tergo.unicode`
+#' is false.
+#' @keywords internal
+get_printed_symbol <- function(symbol, fallback_symbol) {
+  ifelse(isFALSE(getOption("tergo.unicode")), fallback_symbol, symbol)
+}
+
