@@ -80,5 +80,5 @@ explanation](https://docs.rs/tergo-lib/latest/tergo_lib/struct.Config.html).
 ### R options
 
 This package supports the following [`R` options](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/options):
-* `tergo.unicode` - whether to print the Unicode characters (`TRUE`) or a non-Unicode replacement while printing outputs (`FALSE`). 
+* `tergo.unicode` - whether to print the Unicode characters (`TRUE`) or an ASCII replacement while printing outputs (`FALSE`). 
 
