@@ -1,25 +1,20 @@
 use log::trace;
-use tokenizer::{tokens::CommentedToken, tokens_buffer::TokensBuffer};
+use tokenizer::Token;
 
-use crate::ast::Expression;
+use crate::{Input, ast::Expression};
 
-pub fn parse<'a, 'b: 'a>(
-    tokens: &'b [&'a CommentedToken<'a>],
-) -> Result<Vec<Expression<'a>>, String> {
+pub fn parse<'a, 'b: 'a>(mut tokens: Input<'a, 'b>) -> Result<Vec<Expression<'a>>, String> {
     let mut expressions = vec![];
-    let mut remaining_tokens = tokens;
 
-    while !remaining_tokens.is_empty() {
-        trace!(
-            "Main parse function, remaining tokens: {}",
-            TokensBuffer(remaining_tokens)
-        );
-        let (new_remaining_tokens, mut expr) = crate::program::program(remaining_tokens)
+    while !tokens.is_empty() && !matches!(tokens.first().unwrap().token, Token::EOF) {
+        trace!("Main parse function, remaining tokens: {}", &tokens);
+        let (new_remaining_tokens, expr) = crate::program::statement_or_expr(tokens)
             .map_err(|err| format!("Could not parse: {:?}", err))?;
-        expressions.append(&mut expr);
-        trace!("New remaining tokens: {}", TokensBuffer(remaining_tokens));
-        remaining_tokens = new_remaining_tokens;
+        expressions.push(expr);
+        tokens = new_remaining_tokens;
+        trace!("New remaining tokens: {}", &tokens);
     }
+    expressions.push(Expression::EOF(tokens[0]));
 
     Ok(expressions)
 }

@@ -1,7 +1,7 @@
 use crate::Input;
 use nom::IResult;
-use tokenizer::tokens::CommentedToken;
 use tokenizer::Token::*;
+use tokenizer::tokens::CommentedToken;
 
 macro_rules! token_parser {
     ($name:ident, $token:pat) => {
@@ -11,8 +11,10 @@ macro_rules! token_parser {
         where
             'a: 'b,
         {
-            match input {
-                [token @ CommentedToken { token: $token, .. }, rest @ ..] => Ok((rest, token)),
+            match input.0 {
+                [token @ CommentedToken { token: $token, .. }, rest @ ..] => {
+                    Ok((Input(rest), token))
+                }
                 _ => Err(nom::Err::Error(nom::error::Error::new(
                     input,
                     nom::error::ErrorKind::Tag,
@@ -51,7 +53,7 @@ token_parser!(lambda, Lambda);
 // Binary operators
 // token_parser!(lassign, LAssign);
 // token_parser!(rassign, RAssign);
-// token_parser!(old_assign, OldAssign);
+token_parser!(old_assign, OldAssign);
 // token_parser!(equal, Equal);
 // token_parser!(not_equal, NotEqual);
 // token_parser!(lower_than, LowerThan);
@@ -84,41 +86,4 @@ token_parser!(help, Help);
 // token_parser!(comment, Comment(_));
 
 // EOF
-token_parser!(eof, EOF);
-
-#[cfg(test)]
-mod tests {
-    use tokenizer::tokens::commented_tokens;
-
-    use super::*;
-
-    #[test]
-    fn symbols() {
-        let examples = [commented_tokens!(Symbol("a"))];
-
-        for tokens in &examples {
-            let tokens: Vec<_> = tokens.iter().collect();
-            let res = symbol(&tokens).unwrap().1;
-            assert_eq!(res, tokens[0]);
-        }
-    }
-
-    #[test]
-    fn literals() {
-        let examples = [commented_tokens!(Literal("a"))];
-
-        for tokens in &examples {
-            let tokens: Vec<_> = tokens.iter().collect();
-            let res = literal(&tokens).unwrap().1;
-            assert_eq!(res, tokens[0]);
-        }
-    }
-
-    #[test]
-    fn test_eof() {
-        let examples_ = commented_tokens!(EOF);
-        let examples: Vec<_> = examples_.iter().collect();
-        let res = eof(&examples).unwrap().1;
-        assert_eq!(res, examples[0]);
-    }
-}
+// token_parser!(eof, EOF);

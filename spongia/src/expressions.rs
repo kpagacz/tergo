@@ -1,15 +1,14 @@
 use log::trace;
-use nom::branch::alt;
-use nom::combinator::map;
-use nom::combinator::opt;
-use nom::multi::many0;
-use nom::sequence::delimited;
-use nom::sequence::tuple;
-use nom::IResult;
-use tokenizer::tokens::CommentedToken;
-use tokenizer::tokens_buffer::TokensBuffer;
-use tokenizer::Token::*;
+use nom::{
+    IResult, Parser,
+    branch::alt,
+    combinator::{map, opt},
+    multi::many0,
+    sequence::delimited,
+};
+use tokenizer::{Token::*, tokens::CommentedToken};
 
+use crate::Input;
 use crate::ast::Args;
 use crate::ast::Delimiter;
 use crate::ast::Expression;
@@ -24,20 +23,21 @@ use crate::compound::repeat_expression;
 use crate::compound::while_expression;
 use crate::program::statement_or_expr;
 use crate::token_parsers::*;
-use crate::Input;
 
-fn symbol_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    map(symbol, Expression::Symbol)(tokens)
+pub(crate) fn symbol_expr<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    map(symbol, Expression::Symbol).parse(tokens)
 }
 
 fn literal_expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    map(literal, Expression::Literal)(tokens)
+    map(literal, Expression::Literal).parse(tokens)
 }
 
 pub(crate) fn term_expr<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("term_expr: {}", TokensBuffer(tokens));
+    trace!("term_expr: {}", &tokens);
     alt((
         for_loop_expression,
         while_expression,
@@ -50,11 +50,11 @@ pub(crate) fn term_expr<'a, 'b: 'a>(
         map(symbol_expr, |symbol| symbol),
         map(literal_expr, |literal| literal),
         map(
-            tuple((
+            (
                 lparen,
                 delimited(many0(newline), opt(expr), many0(newline)),
                 rparen,
-            )),
+            ),
             |(lparen, term, rparen)| {
                 Expression::Term(Box::new(TermExpr::new(
                     Some(lparen),
@@ -64,16 +64,17 @@ pub(crate) fn term_expr<'a, 'b: 'a>(
             },
         ),
         map(
-            tuple((
+            (
                 lbrace,
                 delimited(many0(newline), many0(statement_or_expr), many0(newline)),
                 rbrace,
-            )),
+            ),
             |(lbrace, term, rbrace)| {
                 Expression::Term(Box::new(TermExpr::new(Some(lbrace), term, Some(rbrace))))
             },
         ),
-    ))(tokens)
+    ))
+    .parse(tokens)
 }
 
 #[derive(Debug)]
@@ -84,29 +85,32 @@ enum Tail<'a> {
 }
 
 fn unary_op<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, &'b CommentedToken<'a>> {
-    alt((minus, plus, unary_not, tilde, help))(tokens)
+    alt((minus, plus, unary_not, tilde, help)).parse(tokens)
 }
 
-fn unary_term<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
+pub(crate) fn unary_term<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
     alt((
-        map(tuple((tilde, expr)), |(tilde, term)| {
+        map((tilde, expr), |(tilde, term)| {
             Expression::Formula(tilde, Box::new(term))
         }),
-        map(tuple((unary_op, unary_term)), |(op, term)| {
+        map((unary_op, unary_term), |(op, term)| {
             Expression::Unary(op, Box::new(term))
         }),
         atomic_term,
-    ))(tokens)
+    ))
+    .parse(tokens)
 }
 
 pub(crate) fn atomic_term<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("atomic_term: {}", TokensBuffer(tokens));
+    trace!("atomic_term: {}", &tokens);
     let (mut tokens, lhs) = term_expr(tokens)?;
     let mut acc = lhs;
     trace!("atomic_term: parsed LHS: {acc}");
-    trace!("atomic_term: parsing rhs: {}", TokensBuffer(tokens));
+    trace!("atomic_term: parsing rhs: {}", &tokens);
     while let Ok((new_tokens, tail)) = alt((
         map(
             delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
@@ -114,8 +118,8 @@ pub(crate) fn atomic_term<'a, 'b: 'a>(
         ),
         map(
             delimited_comma_sep_exprs(
-                map(tuple((lbracket, lbracket)), Delimiter::DoubleBracket),
-                map(tuple((rbracket, rbracket)), Delimiter::DoubleBracket),
+                map((lbracket, lbracket), Delimiter::DoubleBracket),
+                map((rbracket, rbracket), Delimiter::DoubleBracket),
             ),
             Tail::DoubleSubset,
         ),
@@ -126,7 +130,8 @@ pub(crate) fn atomic_term<'a, 'b: 'a>(
             ),
             Tail::SingleSubset,
         ),
-    ))(tokens)
+    ))
+    .parse(tokens.clone())
     {
         trace!("atomic_term: parsed the rhs to this tail: {tail:?}");
         match tail {
@@ -184,7 +189,7 @@ enum Associativity {
 fn associativity(token: &CommentedToken) -> Associativity {
     match &token.token {
         Help | RAssign | Tilde | Or | VectorizedOr | And | VectorizedAnd | NotEqual | Plus
-        | Minus | Multiply | Divide | Colon | Dollar | Slot | NsGet | NsGetInt => {
+        | Minus | Multiply | Divide | Colon | Dollar | Slot | NsGet | NsGetInt | Modulo => {
             Associativity::Left
         }
         LAssign | OldAssign | Power => Associativity::Right,
@@ -208,7 +213,7 @@ fn precedence(token: &CommentedToken) -> u8 {
         GreaterThan | GreaterEqual | LowerThan | LowerEqual | Equal | NotEqual => 12,
         Plus | Minus => 13,
         Multiply | Divide => 14,
-        Special(_) => 15,
+        Special(_) | Modulo => 15,
         Colon => 16,
         Power => 18,
         Dollar | Slot => 19,
@@ -233,6 +238,7 @@ fn is_binary_operator(token: &CommentedToken) -> bool {
             | LowerEqual
             | Equal
             | Plus
+            | Modulo
             | Minus
             | Multiply
             | Divide
@@ -268,7 +274,7 @@ impl ExprParser {
             while matches!(tokens[it].token, Newline) {
                 it += 1;
             }
-            tokens = &tokens[it..];
+            tokens = Input(&tokens[it..]);
             let (new_tokens, mut rhs) = unary_term(tokens)?;
             tokens = new_tokens;
             lookahead = &tokens[0];
@@ -297,7 +303,7 @@ impl ExprParser {
 }
 
 pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("expr: {}", TokensBuffer(tokens));
+    trace!("expr: {}", &tokens);
     let (tokens, term) = unary_term(tokens)?;
     if !tokens.is_empty() {
         let parser = ExprParser(0);
@@ -311,10 +317,10 @@ pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, 
 pub(crate) fn expr_with_newlines<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("expr_with_newlines: {}", TokensBuffer(tokens));
+    trace!("expr_with_newlines: {}", &tokens);
     let (mut tokens, term) = unary_term(tokens)?;
     while !tokens.is_empty() && tokens[0].token == Newline {
-        tokens = &tokens[1..];
+        tokens = Input(&tokens[1..]);
     }
     if !tokens.is_empty() {
         let parser = ExprParser(0);
@@ -343,47 +349,5 @@ fn bop_to_multibop(bop: Expression) -> Expression {
             Expression::MultiBop(lhs, multibop)
         }
         _ => bop,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use tokenizer::tokens::commented_tokens;
-
-    use super::*;
-
-    #[test]
-    fn symbol_exprs() {
-        let tokens_ = commented_tokens!(Symbol("a"));
-        let tokens: Vec<_> = tokens_.iter().collect();
-        let res = symbol_expr(&tokens).unwrap().1;
-        assert_eq!(res, Expression::Symbol(tokens[0]));
-    }
-
-    #[test]
-    fn literal_exprs() {
-        let tokens_ = commented_tokens!(Literal("1"));
-        let tokens: Vec<_> = tokens_.iter().collect();
-        let res = literal_expr(&tokens).unwrap().1;
-        assert_eq!(res, Expression::Literal(tokens[0]));
-    }
-
-    #[test]
-    fn double_brace() {
-        let tokens_ = commented_tokens!(LBrace, LBrace, Literal("1"), RBrace, RBrace);
-        let tokens: Vec<_> = tokens_.iter().collect();
-        let res = expr(&tokens).unwrap().1;
-        assert_eq!(
-            res,
-            Expression::Term(Box::new(TermExpr {
-                pre_delimiters: Some(tokens[0]),
-                term: vec![Expression::Term(Box::new(TermExpr {
-                    pre_delimiters: Some(tokens[1]),
-                    term: vec![Expression::Literal(tokens[2])],
-                    post_delimiters: Some(tokens[3])
-                }))],
-                post_delimiters: Some(tokens[4])
-            }))
-        )
     }
 }

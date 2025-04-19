@@ -1,4 +1,6 @@
-use tokenizer::{tokens::CommentedToken, tokens_buffer::TokensBuffer};
+use tokenizer::tokens::CommentedToken;
+
+use crate::Input;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression<'a> {
@@ -18,7 +20,7 @@ pub enum Expression<'a> {
     ),
     Formula(&'a CommentedToken<'a>, Box<Expression<'a>>),
     Newline(&'a CommentedToken<'a>),
-    Whitespace(&'a [&'a CommentedToken<'a>]),
+    Whitespace(crate::Input<'a, 'a>),
     EOF(&'a CommentedToken<'a>),
     FunctionDef(FunctionDefinition<'a>),
     LambdaFunction(Lambda<'a>),
@@ -35,19 +37,19 @@ pub enum Expression<'a> {
 impl std::fmt::Display for Expression<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Symbol(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
-            Expression::Literal(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
-            Expression::Comment(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
+            Expression::Symbol(token) => f.write_fmt(format_args!("{}", Input(&[token]))),
+            Expression::Literal(token) => f.write_fmt(format_args!("{}", Input(&[token]))),
+            Expression::Comment(token) => f.write_fmt(format_args!("{}", Input(&[token]))),
             Expression::Term(term) => f.write_fmt(format_args!("{}", term)),
             Expression::Unary(op, expr) => f.write_fmt(format_args!("{}{}", op, expr)),
             Expression::Bop(op, left, right) => {
-                f.write_fmt(format_args!("{} {} {}", left, TokensBuffer(&[op]), right))
+                f.write_fmt(format_args!("{} {} {}", left, Input(&[op]), right))
             }
             Expression::MultiBop(lhs, other) => f.write_fmt(format_args!("{} {:?}", lhs, other)),
             Expression::Formula(tilde, term) => write!(f, "{} {}", tilde, term),
-            Expression::Newline(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
-            Expression::Whitespace(tokens) => f.write_fmt(format_args!("{}", TokensBuffer(tokens))),
-            Expression::EOF(token) => f.write_fmt(format_args!("{}", TokensBuffer(&[token]))),
+            Expression::Newline(token) => f.write_fmt(format_args!("{}", Input(&[token]))),
+            Expression::Whitespace(tokens) => f.write_fmt(format_args!("{}", Input(tokens))),
+            Expression::EOF(token) => f.write_fmt(format_args!("{}", Input(&[token]))),
             Expression::FunctionDef(func_def) => f.write_fmt(format_args!("{}", func_def)),
             Expression::IfExpression(if_expression) => {
                 f.write_fmt(format_args!("{}", if_expression))
@@ -66,7 +68,7 @@ impl std::fmt::Display for Expression<'_> {
             }
             Expression::ForLoopExpression(for_loop) => f.write_fmt(format_args!("{}", for_loop)),
             Expression::Break(token) | Expression::Continue(token) => {
-                f.write_fmt(format_args!("{}", TokensBuffer(&[token])))
+                f.write_fmt(format_args!("{}", Input(&[token])))
             }
             Expression::LambdaFunction(lambda) => f.write_fmt(format_args!("{}", lambda)),
         }
@@ -146,15 +148,30 @@ impl std::fmt::Display for TermExpr<'_> {
 // The formatter needs comments and some of them might end up squeezed into
 // the comma token
 #[derive(Debug, Clone, PartialEq)]
-pub struct Arg<'a>(pub Option<Expression<'a>>, pub Option<Expression<'a>>); // Argument, comma
+pub enum Arg<'a> {
+    Proper(Option<Expression<'a>>, Option<Expression<'a>>), // Argument, comma
+    EmptyEqual(
+        Expression<'a>,
+        &'a CommentedToken<'a>,
+        Option<Expression<'a>>,
+    ), // Argument name, equal sign, comma
+}
 
 impl std::fmt::Display for Arg<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(ref xpr) = self.0 {
-            f.write_fmt(format_args!("{}", xpr))?;
-        }
-        if let Some(comma) = &self.1 {
-            f.write_fmt(format_args!("comma:{}", comma))?;
+        match self {
+            Arg::Proper(xpr, comma) => {
+                if let Some(ref xpr) = xpr {
+                    f.write_fmt(format_args!("{}", xpr))?;
+                }
+                if let Some(comma) = comma {
+                    f.write_fmt(format_args!("comma:{}", comma))?;
+                }
+            }
+            Arg::EmptyEqual(expression, equal, _) => {
+                f.write_fmt(format_args!("{}", expression))?;
+                f.write_fmt(format_args!("equal sign: {}", equal))?;
+            }
         }
         Ok(())
     }

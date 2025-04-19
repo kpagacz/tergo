@@ -354,12 +354,12 @@ impl<'a> Tokenizer<'a> {
         let mut in_escape = false;
         self.next();
         while self.current_char != delimiter || in_escape {
-            self.next();
             if in_escape {
                 in_escape = !in_escape;
             } else if self.current_char == '\\' {
                 in_escape = true;
             }
+            self.next()
         }
         tokens.push(CommentedToken::new(
             Literal(&self.raw_source[start_it..=self.it]),
@@ -442,6 +442,9 @@ impl<'a> Tokenizer<'a> {
                     ('L', _) => {
                         self.next();
                     }
+                    ('i', _) => {
+                        self.next();
+                    }
                     _ => {}
                 }
             }
@@ -517,8 +520,8 @@ impl<'a> Tokenizer<'a> {
             self.it = new_offset;
             self.current_char = new_char;
         } else {
-            self.offset = self.raw_source.as_bytes().len();
-            self.it = self.raw_source.as_bytes().len();
+            self.offset = self.raw_source.len();
+            self.it = self.raw_source.len();
         }
     }
 

@@ -121,13 +121,11 @@ pub(crate) use text;
 
 // Macro that creates a HardBreak
 macro_rules! hardbreak {
-    () => {{
-        Rc::new(Doc::HardBreak)
-    }};
+    () => {{ Rc::new(Doc::HardBreak) }};
 }
 pub(crate) use hardbreak;
 
-impl<'a> Code for Token<'a> {
+impl Code for Token<'_> {
     fn to_docs(&self, _: &impl FormattingConfig, _: &mut usize) -> Rc<Doc> {
         match self {
             Token::Symbol(s) | Token::Literal(s) => text!(*s),
@@ -174,7 +172,7 @@ impl<'a> Code for Token<'a> {
             Token::VectorizedOr => text!("|"),
             Token::Dollar => text!("$"),
             Token::Pipe => text!("|>"),
-            Token::Modulo => text!("%"),
+            Token::Modulo => text!("%%"),
             Token::NsGet => text!("::"),
             Token::NsGetInt => text!(":::"),
             Token::Tilde => text!("~"),
@@ -398,7 +396,7 @@ where
     res
 }
 
-impl<'a> Code for Expression<'a> {
+impl Code for Expression<'_> {
     fn to_docs(&self, config: &impl FormattingConfig, doc_ref: &mut usize) -> Rc<Doc> {
         match self {
             Expression::Symbol(token)
@@ -663,14 +661,7 @@ impl<'a> Code for Expression<'a> {
                     FunctionLineBreaks::Hanging => {
                         let args_doc = join_docs_ungroupped(
                             args.args.iter().map(|arg| {
-                                arg.0
-                                    .to_docs(config, doc_ref)
-                                    .cons(
-                                        arg.1
-                                            .as_ref()
-                                            .map(|sep| sep.to_docs(config, doc_ref))
-                                            .unwrap_or(Rc::new(Doc::Nil)),
-                                    )
+                                arg.to_docs(config, doc_ref)
                                     .to_group(ShouldBreak::No, doc_ref)
                             }),
                             Rc::new(Doc::Nil),
@@ -692,14 +683,7 @@ impl<'a> Code for Expression<'a> {
                     FunctionLineBreaks::Double => {
                         let args_doc = join_docs_ungroupped(
                             args.args.iter().map(|arg| {
-                                arg.0
-                                    .to_docs(config, doc_ref)
-                                    .cons(
-                                        arg.1
-                                            .as_ref()
-                                            .map(|sep| sep.to_docs(config, doc_ref))
-                                            .unwrap_or(Rc::new(Doc::Nil)),
-                                    )
+                                arg.to_docs(config, doc_ref)
                                     .to_group(ShouldBreak::No, doc_ref)
                             }),
                             Rc::new(Doc::Nil),
@@ -724,14 +708,7 @@ impl<'a> Code for Expression<'a> {
                     FunctionLineBreaks::Single => {
                         let args_doc = join_docs_ungroupped(
                             args.args.iter().map(|arg| {
-                                arg.0
-                                    .to_docs(config, doc_ref)
-                                    .cons(
-                                        arg.1
-                                            .as_ref()
-                                            .map(|sep| sep.to_docs(config, doc_ref))
-                                            .unwrap_or(Rc::new(Doc::Nil)),
-                                    )
+                                arg.to_docs(config, doc_ref)
                                     .to_group(ShouldBreak::No, doc_ref)
                             }),
                             Rc::new(Doc::Nil),
@@ -855,33 +832,35 @@ impl<'a> Code for Expression<'a> {
                     }
                 };
                 let inner_docs = args.to_docs(config, doc_ref);
-                if is_function_ref_quote
-                    && args.args.len() == 1
-                    && args
-                        .args
-                        .first()
-                        .unwrap()
-                        .0
-                        .as_ref()
-                        .is_some_and(|arg| !is_closure_with_brackets(arg))
-                    && has_forced_line_breaks(&inner_docs, false)
-                {
-                    // Special case for the quote function call
-                    // in such cases:
-                    // quote(a <- function() {
-                    //   TRUE
-                    //   TRUE
-                    // })
-                    // It should be
-                    // quote(
-                    //   a <- function() {
-                    //     TRUE
-                    //     TRUE
-                    //   }
-                    // )
-                    // One of the few cases it makes some miniscule
-                    // sense to have more indent
-                    function_ref.to_docs(config, doc_ref).cons(inner_docs)
+                if is_function_ref_quote && args.args.len() == 1 {
+                    if let Arg::Proper(arg, _) = args.args.first().unwrap() {
+                        if arg
+                            .as_ref()
+                            .is_some_and(|arg| !is_closure_with_brackets(arg))
+                            && has_forced_line_breaks(&inner_docs, false)
+                        {
+                            // Special case for the quote function call
+                            // in such cases:
+                            // quote(a <- function() {
+                            //   TRUE
+                            //   TRUE
+                            // })
+                            // It should be
+                            // quote(
+                            //   a <- function() {
+                            //     TRUE
+                            //     TRUE
+                            //   }
+                            // )
+                            // One of the few cases it makes some miniscule
+                            // sense to have more indent
+                            function_ref.to_docs(config, doc_ref).cons(inner_docs)
+                        } else {
+                            function_ref.to_docs(config, doc_ref).cons(inner_docs)
+                        }
+                    } else {
+                        function_ref.to_docs(config, doc_ref).cons(inner_docs)
+                    }
                 } else {
                     function_ref.to_docs(config, doc_ref).cons(inner_docs)
                 }
@@ -1002,10 +981,10 @@ impl<'a> Code for Expression<'a> {
                                 last_op = Some(op);
                             }
                             _ => panic!(
-                            "Got a not a binary operator token inside a binary expression when \
+                                "Got a not a binary operator token inside a binary expression when \
                      formatting. Token: {:?}",
-                            &op.token
-                        ),
+                                &op.token
+                            ),
                         },
                         None => {
                             last_op = Some(op);
@@ -1113,20 +1092,21 @@ impl Code for Args<'_> {
                             .to_group(ShouldBreak::No, doc_ref)
                     })
                     .collect::<Vec<_>>();
-                let last_arg = std::iter::once(
-                    if is_expression_bracketed_term_or_function_def(&last_arg.0) {
+                let last_arg = std::iter::once(match &last_arg {
+                    Arg::Proper(expression, _)
+                        if is_expression_bracketed_term_or_function_def(expression) =>
+                    {
                         last_arg
                             .to_docs(config, doc_ref)
                             .to_group(ShouldBreak::No, doc_ref)
                             .nest(-config.indent())
                             .nest_if_break(config.indent(), observed_doc + 1)
                             .fits_until_l_bracket()
-                    } else {
-                        last_arg
-                            .to_docs(config, doc_ref)
-                            .to_group(ShouldBreak::No, doc_ref)
-                    },
-                );
+                    }
+                    _ => last_arg
+                        .to_docs(config, doc_ref)
+                        .to_group(ShouldBreak::No, doc_ref),
+                });
                 let inside_delims = other_args
                 .into_iter()
                 .chain(last_arg)
@@ -1183,14 +1163,24 @@ impl Code for Args<'_> {
         }
     }
 }
+
 impl Code for Arg<'_> {
     fn to_docs(&self, config: &impl FormattingConfig, doc_ref: &mut usize) -> Rc<Doc> {
-        if let Some(comma) = &self.1 {
-            self.0
+        match self {
+            Arg::Proper(expr, comma) => {
+                if let Some(comma) = comma {
+                    expr.to_docs(config, doc_ref)
+                        .cons(comma.to_docs(config, doc_ref))
+                } else {
+                    expr.to_docs(config, doc_ref)
+                }
+            }
+            Arg::EmptyEqual(arg_name, equal_sign, comma) => arg_name
                 .to_docs(config, doc_ref)
-                .cons(comma.to_docs(config, doc_ref))
-        } else {
-            self.0.to_docs(config, doc_ref)
+                .cons(text!(" "))
+                .cons(equal_sign.to_docs(config, doc_ref))
+                .cons(text!(" "))
+                .cons(comma.to_docs(config, doc_ref)),
         }
     }
 }
@@ -1311,7 +1301,7 @@ fn is_closure_with_brackets(expr: &Expression) -> bool {
 mod tests {
     use crate::{
         config::Config,
-        format::{format_to_sdoc, simple_doc_to_string, Mode},
+        format::{Mode, format_to_sdoc, simple_doc_to_string},
     };
 
     use super::*;

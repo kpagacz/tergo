@@ -75,17 +75,25 @@ pub(crate) fn remove_trailing_whitespace_from_function_defs(expression: &mut Exp
             remove_trailing_whitespace_from_function_defs(&mut repeat_loop.body);
         }
         Expression::FunctionCall(call) => {
-            call.args.args.iter_mut().for_each(|arg| {
-                arg.0
+            call.args.args.iter_mut().for_each(|arg| match arg {
+                parser::ast::Arg::Proper(expression, _) => expression
                     .iter_mut()
-                    .for_each(remove_trailing_whitespace_from_function_defs)
+                    .for_each(remove_trailing_whitespace_from_function_defs),
+                parser::ast::Arg::EmptyEqual(expression, _, _) => {
+                    remove_trailing_whitespace_from_function_defs(expression)
+                }
             });
         }
-        Expression::SubsetExpression(subset) => subset.args.args.iter_mut().for_each(|arg| {
-            arg.0
-                .iter_mut()
-                .for_each(remove_trailing_whitespace_from_function_defs)
-        }),
+        Expression::SubsetExpression(subset) => {
+            subset.args.args.iter_mut().for_each(|arg| match arg {
+                parser::ast::Arg::Proper(expression, _) => expression
+                    .iter_mut()
+                    .for_each(remove_trailing_whitespace_from_function_defs),
+                parser::ast::Arg::EmptyEqual(expression, _, _) => {
+                    remove_trailing_whitespace_from_function_defs(expression)
+                }
+            });
+        }
         Expression::ForLoopExpression(for_loop) => {
             remove_trailing_whitespace_from_function_defs(&mut for_loop.collection);
             remove_trailing_whitespace_from_function_defs(&mut for_loop.body);

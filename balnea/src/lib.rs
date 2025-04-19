@@ -6,7 +6,7 @@ use parser::{
     ast::{Expression, TermExpr},
     parse, pre_parse,
 };
-use tokenizer::{tokens_buffer::TokensBuffer, Tokenizer};
+use tokenizer::Tokenizer;
 
 /// Format the input code with the given configuration.
 ///
@@ -41,11 +41,9 @@ pub fn tergo_format(input: &str, config: Option<&Config>) -> Result<String, Stri
     let mut commented_tokens = tokenizer.tokenize();
     trace!("Tokens with comments: {commented_tokens:?}",);
     let tokens_without_comments = pre_parse(&mut commented_tokens);
-    trace!(
-        "Tokens without comments: {}",
-        TokensBuffer(&tokens_without_comments)
-    );
-    let cst = parse(&tokens_without_comments)?;
+    let tokens_without_comments = parser::Input(&tokens_without_comments);
+    trace!("Tokens without comments: {}", &tokens_without_comments);
+    let cst = parse(tokens_without_comments)?;
     let top_node = Expression::Term(Box::new(TermExpr::new(None, cst, None)));
     trace!("CST: {:?}", top_node);
     Ok(format_code(top_node, config))

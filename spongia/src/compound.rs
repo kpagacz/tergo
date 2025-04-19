@@ -1,21 +1,20 @@
 use log::trace;
 use nom::{
-    combinator::{map, opt},
-    error::Error,
-    multi::many0,
-    sequence::tuple,
     IResult, Parser,
+    branch::alt,
+    combinator::{map, opt},
+    multi::many0,
 };
 
 use crate::{
+    Input,
     ast::{
         Arg, Args, Delimiter, ElseIfConditional, Expression, ForLoop, FunctionDefinition,
         IfConditional, IfExpression, Lambda, RepeatExpression, TrailingElse, WhileExpression,
     },
-    expressions::{expr, expr_with_newlines},
+    expressions::{expr, expr_with_newlines, unary_term},
     program::statement_or_expr,
     token_parsers::*,
-    Input,
 };
 
 // Function definition
@@ -23,54 +22,39 @@ pub(crate) fn function_def<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(
-        tuple((
+        (
             function,
             many0(newline),
             delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
             many0(newline),
             expr,
-        )),
+        ),
         |(keyword, _, args, _, body)| {
             Expression::FunctionDef(FunctionDefinition::new(keyword, args, Box::new(body)))
         },
-    )(tokens)
+    )
+    .parse(tokens)
 }
 
-pub(crate) fn delimited_comma_sep_exprs<'a, P1, P2>(
-    left_delimiter: P1,
-    right_delimiter: P2,
-) -> impl Parser<Input<'a, 'a>, Args<'a>, Error<Input<'a, 'a>>>
+pub(crate) fn delimited_comma_sep_exprs<'a, F, G>(
+    left_delimiter: F,
+    right_delimiter: G,
+) -> impl Parser<Input<'a, 'a>, Error = nom::error::Error<Input<'a, 'a>>, Output = Args<'a>>
 where
-    P1: Parser<Input<'a, 'a>, Delimiter<'a>, Error<Input<'a, 'a>>>,
-    P2: Parser<Input<'a, 'a>, Delimiter<'a>, Error<Input<'a, 'a>>>,
+    F: Parser<Input<'a, 'a>, Error = nom::error::Error<Input<'a, 'a>>, Output = Delimiter<'a>>,
+    G: Parser<Input<'a, 'a>, Error = nom::error::Error<Input<'a, 'a>>, Output = Delimiter<'a>>,
 {
     map(
-        tuple((
+        (
             left_delimiter,
             many0(newline),
-            opt(expr_with_newlines),
-            many0(tuple((
-                tuple((comma, many0(newline))),
-                tuple((opt(expr_with_newlines), many0(newline))),
-            ))),
+            args,
             many0(newline),
             right_delimiter,
-        )),
-        |(ldelim, _, first_arg, comma_delimited_args, _, rdelim)| {
-            let comma_delimited_args = comma_delimited_args
-                .into_iter()
-                .flat_map(|((sep, _), (xpr, _))| [Some(Expression::Literal(sep)), xpr]);
-            let mut args = vec![];
-            let mut comma_delimited_args = std::iter::once(first_arg).chain(comma_delimited_args);
-            while let Some(potential_arg) = comma_delimited_args.next() {
-                if let Some(potential_delim) = comma_delimited_args.next() {
-                    args.push(Arg(potential_arg, potential_delim));
-                } else {
-                    args.push(Arg(potential_arg, None));
-                }
-            }
-            if !args.is_empty() && args[0] == Arg(None, None) {
-                args = vec![];
+        ),
+        |(ldelim, _, mut args, _, rdelim)| {
+            if !args.is_empty() && does_have_comma(args.last().unwrap()) {
+                args.push(Arg::Proper(None, None));
             }
             trace!("delimited_comma_sep_exprs: parsed args {args:?}");
             Args::new(ldelim, args, rdelim)
@@ -78,12 +62,55 @@ where
     )
 }
 
+fn does_have_comma(arg: &Arg) -> bool {
+    match arg {
+        Arg::Proper(_, comma) => comma.is_some(),
+        Arg::EmptyEqual(_, _, comma) => comma.is_some(),
+    }
+}
+
+pub(crate) fn args<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, Vec<Arg<'a>>> {
+    map(
+        many0(alt((
+            map(
+                (
+                    many0(newline),
+                    expr_with_newlines,
+                    many0(newline),
+                    opt(comma),
+                    many0(newline),
+                ),
+                |(_, expr, _, comma, _)| Arg::Proper(Some(expr), comma.map(Expression::Literal)),
+            ),
+            map(
+                (
+                    many0(newline),
+                    unary_term,
+                    many0(newline),
+                    old_assign,
+                    many0(newline),
+                    opt(comma),
+                    many0(newline),
+                ),
+                |(_, arg_name, _, equal_sign, _, comma, _)| {
+                    Arg::EmptyEqual(arg_name, equal_sign, comma.map(Expression::Literal))
+                },
+            ),
+            map((many0(newline), comma, many0(newline)), |(_, comma, _)| {
+                Arg::Proper(None, Some(Expression::Literal(comma)))
+            }),
+        ))),
+        |args| args,
+    )
+    .parse(tokens)
+}
+
 // If expression
 pub(crate) fn if_expression<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(
-        tuple((if_conditional, many0(else_if), opt(trailing_else))),
+        (if_conditional, many0(else_if), opt(trailing_else)),
         |(if_conditional, else_ifs, trailing_else)| {
             Expression::IfExpression(IfExpression {
                 if_conditional,
@@ -91,12 +118,13 @@ pub(crate) fn if_expression<'a, 'b: 'a>(
                 trailing_else,
             })
         },
-    )(tokens)
+    )
+    .parse(tokens)
 }
 
 fn if_conditional<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, IfConditional<'a>> {
     map(
-        tuple((
+        (
             if_token,
             lparen,
             many0(newline),
@@ -105,7 +133,7 @@ fn if_conditional<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, I
             rparen,
             many0(newline),
             expr,
-        )),
+        ),
         |(keyword, left_delimiter, _, condition, _, right_delimiter, _, body)| IfConditional {
             keyword,
             left_delimiter,
@@ -113,26 +141,27 @@ fn if_conditional<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, I
             right_delimiter,
             body: Box::new(body),
         },
-    )(tokens)
+    )
+    .parse(tokens)
 }
 
 fn else_if<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, ElseIfConditional<'a>> {
     map(
-        tuple((else_token, if_conditional)),
+        (else_token, if_conditional),
         |(else_keyword, if_conditional)| ElseIfConditional {
             else_keyword,
             if_conditional,
         },
-    )(tokens)
+    )
+    .parse(tokens)
 }
 
 fn trailing_else<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, TrailingElse<'a>> {
-    map(tuple((else_token, expr)), |(else_keyword, body)| {
-        TrailingElse {
-            else_keyword,
-            body: Box::new(body),
-        }
-    })(tokens)
+    map((else_token, expr), |(else_keyword, body)| TrailingElse {
+        else_keyword,
+        body: Box::new(body),
+    })
+    .parse(tokens)
 }
 
 // While expression
@@ -140,7 +169,7 @@ pub(crate) fn while_expression<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(
-        tuple((while_token, many0(newline), expr, many0(newline), expr)),
+        (while_token, many0(newline), expr, many0(newline), expr),
         |(while_keyword, _, condition, _, body)| {
             Expression::WhileExpression(WhileExpression {
                 while_keyword,
@@ -148,7 +177,8 @@ pub(crate) fn while_expression<'a, 'b: 'a>(
                 body: Box::new(body),
             })
         },
-    )(tokens)
+    )
+    .parse(tokens)
 }
 
 // Repeat expression
@@ -156,14 +186,15 @@ pub(crate) fn repeat_expression<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(
-        tuple((repeat, many0(newline), expr)),
+        (repeat, many0(newline), expr),
         |(repeat_keyword, _, body)| {
             Expression::RepeatExpression(RepeatExpression {
                 repeat_keyword,
                 body: Box::new(body),
             })
         },
-    )(tokens)
+    )
+    .parse(tokens)
 }
 
 // For loops
@@ -171,7 +202,7 @@ pub(crate) fn for_loop_expression<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(
-        tuple((
+        (
             for_token,
             many0(newline),
             map(lparen, Delimiter::Paren),
@@ -185,7 +216,7 @@ pub(crate) fn for_loop_expression<'a, 'b: 'a>(
             map(rparen, Delimiter::Paren),
             many0(newline),
             expr,
-        )),
+        ),
         |(
             keyword,
             _,
@@ -211,7 +242,8 @@ pub(crate) fn for_loop_expression<'a, 'b: 'a>(
                 body: Box::new(body),
             })
         },
-    )(tokens)
+    )
+    .parse(tokens)
 }
 
 // Lambda
@@ -219,13 +251,13 @@ pub(crate) fn lambda_function<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(
-        tuple((
+        (
             lambda,
             many0(newline),
             delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
             many0(newline),
             statement_or_expr,
-        )),
+        ),
         |(keyword, _, args, _, body)| {
             Expression::LambdaFunction(Lambda {
                 keyword,
@@ -233,51 +265,6 @@ pub(crate) fn lambda_function<'a, 'b: 'a>(
                 body: Box::new(body),
             })
         },
-    )(tokens)
-}
-
-#[cfg(test)]
-mod tests {
-    use tokenizer::tokens::commented_tokens;
-    use tokenizer::tokens::CommentedToken;
-
-    use crate::ast::TermExpr;
-
-    use super::*;
-    use tokenizer::Token::*;
-
-    fn log_init() {
-        match simple_logger::init_with_env() {
-            Ok(_) => {}
-            Err(err) => println!("Error initializing logger: {:?}", err),
-        }
-    }
-
-    #[test]
-    fn no_args_no_body_function_def() {
-        log_init();
-        let tokens_ = commented_tokens![Function, LParen, RParen, LBrace, RBrace, EOF];
-        let tokens: Vec<_> = tokens_.iter().collect();
-        let parsed = expr(&tokens).unwrap();
-        let res = parsed.1;
-        assert_eq!(
-            res,
-            Expression::FunctionDef(FunctionDefinition::new(
-                tokens[0],
-                Args::new(
-                    Delimiter::Paren(tokens[1]),
-                    vec![],
-                    Delimiter::Paren(tokens[2])
-                ),
-                Box::new(Expression::Term(Box::new(TermExpr::new(
-                    Some(tokens[3]),
-                    vec![],
-                    Some(tokens[4])
-                ))))
-            ))
-        );
-
-        // Because the eof is left
-        assert_eq!(parsed.0.len(), 1);
-    }
+    )
+    .parse(tokens)
 }

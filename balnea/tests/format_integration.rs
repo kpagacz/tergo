@@ -1,6 +1,6 @@
 #![allow(clippy::field_reassign_with_default)]
 use formatter::config::{AllowNlAfterAssignment, EmbracingOpNoNl, Indent, LineLength};
-use tergo_lib::{tergo_format, Config};
+use tergo_lib::{Config, tergo_format};
 
 fn log_init() {
     let res = simple_logger::init_with_env();
@@ -50,12 +50,12 @@ macro_rules! comparison_test {
                     0
                 },
                 if let Some(first_difference_line) = first_difference_line {
-                    first_difference_line.1 .0
+                    first_difference_line.1.0
                 } else {
                     "Empty unwrap"
                 },
                 if let Some(first_difference_line) = first_difference_line {
-                    first_difference_line.1 .1
+                    first_difference_line.1.1
                 } else {
                     "Empty unwrap"
                 },
@@ -292,6 +292,12 @@ comparison_test!(
     "097",
     short_line_plus_indent()
 );
+comparison_test!(arg_with_just_name_and_equals_sign, "098");
+comparison_test!(simple_function_call, "099");
+comparison_test!(simple_function_call2, "100");
+comparison_test!(modulus_operator, "101");
+comparison_test!(string_escape, "102");
+comparison_test!(switch_case_statement, "103");
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

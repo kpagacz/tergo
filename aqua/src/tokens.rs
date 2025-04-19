@@ -50,13 +50,13 @@ impl<'a> CommentedToken<'a> {
 
 /// When comparing two tokens, only the token itself is compared.
 /// The line and offset are ignored.
-impl<'a> PartialEq for CommentedToken<'a> {
+impl PartialEq for CommentedToken<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.token == other.token
     }
 }
 
-impl<'a> std::fmt::Display for CommentedToken<'a> {
+impl std::fmt::Display for CommentedToken<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{:?}", self.token))
     }
