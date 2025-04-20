@@ -1,4 +1,4 @@
-use log::trace;
+use log::{debug, trace};
 use tokenizer::Token;
 
 use crate::{Input, ast::Expression};
@@ -12,6 +12,8 @@ pub fn parse<'a, 'b: 'a>(mut tokens: Input<'a, 'b>) -> Result<Vec<Expression<'a>
             .map_err(|err| format!("Could not parse: {:?}", err))?;
         expressions.push(expr);
         tokens = new_remaining_tokens;
+        debug!("Remaining tokens length: {}", &tokens.len());
+        debug!("Current expressions length: {}", expressions.len());
         trace!("New remaining tokens: {}", &tokens);
     }
     expressions.push(Expression::EOF(tokens[0]));

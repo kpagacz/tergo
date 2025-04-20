@@ -1,4 +1,4 @@
-use log::trace;
+use log::debug;
 use nom::Parser;
 use nom::combinator::opt;
 use nom::{IResult, branch::alt, combinator::map};
@@ -12,7 +12,7 @@ use crate::whitespace::whitespace_or_comment;
 pub(crate) fn statement_or_expr<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("statement_or_expr: {}", tokens);
+    debug!("statement_or_expr: {}", tokens);
     alt((
         map((expr, opt(alt((semicolon, newline)))), |(expr, _)| expr),
         map(whitespace_or_comment, Expression::Whitespace),

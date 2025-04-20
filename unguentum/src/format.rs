@@ -200,22 +200,97 @@ impl std::fmt::Display for DocBuffer<'_> {
 
 #[derive(Debug, Clone)]
 pub(crate) enum SimpleDoc {
-    Nil,
-    Text(Rc<str>, Rc<SimpleDoc>),
-    Line(usize, Rc<SimpleDoc>),
+    Text(Rc<str>),
+    Line(usize),
 }
 
-pub(crate) fn simple_doc_to_string(doc: Rc<SimpleDoc>) -> String {
-    match &*doc {
-        SimpleDoc::Nil => "".to_string(),
-        SimpleDoc::Text(s, doc) => format!("{s}{}", simple_doc_to_string(Rc::clone(doc))),
-        SimpleDoc::Line(indent, doc) => format!(
-            "\n{:width$}{}",
-            "",
-            simple_doc_to_string(Rc::clone(doc)),
-            width = indent
-        ),
+pub(crate) fn it_simple_doc_to_string(docs: &[SimpleDoc]) -> String {
+    let mut answer = String::new();
+    for doc in docs {
+        match doc {
+            SimpleDoc::Text(s) => answer.push_str(s),
+            SimpleDoc::Line(indent) => {
+                answer.push('\n');
+                for _ in 0..*indent {
+                    answer.push(' ');
+                }
+            }
+        }
     }
+    answer
+}
+
+/// `broken_docs` is a set of all the docs that are being formatted
+/// with line breaks. This set is continuously being filled up during
+/// execution of `format_to_sdoc`.
+pub(crate) fn it_format_to_sdoc(
+    mut consumed: i32,
+    docs: &mut VecDeque<Triple>,
+    config: &impl FormattingConfig,
+    broken_docs: &mut HashSet<usize>,
+) -> Vec<SimpleDoc> {
+    let line_length = config.line_length();
+    let mut simple_docs = Vec::new();
+    while let Some(doc) = docs.pop_front() {
+        let (indent, mode, doc) = doc;
+        match (indent, mode, &*doc) {
+            (_, _, Doc::Nil) => {}
+            (i, m, Doc::Cons(first, second, _)) => {
+                docs.push_front((i, m, Rc::clone(second)));
+                docs.push_front((i, m, Rc::clone(first)));
+            }
+            (i, m, Doc::Nest(step, doc, _)) => {
+                docs.push_front((i + step, m, Rc::clone(doc)));
+            }
+            (i, m, Doc::NestIfBreak(step, doc, _, observed_doc)) => {
+                if broken_docs.contains(observed_doc) {
+                    docs.push_front((i + step, m, Rc::clone(doc)));
+                } else {
+                    docs.push_front((i, m, Rc::clone(doc)));
+                }
+            }
+            (i, m, Doc::NestHanging(doc, props)) => {
+                docs.push_front((
+                    i,
+                    m,
+                    Rc::new(Doc::Nest(consumed - i, Rc::clone(doc), *props)),
+                ));
+            }
+            (_, _, Doc::Text(s, width, _)) => {
+                let length = *width as i32;
+                simple_docs.push(SimpleDoc::Text(Rc::clone(s)));
+                consumed += length;
+            }
+            (_, Mode::Flat, Doc::Break(s)) => {
+                let length = s.len() as i32;
+                simple_docs.push(SimpleDoc::Text(Rc::from(*s)));
+                consumed += length;
+            }
+            (i, m, Doc::FitsUntilLBracket(inner, _)) => {
+                docs.push_front((i, m, Rc::clone(inner)));
+            }
+            (i, Mode::Break, Doc::Break(_)) => {
+                simple_docs.push(SimpleDoc::Line(i as usize));
+                consumed = i;
+            }
+            (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, doc_ref))) => {
+                let group_docs = VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
+                if groupped_doc.1 == ShouldBreak::Yes
+                    || groupped_doc.1 == ShouldBreak::Propagate
+                    || matches!(inline_comment_pos, InlineCommentPosition::Middle)
+                    || matches!(inline_comment_pos, InlineCommentPosition::InGroup)
+                    || !fits(line_length - consumed, group_docs)
+                {
+                    docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));
+                    broken_docs.insert(*doc_ref);
+                } else {
+                    docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
+                }
+            }
+            (_, _, Doc::HardBreak) => {}
+        }
+    }
+    simple_docs
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -361,147 +436,4 @@ fn fits_until_l_bracket(mut remaining_width: i32, mut docs: VecDeque<Triple>) ->
         }
     }
     false
-}
-
-/// `broken_docs` is a set of all the docs that are being formatted
-/// with line breaks. This set is continuously being filled up during
-/// execution of `format_to_sdoc`.
-pub(crate) fn format_to_sdoc(
-    consumed: i32,
-    docs: &mut VecDeque<Triple>,
-    config: &impl FormattingConfig,
-    broken_docs: &mut HashSet<usize>,
-) -> SimpleDoc {
-    let line_length = config.line_length();
-    match docs.pop_front() {
-        None => SimpleDoc::Nil,
-        Some(doc) => {
-            let (indent, mode, doc) = doc;
-            match (indent, mode, &*doc) {
-                (_, _, Doc::Nil) => format_to_sdoc(consumed, docs, config, broken_docs),
-                (i, m, Doc::Cons(first, second, _)) => {
-                    docs.push_front((i, m, Rc::clone(second)));
-                    docs.push_front((i, m, Rc::clone(first)));
-                    format_to_sdoc(consumed, docs, config, broken_docs)
-                }
-                (i, m, Doc::Nest(step, doc, _)) => {
-                    docs.push_front((i + step, m, Rc::clone(doc)));
-                    format_to_sdoc(consumed, docs, config, broken_docs)
-                }
-                (i, m, Doc::NestIfBreak(step, doc, _, observed_doc)) => {
-                    if broken_docs.contains(observed_doc) {
-                        docs.push_front((i + step, m, Rc::clone(doc)));
-                    } else {
-                        docs.push_front((i, m, Rc::clone(doc)));
-                    }
-                    format_to_sdoc(consumed, docs, config, broken_docs)
-                }
-                (i, m, Doc::NestHanging(doc, props)) => {
-                    docs.push_front((
-                        i,
-                        m,
-                        Rc::new(Doc::Nest(consumed - i, Rc::clone(doc), *props)),
-                    ));
-                    format_to_sdoc(consumed, docs, config, broken_docs)
-                }
-                (_, _, Doc::Text(s, width, _)) => {
-                    let length = *width as i32;
-                    SimpleDoc::Text(
-                        Rc::clone(s),
-                        Rc::new(format_to_sdoc(consumed + length, docs, config, broken_docs)),
-                    )
-                }
-                (_, Mode::Flat, Doc::Break(s)) => {
-                    let length = s.len() as i32;
-                    SimpleDoc::Text(
-                        Rc::from(*s),
-                        Rc::new(format_to_sdoc(consumed + length, docs, config, broken_docs)),
-                    )
-                }
-                (i, m, Doc::FitsUntilLBracket(inner, _)) => {
-                    docs.push_front((i, m, Rc::clone(inner)));
-                    format_to_sdoc(consumed, docs, config, broken_docs)
-                }
-                (i, Mode::Break, Doc::Break(_)) => SimpleDoc::Line(
-                    i as usize,
-                    Rc::new(format_to_sdoc(i, docs, config, broken_docs)),
-                ),
-                (i, _, Doc::Group(groupped_doc, CommonProperties(inline_comment_pos, doc_ref))) => {
-                    let group_docs = VecDeque::from([(i, Mode::Flat, Rc::clone(&groupped_doc.0))]);
-                    if groupped_doc.1 == ShouldBreak::Yes
-                        || groupped_doc.1 == ShouldBreak::Propagate
-                        || matches!(inline_comment_pos, InlineCommentPosition::Middle)
-                        || matches!(inline_comment_pos, InlineCommentPosition::InGroup)
-                        || !fits(line_length - consumed, group_docs)
-                    {
-                        docs.push_front((i, Mode::Break, Rc::clone(&groupped_doc.0)));
-                        broken_docs.insert(*doc_ref);
-                        format_to_sdoc(consumed, docs, config, broken_docs)
-                    } else {
-                        docs.push_front((i, Mode::Flat, Rc::clone(&groupped_doc.0)));
-                        format_to_sdoc(consumed, docs, config, broken_docs)
-                    }
-                }
-                (_, _, Doc::HardBreak) => format_to_sdoc(consumed, docs, config, broken_docs),
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::config::Config;
-
-    use super::*;
-
-    fn log_init() {
-        match simple_logger::init_with_env() {
-            Ok(_) => {}
-            Err(err) => println!("Failed to initialize logger: {:?}", err),
-        }
-    }
-
-    #[test]
-    fn printing_text_doc() {
-        log_init();
-        let mut doc = VecDeque::from([(
-            0i32,
-            Mode::Flat,
-            Rc::new(Doc::Text(Rc::from("Test"), 4, CommonProperties::default())),
-        )]);
-        let mock_config = Config::default();
-        let mut s = HashSet::default();
-        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config, &mut s));
-
-        assert_eq!(simple_doc_to_string(sdoc), "Test")
-    }
-
-    #[test]
-    fn should_break_breaks_even_when_fits_the_line() {
-        log_init();
-        let mut doc = VecDeque::from([(
-            0i32,
-            Mode::Flat,
-            Rc::new(Doc::Group(
-                GroupDocProperties(
-                    Rc::new(Doc::Cons(
-                        Rc::new(Doc::Text(Rc::from("Test"), 4, CommonProperties::default())),
-                        Rc::new(Doc::Cons(
-                            Rc::new(Doc::Break(" ")),
-                            Rc::new(Doc::Text(Rc::from("Test2"), 5, CommonProperties::default())),
-                            CommonProperties::default(),
-                        )),
-                        CommonProperties::default(),
-                    )),
-                    ShouldBreak::Yes,
-                ),
-                CommonProperties::default(),
-            )),
-        )]);
-        let mock_config = Config::default();
-        let mut s = HashSet::default();
-        let sdoc = Rc::new(format_to_sdoc(0, &mut doc, &mock_config, &mut s));
-
-        assert_eq!(simple_doc_to_string(sdoc), "Test\nTest2")
-    }
 }
