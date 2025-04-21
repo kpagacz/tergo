@@ -6,7 +6,7 @@ The following directories contain the projects:
 
 |             Directory Name | Project description                                                                                                                                                                   |
 | -------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| antidotum (latin antidote) | [`anitodutm`](./antidotum/tergo) contains the R bindings (ie. an **R package**) for the Rust formatting library                                                                       |
+| antidotum (latin antidote) | [`antidotum`](./antidotum/tergo) contains the R bindings (ie. an **R package**) for the Rust formatting library                                                                       |
 |         aqua (latin water) | [`aqua`](./aqua/) houses a Rust library that implements a basic R **tokenizer**                                                                                                       |
 |        balnea (latin bath) | [`balnea`](./balnea/) contains a Rust library that acts as **an entrypoint** to general formatting workflows                                                                          |
 |        scopa (latin broom) | [`scopa`](./scopa) contains [**a Visual Studio Code extension**](https://marketplace.visualstudio.com/items?itemName=konradpagacz.tergo) that acts as a code formatter for R language |
