@@ -95,7 +95,7 @@ style_pkg <- function(path = ".",
   config[names(configuration)] <- configuration
 
   # Find Package Root
-  package_root <- getwd()
+  package_root <- path
   while (!file.exists(file.path(package_root, "DESCRIPTION"))) {
     parent_dir <- dirname(package_root)
     if (parent_dir == package_root) { # Reached root without finding DESCRIPTION
@@ -298,3 +298,4 @@ truncate_error <- function(err) {
 get_printed_symbol <- function(symbol, fallback_symbol) {
   ifelse(isFALSE(getOption("tergo.unicode")), fallback_symbol, symbol)
 }
+
