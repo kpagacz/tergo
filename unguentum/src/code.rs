@@ -882,26 +882,53 @@ impl Code for Expression<'_> {
                     &for_loop.right_delim,
                     &for_loop.body,
                 );
+                let is_body_bracketed_expression =
+                    is_expression_bracketed_term_or_function_def(&Some(body));
+                // I want this to break like this:
+                // for (
+                //   m in something
+                // ) {
+                //
+                // }
+                // for ( # comment
+                //   m in something
+                // ) # comment
+                // { }
+                // and
+                // for (m in something) # comment
+                // {}
+                // So the inside of the parentheses should be
+                // one group because I don't want breaks
+                // outside of the parentheses to influence
+                // the inside.
                 keyword
                     .to_docs(config, doc_ref)
+                    .cons(text!(" "))
                     .cons(
-                        text!(" ")
-                            .cons(left_delim.to_docs(config, doc_ref))
+                        left_delim
+                            .to_docs(config, doc_ref)
                             .cons(nl!(""))
                             .cons(identifier.to_docs(config, doc_ref))
                             .cons(text!(" "))
                             .cons(in_keyword.to_docs(config, doc_ref))
                             .cons(nl!(" "))
                             .cons(collection.to_docs(config, doc_ref))
-                            .nest(config.indent()),
+                            .nest(config.indent())
+                            .cons(nl!(""))
+                            .to_group(ShouldBreak::No, doc_ref),
                     )
-                    .cons(nl!(""))
                     .cons(right_delim.to_docs(config, doc_ref))
-                    .to_group(ShouldBreak::No, doc_ref)
                     // The below needs to be nl!(" ") in case
                     // the body is not a bracketed expression
-                    .cons(text!(" "))
-                    .cons(body.to_docs(config, doc_ref))
+                    .cons(if is_body_bracketed_expression {
+                        text!(" ")
+                    } else {
+                        nl!(" ")
+                    })
+                    .cons(
+                        body.to_docs(config, doc_ref)
+                            .to_group(ShouldBreak::No, doc_ref),
+                    )
                     .to_group(ShouldBreak::No, doc_ref)
             }
             Expression::LambdaFunction(lambda) => {
@@ -1096,7 +1123,7 @@ impl Code for Args<'_> {
                     .collect::<Vec<_>>();
                 let last_arg = std::iter::once(match &last_arg {
                     Arg::Proper(expression, _)
-                        if is_expression_bracketed_term_or_function_def(expression) =>
+                        if is_expression_bracketed_term_or_function_def(&expression.as_ref()) =>
                     {
                         last_arg
                             .to_docs(config, doc_ref)
@@ -1187,7 +1214,7 @@ impl Code for Arg<'_> {
     }
 }
 
-fn is_expression_bracketed_term_or_function_def(expr: &Option<Expression>) -> bool {
+fn is_expression_bracketed_term_or_function_def(expr: &Option<&Expression>) -> bool {
     expr.as_ref().is_some_and(|expr| match expr {
         Expression::Term(term) => {
             term.pre_delimiters
