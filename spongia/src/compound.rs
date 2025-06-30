@@ -109,6 +109,7 @@ pub(crate) fn args<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, 
 pub(crate) fn if_expression<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("if_expression: parsing tokens: {}", &tokens);
     map(
         (if_conditional, many0(else_if), opt(trailing_else)),
         |(if_conditional, else_ifs, trailing_else)| {
@@ -157,9 +158,10 @@ fn else_if<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, ElseIfCo
 }
 
 fn trailing_else<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, TrailingElse<'a>> {
+    trace!("trailing_else: parsing tokens: {}", &tokens);
     map(
-        (many0(newline), else_token, expr),
-        |(_, else_keyword, body)| TrailingElse {
+        (many0(newline), else_token, many0(newline), expr),
+        |(_, else_keyword, _, body)| TrailingElse {
             else_keyword,
             body: Box::new(body),
         },

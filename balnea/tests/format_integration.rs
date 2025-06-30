@@ -10,6 +10,37 @@ fn log_init() {
     }
 }
 
+fn assert_formatting_eq(result: &str, expected: &str) {
+    let first_difference_line = result
+        .lines()
+        .zip(expected.lines())
+        .enumerate()
+        .find(|(_, (result_line, expect_line))| result_line != expect_line);
+    assert!(
+        result == expected,
+        "Formatted text is not what expected. Result \
+                 was:\n{}===\nExpected:\n{}===\n\nFirst line of difference was at line \
+                 {}:\nResult   :{}\nExpected :{}\n",
+        result,
+        expected,
+        if let Some(first_difference_line) = first_difference_line {
+            first_difference_line.0
+        } else {
+            0
+        },
+        if let Some(first_difference_line) = first_difference_line {
+            first_difference_line.1.0
+        } else {
+            "Empty unwrap"
+        },
+        if let Some(first_difference_line) = first_difference_line {
+            first_difference_line.1.1
+        } else {
+            "Empty unwrap"
+        },
+    );
+}
+
 macro_rules! comparison_test {
     ($name:ident, $file_number:literal) => {
         #[test]
@@ -17,10 +48,8 @@ macro_rules! comparison_test {
             log_init();
             let input = include_str!(concat!("test_cases/", $file_number, ".R"));
             let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
-            assert_eq!(
-                tergo_format(input, Some(&long_line_config())).unwrap(),
-                expected
-            );
+            let result = tergo_format(input, Some(&long_line_config())).unwrap();
+            assert_formatting_eq(&result, expected);
         }
     };
     ($name:ident, $file_number:literal, $config:expr) => {
@@ -31,35 +60,7 @@ macro_rules! comparison_test {
             let input = include_str!(concat!("test_cases/", $file_number, ".R"));
             let expected = include_str!(concat!("test_cases/", $file_number, ".expected"));
             let result = tergo_format(input, Some(&config)).unwrap();
-            let first_difference_line = result
-                .lines()
-                .zip(expected.lines())
-                .enumerate()
-                .filter(|(_, (result_line, expect_line))| result_line != expect_line)
-                .next();
-            assert!(
-                result == expected,
-                "Formatted text is not what expected. Result \
-                 was:\n{}===\nExpected:\n{}===\n\nFirst line of difference was at line \
-                 {}:\nResult   :{}\nExpected :{}\n",
-                result,
-                expected,
-                if let Some(first_difference_line) = first_difference_line {
-                    first_difference_line.0
-                } else {
-                    0
-                },
-                if let Some(first_difference_line) = first_difference_line {
-                    first_difference_line.1.0
-                } else {
-                    "Empty unwrap"
-                },
-                if let Some(first_difference_line) = first_difference_line {
-                    first_difference_line.1.1
-                } else {
-                    "Empty unwrap"
-                },
-            );
+            assert_formatting_eq(&result, expected);
         }
     };
 }
@@ -302,6 +303,8 @@ comparison_test!(bacticks_can_be_escaped_in_identifiers, "104");
 comparison_test!(no_brackets_if, "105");
 comparison_test!(for_loop_plus_comment_minus_brackets, "106");
 comparison_test!(double_indent_should_not_be_a_thing, "107");
+comparison_test!(if_with_no_brackets_else_body, "108");
+comparison_test!(if_with_comments_preserves_newline_after_commnt, "109");
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

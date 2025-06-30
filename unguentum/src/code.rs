@@ -754,14 +754,21 @@ impl Code for Expression<'_> {
                             .cons(condition.to_docs(config, doc_ref))
                             .nest(config.indent())
                             .cons(nl!(""))
-                            .cons(right_delim.to_docs(config, doc_ref))
                             .to_group(ShouldBreak::No, doc_ref);
                         keyword
                             .to_docs(config, doc_ref)
                             .cons(text!(" "))
                             .cons(condition_docs)
-                            .cons(text!(" "))
-                            .cons(body.to_docs(config, doc_ref))
+                            .cons(
+                                right_delim
+                                    .to_docs(config, doc_ref)
+                                    .cons(nl!(" "))
+                                    .to_group(ShouldBreak::No, doc_ref),
+                            )
+                            .cons(
+                                body.to_docs(config, doc_ref)
+                                    .to_group(ShouldBreak::No, doc_ref),
+                            )
                     };
                 let mut docs = if_conditional_to_docs(if_conditional, doc_ref);
                 for else_if in else_ifs {
