@@ -455,6 +455,7 @@ impl<'a> Tokenizer<'a> {
     fn identifier(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_it = self.it;
         let mut in_backticks = false;
+        let mut escaped = false;
         while self.it < self.raw_source.len() && in_backticks
             || self.current_char.is_alphabetic()
             || self.current_char.is_ascii_digit()
@@ -462,10 +463,21 @@ impl<'a> Tokenizer<'a> {
             || self.current_char == '_'
             || self.current_char == '`'
         {
-            if self.current_char == '`' {
-                in_backticks = !in_backticks;
+            match self.current_char {
+                '\\' => {
+                    escaped = true;
+                    self.next();
+                }
+                '`' if escaped => {
+                    escaped = false;
+                    self.next();
+                }
+                '`' => {
+                    in_backticks = !in_backticks;
+                    self.next();
+                }
+                _ => self.next(),
             }
-            self.next();
         }
         match &self.raw_source[start_it..self.it] {
             "TRUE" | "T" => self.push_token(Literal("TRUE"), tokens),

@@ -298,6 +298,10 @@ comparison_test!(simple_function_call2, "100");
 comparison_test!(modulus_operator, "101");
 comparison_test!(string_escape, "102");
 comparison_test!(switch_case_statement, "103");
+comparison_test!(bacticks_can_be_escaped_in_identifiers, "104");
+comparison_test!(no_brackets_if, "105");
+comparison_test!(for_loop_plus_comment_minus_brackets, "106");
+comparison_test!(double_indent_should_not_be_a_thing, "107");
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

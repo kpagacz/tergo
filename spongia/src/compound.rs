@@ -157,10 +157,13 @@ fn else_if<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, ElseIfCo
 }
 
 fn trailing_else<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, TrailingElse<'a>> {
-    map((else_token, expr), |(else_keyword, body)| TrailingElse {
-        else_keyword,
-        body: Box::new(body),
-    })
+    map(
+        (many0(newline), else_token, expr),
+        |(_, else_keyword, body)| TrailingElse {
+            else_keyword,
+            body: Box::new(body),
+        },
+    )
     .parse(tokens)
 }
 

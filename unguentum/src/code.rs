@@ -898,6 +898,8 @@ impl Code for Expression<'_> {
                     .cons(nl!(""))
                     .cons(right_delim.to_docs(config, doc_ref))
                     .to_group(ShouldBreak::No, doc_ref)
+                    // The below needs to be nl!(" ") in case
+                    // the body is not a bracketed expression
                     .cons(text!(" "))
                     .cons(body.to_docs(config, doc_ref))
                     .to_group(ShouldBreak::No, doc_ref)
