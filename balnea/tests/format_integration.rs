@@ -309,6 +309,7 @@ comparison_test!(
     if_with_comments_preserves_newline_after_comment_trailing_else,
     "110"
 );
+comparison_test!(raw_string_literal, "111");
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

@@ -289,9 +289,12 @@ impl<'a> Tokenizer<'a> {
                         }
                     }
                 }
-                'a'..='z' | 'A'..='Z' => {
-                    self.identifier_or_reserved(&mut tokens);
-                }
+                'a'..='z' | 'A'..='Z' => match self.lookahead() {
+                    Some('"') | Some('\'') => {
+                        self.raw_string_literal(&mut tokens);
+                    }
+                    Some(_) | None => self.identifier_or_reserved(&mut tokens),
+                },
                 '0'..='9' => {
                     self.number_literal(&mut tokens);
                 }
@@ -347,10 +350,58 @@ impl<'a> Tokenizer<'a> {
         tokens.push(CommentedToken::new(token, self.offset));
     }
 
-    fn string_literal(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
-        let delimiter = self.current_char;
+    fn raw_string_literal(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
         let start_offset = self.offset;
         let start_it = self.it;
+        // Skip the r in r"..."
+        self.next();
+
+        // Get the delimiter
+        let delimiter = self.current_char;
+        self.next();
+
+        // Find the inside delimiter
+        const START_DELIMS: [char; 3] = ['(', '{', '['];
+        const END_DELIMS: [char; 3] = [')', '}', ']'];
+        let mut end = vec![];
+        while !START_DELIMS.contains(&self.current_char) {
+            end.push(self.current_char);
+            self.next();
+        }
+
+        end.push(
+            END_DELIMS[START_DELIMS
+                .into_iter()
+                .position(|c| c == self.current_char)
+                .expect("We just checked that START_DELIMS contains the current character")],
+        );
+        end.reverse();
+        end.push(delimiter);
+
+        // Move past the start delimiter
+        self.next();
+
+        // Advance until we find the end delimiter
+        let mut matching_end_chars = 0;
+        while matching_end_chars < end.len() {
+            if end[matching_end_chars] == self.current_char {
+                matching_end_chars += 1;
+            }
+            self.next();
+        }
+
+        // Until self.it because the loop above moves one character past the end delimiter
+        // (including ' or ")
+        tokens.push(CommentedToken::new(
+            Literal(&self.raw_source[start_it..self.it]),
+            start_offset,
+        ));
+    }
+
+    fn string_literal(&mut self, tokens: &mut Vec<CommentedToken<'a>>) {
+        let start_offset = self.offset;
+        let start_it = self.it;
+        let delimiter = self.current_char;
         let mut in_escape = false;
         self.next();
         while self.current_char != delimiter || in_escape {
