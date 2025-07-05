@@ -776,17 +776,39 @@ impl Code for Expression<'_> {
                         (else_if.else_keyword, &else_if.if_conditional);
                     docs = docs
                         .cons(text!(" "))
-                        .cons(else_keyword.to_docs(config, doc_ref))
-                        .cons(text!(" "))
-                        .cons(if_conditional_to_docs(conditional, doc_ref));
+                        .cons(
+                            else_keyword
+                                .to_docs(config, doc_ref)
+                                .cons(if else_keyword.inline_comment.is_some() {
+                                    nl!(" ")
+                                } else {
+                                    text!(" ")
+                                })
+                                .to_group(ShouldBreak::No, doc_ref),
+                        )
+                        .cons(
+                            if_conditional_to_docs(conditional, doc_ref)
+                                .to_group(ShouldBreak::No, doc_ref),
+                        );
                 }
                 if let Some(trailing_else) = trailing_else {
                     let (else_keyword, body) = (&trailing_else.else_keyword, &trailing_else.body);
                     docs = docs
                         .cons(text!(" "))
-                        .cons(else_keyword.to_docs(config, doc_ref))
-                        .cons(text!(" "))
-                        .cons(body.to_docs(config, doc_ref));
+                        .cons(
+                            else_keyword
+                                .to_docs(config, doc_ref)
+                                .cons(if else_keyword.inline_comment.is_some() {
+                                    nl!(" ")
+                                } else {
+                                    text!(" ")
+                                })
+                                .to_group(ShouldBreak::No, doc_ref),
+                        )
+                        .cons(
+                            body.to_docs(config, doc_ref)
+                                .to_group(ShouldBreak::No, doc_ref),
+                        );
                 }
                 docs
             }

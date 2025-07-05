@@ -305,6 +305,10 @@ comparison_test!(for_loop_plus_comment_minus_brackets, "106");
 comparison_test!(double_indent_should_not_be_a_thing, "107");
 comparison_test!(if_with_no_brackets_else_body, "108");
 comparison_test!(if_with_comments_preserves_newline_after_commnt, "109");
+comparison_test!(
+    if_with_comments_preserves_newline_after_comment_trailing_else,
+    "110"
+);
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
