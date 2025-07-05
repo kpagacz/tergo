@@ -129,7 +129,7 @@ fn if_conditional<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, I
             if_token,
             lparen,
             many0(newline),
-            expr,
+            expr_with_newlines,
             many0(newline),
             rparen,
             many0(newline),
