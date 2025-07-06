@@ -23,7 +23,7 @@ fn symbols() {
     ];
     for (example, expected_tokens) in examples {
         let mut tokenizer = Tokenizer::new(example);
-        let tokens = tokenizer.tokenize();
+        let tokens = tokenizer.tokenize().unwrap();
         let tokens = tokens
             .into_iter()
             .map(|token| token.token)
@@ -50,7 +50,7 @@ fn comments() {
     ];
     for (example, expected) in examples {
         let mut tokenizer = Tokenizer::new(example);
-        let tokens = tokenizer.tokenize();
+        let tokens = tokenizer.tokenize().unwrap();
         let tokens = tokens
             .into_iter()
             .map(|token| token.token)
@@ -76,7 +76,7 @@ fn ifs() {
     )];
     for (example, expected) in examples {
         let mut tokenizer = Tokenizer::new(example);
-        let tokens = tokenizer.tokenize();
+        let tokens = tokenizer.tokenize().unwrap();
         let tokens = tokens
             .into_iter()
             .map(|token| token.token)
@@ -102,7 +102,7 @@ fn number_literals() {
     ];
     for (example, expected) in examples {
         let mut tokenizer = Tokenizer::new(example);
-        let tokens = tokenizer.tokenize();
+        let tokens = tokenizer.tokenize().unwrap();
         let tokens = tokens
             .into_iter()
             .map(|token| token.token)
@@ -181,7 +181,7 @@ fn binary_ops() {
     ];
     for (example, expected) in examples {
         let mut tokenizer = Tokenizer::new(example);
-        let tokens = tokenizer.tokenize();
+        let tokens = tokenizer.tokenize().unwrap();
         let tokens = tokens
             .into_iter()
             .map(|token| token.token)
@@ -263,7 +263,7 @@ fn function_definitions() {
 
     for (example, expected) in examples {
         let mut tokenizer = Tokenizer::new(example);
-        let tokens = tokenizer.tokenize();
+        let tokens = tokenizer.tokenize().unwrap();
         let tokens = tokens
             .into_iter()
             .map(|token| token.token)
@@ -311,6 +311,7 @@ fn function_definitions() {
         let mut tokenizer = Tokenizer::new(example);
         let tokens = tokenizer
             .tokenize()
+            .unwrap()
             .into_iter()
             .map(|token| token.token)
             .collect::<Vec<_>>();
@@ -347,7 +348,7 @@ fn escape_in_strings() {
     let examples = vec![".\\"];
     for example in examples {
         let mut tokenizer = Tokenizer::new(example);
-        let res = tokenizer.tokenize();
+        let res = tokenizer.tokenize().unwrap();
         assert!(!res.is_empty())
     }
 }

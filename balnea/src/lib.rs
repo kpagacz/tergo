@@ -38,12 +38,18 @@ pub fn tergo_format(input: &str, config: Option<&Config>) -> Result<String, Stri
     trace!("Formatting with config: {config}");
     let mut tokenizer = Tokenizer::new(input);
     trace!("Tokenizer created");
-    let mut commented_tokens = tokenizer.tokenize();
+    let mut commented_tokens = tokenizer.tokenize().map_err(|e| format!("{e}"))?;
     trace!("Tokens with comments: {commented_tokens:?}",);
     let tokens_without_comments = pre_parse(&mut commented_tokens);
     let tokens_without_comments = parser::Input(&tokens_without_comments);
     trace!("Tokens without comments: {}", &tokens_without_comments);
-    let cst = parse(tokens_without_comments)?;
+    let cst = parse(tokens_without_comments).map_err(|e| {
+        format!(
+            "Parsing error: {}{}",
+            &e[..120.min(e.len())],
+            if 120 > e.len() { "" } else { "..." }
+        )
+    })?;
     let top_node = Expression::Term(Box::new(TermExpr::new(None, cst, None)));
     trace!("CST: {:?}", top_node);
     Ok(format_code(top_node, config))

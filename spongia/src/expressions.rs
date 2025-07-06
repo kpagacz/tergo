@@ -107,7 +107,10 @@ pub(crate) fn unary_term<'a, 'b: 'a>(
 pub(crate) fn unary_term_with_newlines<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("unary_term: got tokens: {}", InputForDisplay(&tokens));
+    trace!(
+        "unary_term_with_newlines: got tokens: {}",
+        InputForDisplay(&tokens)
+    );
     alt((
         map(
             (tilde, many0(newline), expr_with_newlines),
@@ -177,11 +180,11 @@ pub(crate) fn atomic_term<'a, 'b: 'a>(
 pub(crate) fn atomic_term_with_newlines<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
-    trace!("atomic_term: {}", &tokens);
+    trace!("atomic_term_with_newlines: {}", &tokens);
     let (mut tokens, lhs) = map((term_expr, many0(newline)), |(term, _)| term).parse(tokens)?;
     let mut acc = lhs;
-    trace!("atomic_term: parsed LHS: {acc}");
-    trace!("atomic_term: parsing rhs: {}", &tokens);
+    trace!("atomic_term_with_newlines: parsed LHS: {acc}");
+    trace!("atomic_term_with_newlines: parsing rhs: {}", &tokens);
     while let Ok((new_tokens, tail)) = alt((
         map(
             delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
@@ -204,7 +207,7 @@ pub(crate) fn atomic_term_with_newlines<'a, 'b: 'a>(
     ))
     .parse(tokens.clone())
     {
-        trace!("atomic_term: parsed the rhs to this tail: {tail:?}");
+        trace!("atomic_term_with_newlines: parsed the rhs to this tail: {tail:?}");
         match tail {
             Tail::Call(args) => {
                 acc = Expression::FunctionCall(FunctionCall {
@@ -219,10 +222,11 @@ pub(crate) fn atomic_term_with_newlines<'a, 'b: 'a>(
                 })
             }
         }
+        let (new_tokens, _) = many0(newline).parse(new_tokens)?;
         tokens = new_tokens;
     }
 
-    trace!("atomic_term: final acc: {acc}");
+    trace!("atomic_term_with_newlines: final acc: {acc}");
     Ok((tokens, acc))
 }
 

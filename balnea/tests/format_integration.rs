@@ -319,6 +319,12 @@ comparison_test!(
     left_parenthesis_not_on_the_same_line_as_function_call,
     "117"
 );
+comparison_test!(
+    left_parenthesis_not_on_the_same_line_as_function_call_in_square_brackets,
+    "118"
+);
+comparison_test!(newlines_in_function_calls_are_spaces, "119");
+comparison_test!(multiple_subsets, "120");
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

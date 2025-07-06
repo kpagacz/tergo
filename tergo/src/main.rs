@@ -4,9 +4,9 @@ use std::{
     str::FromStr,
 };
 
-use clap::{arg, Parser};
+use clap::{Parser, arg};
 use log::{debug, info, trace, warn};
-use tergo_lib::{tergo_format, Config};
+use tergo_lib::{Config, tergo_format};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -20,9 +20,21 @@ struct Cli {
 
 #[derive(Debug)]
 enum Error {
-    ReadFileToString,
-    WriteToFile,
-    Formatting,
+    ReadFileToString(String),
+    WriteToFile(String),
+    Formatting(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Self::ReadFileToString(file) => {
+                write!(w, "Error reading the file to string. Path: {file}")
+            }
+            Self::WriteToFile(file) => write!(w, "Error writing to the file. Path: {file}"),
+            Self::Formatting(context) => write!(w, "Error formatting: {context}"),
+        }
+    }
 }
 
 fn get_config(path: &Path) -> Config {
@@ -48,16 +60,16 @@ fn format_file_in_place(path: &Path, config: &Config) -> Result<(), Error> {
     use Error::*;
     let content = std::fs::read_to_string(path).map_err(|e| {
         trace!("Error when reading the file {e}");
-        ReadFileToString
+        ReadFileToString(path.to_str().unwrap_or("Error").to_owned())
     })?;
     let formatted = tergo_format(&content, Some(config)).map_err(|e| {
         trace!("Error when formatting: {e}");
-        Formatting
+        Formatting(e)
     })?;
     trace!("Formatted code:\n:{}", formatted);
     std::fs::write(path, formatted).map_err(|e| {
         trace!("Error writing to file {e}");
-        WriteToFile
+        WriteToFile(path.to_str().unwrap_or("Error").to_owned())
     })?;
     Ok(())
 }
@@ -107,8 +119,8 @@ fn format_r_files(path: &Path, config_path: &Path) {
         match format_file_in_place(&file, &config) {
             Ok(_) => info!("Formatted: {:?}", &file),
             Err(e) => {
-                warn!("Failed to format {:?}. Error: {e:?}", &file);
-                trace!("Error was: {e:?}");
+                warn!("Failed to format {:?}. Error: {e}", &file);
+                trace!("Error was: {e}");
             }
         }
     }

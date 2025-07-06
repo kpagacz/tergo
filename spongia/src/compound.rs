@@ -12,7 +12,7 @@ use crate::{
         Arg, Args, Delimiter, ElseIfConditional, Expression, ForLoop, FunctionDefinition,
         IfConditional, IfExpression, Lambda, RepeatExpression, TrailingElse, WhileExpression,
     },
-    expressions::{expr, expr_with_newlines, unary_term},
+    expressions::{expr, expr_with_newlines, unary_term_with_newlines},
     program::statement_or_expr,
     token_parsers::*,
 };
@@ -85,7 +85,7 @@ pub(crate) fn args<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, 
             map(
                 (
                     many0(newline),
-                    unary_term,
+                    unary_term_with_newlines,
                     many0(newline),
                     old_assign,
                     many0(newline),
@@ -175,7 +175,13 @@ pub(crate) fn while_expression<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     map(
-        (while_token, many0(newline), expr, many0(newline), expr),
+        (
+            while_token,
+            many0(newline),
+            expr_with_newlines,
+            many0(newline),
+            expr,
+        ),
         |(while_keyword, _, condition, _, body)| {
             Expression::WhileExpression(WhileExpression {
                 while_keyword,
@@ -213,11 +219,11 @@ pub(crate) fn for_loop_expression<'a, 'b: 'a>(
             many0(newline),
             map(lparen, Delimiter::Paren),
             many0(newline),
-            expr,
+            expr_with_newlines,
             many0(newline),
             in_token,
             many0(newline),
-            expr,
+            expr_with_newlines,
             many0(newline),
             map(rparen, Delimiter::Paren),
             many0(newline),

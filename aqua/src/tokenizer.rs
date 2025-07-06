@@ -69,7 +69,7 @@ impl<'a> Tokenizer<'a> {
     /// println!("{tokens:?}");
     /// ```
     ///
-    pub fn tokenize(&mut self) -> Vec<CommentedToken> {
+    pub fn tokenize(&mut self) -> Result<Vec<CommentedToken>, crate::Error> {
         let mut tokens = vec![];
         self.next();
         while self.it < self.raw_source.len() {
@@ -338,12 +338,19 @@ impl<'a> Tokenizer<'a> {
                         _ => self.push_token(Colon, &mut tokens),
                     }
                 }
-                _ => unreachable!(),
+                c => {
+                    trace!(
+                        "Unexpected character '{c}' around:\n\"\"\"\n{}\n\"\"\"",
+                        &self.raw_source[self.it.saturating_sub(15)
+                            ..self.it.saturating_add(15).min(self.raw_source.len())]
+                    );
+                    self.next();
+                }
             }
         }
         tokens.push(CommentedToken::new(EOF, self.offset));
         trace!("Tokenized: {:?}", tokens);
-        tokens
+        Ok(tokens)
     }
 
     fn push_token(&mut self, token: Token<'a>, tokens: &mut Vec<CommentedToken<'a>>) {
