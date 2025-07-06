@@ -315,6 +315,10 @@ comparison_test!(ifs_dont_consume_newlines, "113");
 comparison_test!(multiple_lines_starting_with_binary_operator_in_if, "114");
 comparison_test!(multiple_lines_starting_with_newlines_in_parentheses, "115");
 comparison_test!(parses_imaginary_numbers, "116");
+comparison_test!(
+    left_parenthesis_not_on_the_same_line_as_function_call,
+    "117"
+);
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");

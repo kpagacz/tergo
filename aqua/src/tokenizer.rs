@@ -453,10 +453,6 @@ impl<'a> Tokenizer<'a> {
             _ => {
                 self.parse_decimal();
                 let next = self.lookahead();
-                trace!(
-                    "Decimal parsing: current_char: {}, next: {:?}",
-                    self.current_char, next
-                );
                 match (self.current_char, next) {
                     ('.', _) => {
                         self.next();

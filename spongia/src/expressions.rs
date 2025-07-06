@@ -104,11 +104,81 @@ pub(crate) fn unary_term<'a, 'b: 'a>(
     .parse(tokens)
 }
 
+pub(crate) fn unary_term_with_newlines<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("unary_term: got tokens: {}", InputForDisplay(&tokens));
+    alt((
+        map(
+            (tilde, many0(newline), expr_with_newlines),
+            |(tilde, _, term)| Expression::Formula(tilde, Box::new(term)),
+        ),
+        map(
+            (unary_op, many0(newline), unary_term_with_newlines),
+            |(op, _, term)| Expression::Unary(op, Box::new(term)),
+        ),
+        atomic_term_with_newlines,
+    ))
+    .parse(tokens)
+}
+
 pub(crate) fn atomic_term<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     trace!("atomic_term: {}", &tokens);
     let (mut tokens, lhs) = term_expr(tokens)?;
+    let mut acc = lhs;
+    trace!("atomic_term: parsed LHS: {acc}");
+    trace!("atomic_term: parsing rhs: {}", &tokens);
+    while let Ok((new_tokens, tail)) = alt((
+        map(
+            delimited_comma_sep_exprs(map(lparen, Delimiter::Paren), map(rparen, Delimiter::Paren)),
+            Tail::Call,
+        ),
+        map(
+            delimited_comma_sep_exprs(
+                map((lbracket, lbracket), Delimiter::DoubleBracket),
+                map((rbracket, rbracket), Delimiter::DoubleBracket),
+            ),
+            Tail::DoubleSubset,
+        ),
+        map(
+            delimited_comma_sep_exprs(
+                map(lbracket, Delimiter::SingleBracket),
+                map(rbracket, Delimiter::SingleBracket),
+            ),
+            Tail::SingleSubset,
+        ),
+    ))
+    .parse(tokens.clone())
+    {
+        trace!("atomic_term: parsed the rhs to this tail: {tail:?}");
+        match tail {
+            Tail::Call(args) => {
+                acc = Expression::FunctionCall(FunctionCall {
+                    function_ref: Box::new(acc),
+                    args,
+                })
+            }
+            Tail::DoubleSubset(args) | Tail::SingleSubset(args) => {
+                acc = Expression::SubsetExpression(crate::ast::SubsetExpression {
+                    object_ref: Box::new(acc),
+                    args,
+                })
+            }
+        }
+        tokens = new_tokens;
+    }
+
+    trace!("atomic_term: final acc: {acc}");
+    Ok((tokens, acc))
+}
+
+pub(crate) fn atomic_term_with_newlines<'a, 'b: 'a>(
+    tokens: Input<'a, 'b>,
+) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("atomic_term: {}", &tokens);
+    let (mut tokens, lhs) = map((term_expr, many0(newline)), |(term, _)| term).parse(tokens)?;
     let mut acc = lhs;
     trace!("atomic_term: parsed LHS: {acc}");
     trace!("atomic_term: parsing rhs: {}", &tokens);
@@ -394,7 +464,7 @@ pub(crate) fn expr_with_newlines<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     trace!("expr_with_newlines: {}", &tokens);
-    let (tokens, term) = unary_term(tokens)?;
+    let (tokens, term) = unary_term_with_newlines(tokens)?;
     if !tokens.is_empty() {
         let parser = ExprParser {
             level: 0,
