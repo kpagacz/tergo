@@ -124,6 +124,7 @@ pub(crate) fn if_expression<'a, 'b: 'a>(
 }
 
 fn if_conditional<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, IfConditional<'a>> {
+    trace!("if_conditional: parsing tokens: {}", &tokens);
     map(
         (
             if_token,

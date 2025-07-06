@@ -8,7 +8,6 @@ use nom::{
 };
 use tokenizer::{Token::*, tokens::CommentedToken};
 
-use crate::Input;
 use crate::ast::Args;
 use crate::ast::Delimiter;
 use crate::ast::Expression;
@@ -23,6 +22,7 @@ use crate::compound::repeat_expression;
 use crate::compound::while_expression;
 use crate::program::statement_or_expr;
 use crate::token_parsers::*;
+use crate::{Input, InputForDisplay};
 
 pub(crate) fn symbol_expr<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
@@ -91,6 +91,7 @@ fn unary_op<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, &'b Com
 pub(crate) fn unary_term<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
+    trace!("unary_term: got tokens: {}", InputForDisplay(&tokens));
     alt((
         map((tilde, expr), |(tilde, term)| {
             Expression::Formula(tilde, Box::new(term))
@@ -259,25 +260,83 @@ fn is_binary_operator(token: &CommentedToken) -> bool {
 
 // This implements the precedence climbing method described here:
 // https://www.engr.mun.ca/~theo/Misc/exp_parsing.htm#climbing
-struct ExprParser(u8);
+struct ExprParser<Consumer> {
+    level: u8,
+    consumer: Consumer,
+}
 
-impl ExprParser {
+trait NewLineConsumer: Clone {
+    fn consume_newlines<'a, 'b: 'a>(&self, start: usize, tokens: &Input<'a, 'b>) -> usize;
+    fn new() -> Self;
+}
+
+#[derive(Clone, Debug)]
+struct NoNewLineConsumer;
+impl NewLineConsumer for NoNewLineConsumer {
+    fn consume_newlines<'a, 'b: 'a>(&self, start: usize, _: &Input<'a, 'b>) -> usize {
+        start
+    }
+
+    fn new() -> Self {
+        Self
+    }
+}
+
+#[derive(Clone, Debug)]
+struct GreedyNewLineConsumer;
+impl NewLineConsumer for GreedyNewLineConsumer {
+    fn consume_newlines<'a, 'b: 'a>(&self, mut start: usize, tokens: &Input<'a, 'b>) -> usize {
+        while matches!(tokens[start].token, Newline) {
+            start += 1;
+        }
+        start
+    }
+
+    fn new() -> Self {
+        Self
+    }
+}
+
+// How to deal with newlines:
+// some expressions allow putting newlines in between
+// the operators and operands, like in the case of
+// if conditions, for loops, etc., e.g.:
+// if (TRUE
+// && SOMETHING
+// && SOMETHING) {}
+// Instead of implementing this in the parser directly,
+// I implement it as a template thing
+
+impl<Consumer> ExprParser<Consumer>
+where
+    Consumer: NewLineConsumer + std::fmt::Debug,
+{
     fn parse<'a, 'b: 'a>(
         &self,
         mut lhs: Expression<'a>,
         mut tokens: Input<'a, 'b>,
     ) -> IResult<Input<'a, 'b>, Expression<'a>> {
+        trace!(
+            "ExprParser level: {} consumer: {:?} tokens: {}...",
+            self.level,
+            self.consumer,
+            InputForDisplay(&tokens)
+        );
+        let start = self.consumer.consume_newlines(0, &tokens);
+        tokens = Input(&tokens[start..]);
         let mut lookahead = &tokens[0];
-        while is_binary_operator(lookahead) && precedence(lookahead) >= self.0 {
+        while is_binary_operator(lookahead) && precedence(lookahead) >= self.level {
             let op = lookahead;
-            let mut it = 1;
-            while matches!(tokens[it].token, Newline) {
-                it += 1;
-            }
+            let greedy_newline_consumer = GreedyNewLineConsumer::new();
+            let it = greedy_newline_consumer.consume_newlines(1, &tokens);
+
             tokens = Input(&tokens[it..]);
             let (new_tokens, mut rhs) = unary_term(tokens)?;
             tokens = new_tokens;
+            let not_newline = self.consumer.consume_newlines(0, &tokens);
+            tokens = Input(&tokens[not_newline..]);
             lookahead = &tokens[0];
+            trace!("ExprParser: before inner while loop: lookahead: {lookahead}");
             while is_binary_operator(lookahead)
                 && (precedence(lookahead) > precedence(op)
                     || (associativity(lookahead) == Associativity::Right
@@ -289,14 +348,28 @@ impl ExprParser {
                     } else {
                         0
                     });
-                let parser = ExprParser(q);
+                let parser = ExprParser {
+                    level: q,
+                    consumer: self.consumer.clone(),
+                };
+                trace!(
+                    "ExprParser: inner while. tokens passed to inner recursive parse: {}",
+                    InputForDisplay(&tokens)
+                );
                 let (new_tokens, new_rhs) = parser.parse(rhs, tokens)?;
                 let new_rhs = bop_to_multibop(new_rhs);
                 rhs = new_rhs;
                 tokens = new_tokens;
-                lookahead = &tokens[0];
+                let start = self.consumer.consume_newlines(0, &tokens);
+                lookahead = &tokens[start];
             }
             lhs = Expression::Bop(op, Box::new(lhs), Box::new(rhs));
+            trace!(
+                "ExprParse: end of outer while loop: tokens {}",
+                InputForDisplay(&tokens)
+            );
+            trace!("ExprParse: end of outer while loop: lhs: {lhs}");
+            trace!("ExprParse: end of outer while loop: lookahead: {lookahead}");
         }
         Ok((tokens, lhs))
     }
@@ -306,7 +379,10 @@ pub(crate) fn expr<'a, 'b: 'a>(tokens: Input<'a, 'b>) -> IResult<Input<'a, 'b>, 
     trace!("expr: {}", &tokens);
     let (tokens, term) = unary_term(tokens)?;
     if !tokens.is_empty() {
-        let parser = ExprParser(0);
+        let parser = ExprParser {
+            level: 0,
+            consumer: NoNewLineConsumer::new(),
+        };
         let (tokens_left, xpr) = parser.parse(term, tokens)?;
         Ok((tokens_left, bop_to_multibop(xpr)))
     } else {
@@ -318,13 +394,21 @@ pub(crate) fn expr_with_newlines<'a, 'b: 'a>(
     tokens: Input<'a, 'b>,
 ) -> IResult<Input<'a, 'b>, Expression<'a>> {
     trace!("expr_with_newlines: {}", &tokens);
-    let (mut tokens, term) = unary_term(tokens)?;
-    while !tokens.is_empty() && tokens[0].token == Newline {
-        tokens = Input(&tokens[1..]);
-    }
+    let (tokens, term) = unary_term(tokens)?;
     if !tokens.is_empty() {
-        let parser = ExprParser(0);
+        let parser = ExprParser {
+            level: 0,
+            consumer: GreedyNewLineConsumer::new(),
+        };
+        trace!(
+            "expr_with_newlines: parsed_term {term} tokens left: {}",
+            InputForDisplay(&tokens)
+        );
         let (tokens_left, xpr) = parser.parse(term, tokens)?;
+        trace!(
+            "expr_with_newlines: tokens_left: {}..",
+            InputForDisplay(&tokens_left)
+        );
         Ok((tokens_left, bop_to_multibop(xpr)))
     } else {
         Ok((tokens, term))

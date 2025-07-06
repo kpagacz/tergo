@@ -312,6 +312,7 @@ comparison_test!(
 comparison_test!(raw_string_literal, "111");
 comparison_test!(binary_statement_in_parentheses_with_newline, "112");
 comparison_test!(ifs_dont_consume_newlines, "113");
+comparison_test!(multiple_lines_starting_with_binary_operator_in_if, "114");
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
