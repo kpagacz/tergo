@@ -1,6 +1,6 @@
 use std::str::CharIndices;
 
-use log::{debug, trace};
+use log::trace;
 
 use crate::tokens::{
     CommentedToken,
@@ -255,7 +255,7 @@ impl<'a> Tokenizer<'a> {
                             self.number_literal(&mut tokens);
                         }
                         _ => {
-                            debug!(
+                            trace!(
                                 "Found not alphabetic and non-numeric character after a dot. \
                                  Treating it as an identifier."
                             );
@@ -453,6 +453,10 @@ impl<'a> Tokenizer<'a> {
             _ => {
                 self.parse_decimal();
                 let next = self.lookahead();
+                trace!(
+                    "Decimal parsing: current_char: {}, next: {:?}",
+                    self.current_char, next
+                );
                 match (self.current_char, next) {
                     ('.', _) => {
                         self.next();
@@ -472,6 +476,9 @@ impl<'a> Tokenizer<'a> {
                             ('e', _) | ('E', _) => {
                                 self.next();
                                 self.parse_decimal();
+                            }
+                            ('i', _) => {
+                                self.next();
                             }
                             _ => {}
                         }

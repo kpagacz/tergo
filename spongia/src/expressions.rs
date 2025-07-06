@@ -52,7 +52,7 @@ pub(crate) fn term_expr<'a, 'b: 'a>(
         map(
             (
                 lparen,
-                delimited(many0(newline), opt(expr), many0(newline)),
+                delimited(many0(newline), opt(expr_with_newlines), many0(newline)),
                 rparen,
             ),
             |(lparen, term, rparen)| {
