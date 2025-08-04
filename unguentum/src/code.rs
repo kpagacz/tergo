@@ -983,7 +983,8 @@ impl Code for Expression<'_> {
                             | Token::LAssign
                             | Token::ColonAssign
                             | Token::SuperAssign
-                                if !config.allow_nl_after_assignment() =>
+                                if !config.allow_nl_after_assignment()
+                                    && last_op_token.inline_comment.is_none() =>
                             {
                                 acc_rhs = rhs
                                     .to_docs(config, doc_ref)
@@ -991,6 +992,21 @@ impl Code for Expression<'_> {
                                     .cons(last_op_token.to_docs(config, doc_ref))
                                     .cons(text!(" "))
                                     .cons(acc_rhs);
+                                last_op = Some(op);
+                            }
+                            Token::OldAssign
+                            | Token::LAssign
+                            | Token::ColonAssign
+                            | Token::SuperAssign
+                                if !config.allow_nl_after_assignment()
+                                    && last_op_token.inline_comment.is_some() =>
+                            {
+                                acc_rhs = rhs
+                                    .to_docs(config, doc_ref)
+                                    .cons(text!(" "))
+                                    .cons(last_op_token.to_docs(config, doc_ref))
+                                    .cons(nl!(" "))
+                                    .cons(acc_rhs.nest(config.indent()));
                                 last_op = Some(op);
                             }
                             Token::OldAssign
@@ -1058,13 +1074,28 @@ impl Code for Expression<'_> {
                         | Token::LAssign
                         | Token::ColonAssign
                         | Token::SuperAssign
-                            if !config.allow_nl_after_assignment() =>
+                            if !config.allow_nl_after_assignment()
+                                && last_op.inline_comment.is_none() =>
                         {
                             lhs.to_docs(config, doc_ref)
                                 .cons(text!(" "))
                                 .cons(last_op.to_docs(config, doc_ref))
                                 .cons(text!(" "))
                                 .cons(acc_rhs)
+                                .to_group(ShouldBreak::No, doc_ref)
+                        }
+                        Token::OldAssign
+                        | Token::LAssign
+                        | Token::ColonAssign
+                        | Token::SuperAssign
+                            if !config.allow_nl_after_assignment()
+                                && last_op.inline_comment.is_some() =>
+                        {
+                            lhs.to_docs(config, doc_ref)
+                                .cons(text!(" "))
+                                .cons(last_op.to_docs(config, doc_ref))
+                                .cons(nl!(" "))
+                                .cons(acc_rhs.nest(config.indent()))
                                 .to_group(ShouldBreak::No, doc_ref)
                         }
                         Token::OldAssign

@@ -1,0 +1,2 @@
+hfcomps <- # should we be able to specify static URLs here?
+  HTMLcomponents()
