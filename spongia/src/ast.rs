@@ -184,6 +184,18 @@ pub enum Delimiter<'a> {
     DoubleBracket((&'a CommentedToken<'a>, &'a CommentedToken<'a>)),
 }
 
+impl Delimiter<'_> {
+    pub fn is_inline_commented(&self) -> bool {
+        match self {
+            Delimiter::Paren(commented_token)
+            | Delimiter::SingleBracket(commented_token)
+            | Delimiter::DoubleBracket((_, commented_token)) => {
+                commented_token.inline_comment.is_some()
+            }
+        }
+    }
+}
+
 impl std::fmt::Display for Delimiter<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

@@ -657,6 +657,13 @@ impl Code for Expression<'_> {
                     &function_def.arguments,
                     &function_def.body,
                 );
+
+                let after_right_delim_doc = if args.right_delimeter.is_inline_commented() {
+                    nl!(" ")
+                } else {
+                    text!(" ")
+                };
+
                 match config.function_line_breaks() {
                     FunctionLineBreaks::Hanging => {
                         let args_doc = join_docs_ungroupped(
@@ -671,13 +678,19 @@ impl Code for Expression<'_> {
                             .left_delimeter
                             .to_docs(config, doc_ref)
                             .cons(args_doc.nest_hanging())
-                            .cons(args.right_delimeter.to_docs(config, doc_ref))
-                            .to_group(ShouldBreak::No, doc_ref);
+                            .cons(
+                                args.right_delimeter
+                                    .to_docs(config, doc_ref)
+                                    .cons(after_right_delim_doc)
+                                    .to_group(ShouldBreak::No, doc_ref),
+                            );
                         keyword
                             .to_docs(config, doc_ref)
-                            .cons(args_group)
-                            .cons(text!(" "))
-                            .cons(body.to_docs(config, doc_ref))
+                            .cons(args_group.to_group(ShouldBreak::No, doc_ref))
+                            .cons(
+                                body.to_docs(config, doc_ref)
+                                    .to_group(ShouldBreak::No, doc_ref),
+                            )
                             .to_group(ShouldBreak::No, doc_ref)
                     }
                     FunctionLineBreaks::Double => {
@@ -696,12 +709,16 @@ impl Code for Expression<'_> {
                             .cons(args_doc)
                             .nest(2 * config.indent())
                             .cons(nl!(""))
-                            .cons(args.right_delimeter.to_docs(config, doc_ref))
+                            .cons(
+                                args.right_delimeter
+                                    .to_docs(config, doc_ref)
+                                    .cons(after_right_delim_doc)
+                                    .to_group(ShouldBreak::No, doc_ref),
+                            )
                             .to_group(ShouldBreak::No, doc_ref);
                         keyword
                             .to_docs(config, doc_ref)
                             .cons(args_group)
-                            .cons(text!(" "))
                             .cons(body.to_docs(config, doc_ref))
                             .to_group(ShouldBreak::No, doc_ref)
                     }
@@ -721,12 +738,16 @@ impl Code for Expression<'_> {
                             .cons(args_doc)
                             .nest(config.indent())
                             .cons(nl!(""))
-                            .cons(args.right_delimeter.to_docs(config, doc_ref))
+                            .cons(
+                                args.right_delimeter
+                                    .to_docs(config, doc_ref)
+                                    .cons(after_right_delim_doc)
+                                    .to_group(ShouldBreak::No, doc_ref),
+                            )
                             .to_group(ShouldBreak::No, doc_ref);
                         keyword
                             .to_docs(config, doc_ref)
                             .cons(args_group)
-                            .cons(text!(" "))
                             .cons(body.to_docs(config, doc_ref))
                             .to_group(ShouldBreak::No, doc_ref)
                     }
