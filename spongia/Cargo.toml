@@ -1,6 +1,6 @@
 [package]
 name = "tergo-parser"
-version = "0.2.5"
+version = "0.2.6"
 edition = "2021"
 license = "MIT"
 description = "Parser for tergo"
@@ -10,7 +10,7 @@ repository = "https://github.com/kpagacz/tergo/tree/main/spongia"
 
 [dependencies]
 nom = "8.0.0"
-tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.2.4" }
+tokenizer = { package = "tergo-tokenizer", path = "../aqua", version = "0.2.5" }
 log = "0.4.21"
 
 [dev-dependencies]

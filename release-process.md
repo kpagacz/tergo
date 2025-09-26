@@ -7,14 +7,13 @@
 The order of operations matters here.
 
 1. Update versions in `Cargo.toml` files (library versions and dependencies):
-
    - aqua
    - spongia
    - unguentum
    - balnea
+   - tergo
 
 2. Make sure the documentation is updated (`README.md` files):
-
    - `balnea` - if there were any configuration changes they need
      to be reflected in the documentation.
 
@@ -23,6 +22,7 @@ The order of operations matters here.
    - spongia
    - unguentum
    - balnea
+   - tergo
 
 ### CLI tool
 
@@ -38,6 +38,8 @@ The order of operations matters here.
 2. Run `vsce package`
 3. Run `vsce publish` - this requires a Personal Access Token
    for `konradpagacz` organization.
+
+### R package
 
 ## Adding configuration
 
