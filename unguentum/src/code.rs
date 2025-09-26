@@ -616,7 +616,7 @@ impl Code for Expression<'_> {
                 | Token::Tilde
                 | Token::Special(_) => lhs
                     .to_docs(config, doc_ref)
-                    .cons(nl!(" "))
+                    .cons(text!(" "))
                     .cons(op.to_docs(config, doc_ref))
                     .to_group(ShouldBreak::No, doc_ref)
                     .cons(
