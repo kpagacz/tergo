@@ -591,9 +591,9 @@ impl Code for Expression<'_> {
                     if !config.allow_nl_after_assignment() =>
                 {
                     lhs.to_docs(config, doc_ref)
-                        .cons(text!(" "))
+                        .cons(nl!(" "))
                         .cons(op.to_docs(config, doc_ref))
-                        .cons(text!(" "))
+                        .cons(nl!(" "))
                         .cons(rhs.to_docs(config, doc_ref).nest(config.indent()))
                 }
                 Token::RAssign
@@ -616,7 +616,7 @@ impl Code for Expression<'_> {
                 | Token::Tilde
                 | Token::Special(_) => lhs
                     .to_docs(config, doc_ref)
-                    .cons(text!(" "))
+                    .cons(nl!(" "))
                     .cons(op.to_docs(config, doc_ref))
                     .to_group(ShouldBreak::No, doc_ref)
                     .cons(

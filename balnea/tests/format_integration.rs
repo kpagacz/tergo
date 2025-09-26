@@ -327,6 +327,7 @@ comparison_test!(newlines_in_function_calls_are_spaces, "119");
 comparison_test!(multiple_subsets, "120");
 comparison_test!(comments_inline_with_assignment, "121");
 comparison_test!(comment_after_function_def, "122");
+comparison_test!(comment_in_binary_operations, "123");
 
 // Tidyverse styleguide examples
 comparison_test!(tidyverse_commas, "tidyverse_style_guide_001");
