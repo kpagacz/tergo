@@ -35,15 +35,20 @@ get_config <- function(path) .Call(wrap__get_config, path)
 #'
 #' @details
 #' The configuration values:
-#' * indent - the number of spaces to use for indentation.
-#' * line_length - the maximum number of characters in a line.
-#' * embracing_op_no_nl - whether to allow a newline after an embracing operator.
-#' * allow_nl_after_assignment - whether to allow a newline after an assignment operator.
-#' * space_before_complex_rhs_in_formula - whether to add a space before a complex right-hand side in a formula.
-#' * strip_suffix_whitespace_in_function_defs - whether to strip suffix whitespace in function definitions.
-#' * function_line_breaks - the type of line breaks in function definitions when arguments do not
-#'   fit. Possible values are: hanging, double, single.
-#' * insert_newline_in_quote_call - whether to insert a newline in calls to `quote`.
+#' * indent (`integer`) - the number of spaces to use for indentation. E.g. 2L, 4L.
+#' * line_length (`integer`) - the maximum number of characters in a line. E.g. 80L, 120L.
+#' * embracing_op_no_nl (`logical`) - whether to allow a newline after an embracing operator. E.g.
+#'   TRUE, FALSE.
+#' * allow_nl_after_assignment (`logical`) - whether to allow a newline after an assignment operator.
+#'   E.g. TRUE, FALSE.
+#' * space_before_complex_rhs_in_formula (`logical`) - whether to add a space before a complex
+#'   right-hand side in a formula. E.g. TRUE, FALSE.
+#' * strip_suffix_whitespace_in_function_defs (`logical`) - whether to strip suffix
+#'   whitespace in function definitions. E.g. TRUE, FALSE.
+#' * function_line_breaks (`character`) - the type of line breaks in function definitions when arguments do not
+#'   fit. Possible values are: "hanging", "double", "single".
+#' * insert_newline_in_quote_call (`logical`) - whether to insert a newline in calls to `quote`.
+#'   E.g. TRUE, FALSE.
 #'
 #' @return `list` with the default configuration
 #' @export

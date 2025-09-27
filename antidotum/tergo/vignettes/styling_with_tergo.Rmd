@@ -20,7 +20,7 @@ library(tergo)
 
 # Get Started with `tergo`
 
-`tergo` is a lightning-fast R code formatter powered by Rust, designed for developers who prioritize speed and efficiency. 
+`tergo` is a lightning-fast R code formatter powered by Rust, designed for developers who prioritize speed and efficiency.
 Whether you're optimizing CI pipelines or building responsive developer tools, `tergo` reformats R code in milliseconds.
 
 ## Installation
@@ -35,7 +35,7 @@ install.packages('tergo', repos = c(
 ```
 
 ### Method 2: From GitHub Sources (For Advanced Users)
-Requires [Rust toolchain](https://www.rust-lang.org/tools/install):
+Requires [Rust toolchain](https://rust-lang.org/tools/install):
 ```r
 if (!require(remotes)) install.packages("remotes")
 remotes::install_github("kpagacz/tergo@latest", subdir = "antidotum/tergo")
@@ -50,7 +50,7 @@ tergo::style()  # Run in package root directory
 Style specific files/directories:
 ```r
 tergo::style("path/to/your-script.R")
-tergo::style(c("dir1/", "dir2/")) 
+tergo::style(c("dir1/", "dir2/"))
 ```
 
 ## Configuration Options
@@ -96,7 +96,7 @@ tergo::style(config = list(
 ### Benchmarking
 Verify performance claims using included benchmarks:
 ```r
-source(system.file("bench.R", package = "tergo")) 
+source(system.file("bench.R", package = "tergo"))
 ```
 
 ### Project-Specific Configs
@@ -107,8 +107,8 @@ tergo::style(config = "path/to/alternate.toml")
 
 ---
 
-**Next Steps**:  
-• Run `?tergo::style` for detailed function documentation  
-• Visit [GitHub repository](https://github.com/kpagacz/tergo) for issue tracking  
+**Next Steps**:
+• Run `?tergo::style` for detailed function documentation
+• Visit [GitHub repository](https://github.com/kpagacz/tergo) for issue tracking
 • Experiment with different `.toml` configurations to match your team's style guide
-``` 
+```

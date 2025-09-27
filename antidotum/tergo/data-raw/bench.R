@@ -53,8 +53,7 @@ for (pac in names(pacs)) {
 }
 
 results_df <- do.call(
-  rbind,
-  lapply(names(results), function(x) cbind(summary(results[[x]])[, c("expr", "median")], package = x))
+  rbind, lapply(names(results), function(x) cbind(summary(results[[x]])[, c("expr", "median")], package = x))
 )
 
 gg <- ggplot2::ggplot(results_df, ggplot2::aes(x = package, y = median)) +
@@ -66,8 +65,7 @@ gg <- ggplot2::ggplot(results_df, ggplot2::aes(x = package, y = median)) +
 ggplot2::ggsave("man/figures/first_run.png", gg)
 
 results2_df <- do.call(
-  rbind,
-  lapply(names(results), function(x) cbind(summary(results2[[x]])[, c("expr", "median")], package = x))
+  rbind, lapply(names(results), function(x) cbind(summary(results2[[x]])[, c("expr", "median")], package = x))
 )
 
 gg2 <- ggplot2::ggplot(results2_df, ggplot2::aes(x = package, y = median)) +

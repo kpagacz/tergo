@@ -41,6 +41,14 @@ The order of operations matters here.
 
 ### R package
 
+1. Update the `tergo-lib` dependency in `antidotum/tergo/src/rust/Cargo.toml`
+2. Run `extendr::document()`
+3. Update the version in `DESCRIPTION`
+4. Fill and update NEWS.md
+5. R CMD build
+6. R CMD check
+7. Publish to CRAN
+
 ## Adding configuration
 
 When adding a new configuration entry to `tergo`, make sure to update:

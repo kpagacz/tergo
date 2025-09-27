@@ -9,9 +9,9 @@ crate-type = ["staticlib"]
 name = "tergo"
 
 [dependencies]
-tergo-lib = "0.2.9"
-toml = "0.8.20"
-extendr-api = "0.8.0"
+tergo-lib = "0.2.12"
+toml = "0.9.7"
+extendr-api = "0.8.1"
 
 [workspace]
 exclude = ["vendor", "repo_vendor"]
